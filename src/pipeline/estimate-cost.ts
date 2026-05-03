@@ -173,6 +173,44 @@ export async function estimateChapterCost(params: {
 
   const stages: StageTokenEstimate[] = [];
 
+  // ── Blueprint-level deterministic compiles (zero model cost; one-time) ──
+  stages.push({
+    stage: "market-promise",
+    provider: "openai",
+    model: config.models.openAiPrimary,
+    estimatedInputTokens: 0,
+    maxOutputTokens: 0,
+    contextWindowTokens: 0,
+    withinBudget: true,
+    estimatedCostUsd: 0,
+    pricingConfigured: true,
+    notes: ["Deterministic compile from blueprint; no model call; cached on blueprintHash."],
+  });
+  stages.push({
+    stage: "continuity-manifest",
+    provider: "openai",
+    model: config.models.openAiPrimary,
+    estimatedInputTokens: 0,
+    maxOutputTokens: 0,
+    contextWindowTokens: 0,
+    withinBudget: true,
+    estimatedCostUsd: 0,
+    pricingConfigured: true,
+    notes: ["Deterministic compile from blueprint; no model call; cached on blueprintHash."],
+  });
+
+  // ── Author brief (one model call per blueprint, amortized) ──
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.authorBrief,
+      estimatedInputTokens: storyPromiseTokens + genreContractTokens + styleRulesTokens
+        + motifsTokens + (params.packet.marketPromise
+          ? estimateTextTokens(JSON.stringify(params.packet.marketPromise))
+          : 0),
+    }),
+    notes: ["One-time per blueprint; cached on blueprintHash. Amortizes over the full chapter run."],
+  });
+
   const specGenerationInputTokens = estimateOpenAiStageRequest({
     stage: config.stageProfiles.specGeneration,
     request: buildSpecGenerationRequest({
@@ -283,9 +321,25 @@ export async function estimateChapterCost(params: {
   });
   pushWithNote(stages, selectionEst, skipNote);
 
-  // ── Post-selection enhancement: tournament (advisory/fail-soft) ──
+  // ── Post-selection enhancement: voice-grit (advisory/fail-soft) ──
   const selectedProseTokens = estimateWordTokens(smokeSelected.wordCount);
+  const voiceGritNote = "Conditional: runs only when a voice-target is available; whole-batch discard on >1pt regression or blocking signals.";
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.voiceGritPlan,
+      estimatedInputTokens: strippedPacketTokens + styleRulesTokens + motifsTokens + selectedProseTokens,
+    }),
+    notes: [voiceGritNote],
+  });
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.voiceGritRejudge,
+      estimatedInputTokens: judgeInput(selectedProseTokens),
+    }),
+    notes: [voiceGritNote],
+  });
 
+  // ── Post-selection enhancement: tournament (advisory/fail-soft) ──
   const tournamentNote = "Conditional: runs only when the corresponding zone exists in the selected prose; per-zone failures are isolated.";
   for (const stageProfile of [
     config.stageProfiles.openingCandidate,
@@ -420,6 +474,23 @@ export async function estimateChapterCost(params: {
     notes: [
       "Deterministic local extraction after publish; no model call by default.",
       "Reads STYLE_SAMPLE.md when present, otherwise derives from the latest 1-3 published chapters (including the chapter that just published).",
+    ],
+  });
+
+  // ── Continuity state update (post-publish; deterministic merge) ──
+  stages.push({
+    stage: "continuity-state-update",
+    provider: "openai",
+    model: config.models.openAiPrimary,
+    estimatedInputTokens: 0,
+    maxOutputTokens: 0,
+    contextWindowTokens: 0,
+    withinBudget: true,
+    estimatedCostUsd: 0,
+    pricingConfigured: true,
+    notes: [
+      "Deterministic per-chapter merge of manifest baseline + previous state + published prose. No model call.",
+      "Skipped when the blueprint omits a Continuity Manifest.",
     ],
   });
 
