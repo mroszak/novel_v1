@@ -7,7 +7,6 @@ import { promises as fs } from "node:fs";
 import {
   locateEndingSlice,
   locateOpeningSlice,
-  locateTitleSlice,
 } from "../src/pipeline/opening-ending-tournament.js";
 import {
   buildVoiceFingerprint,
@@ -69,18 +68,6 @@ test("locateEndingSlice returns the final non-empty paragraph", () => {
   const slice = locateEndingSlice(SAMPLE_PROSE);
   assert.ok(slice);
   assert.ok(slice!.text.includes("rain finally committed"));
-});
-
-test("locateTitleSlice returns short title-like first line", () => {
-  const slice = locateTitleSlice(SAMPLE_PROSE);
-  assert.ok(slice);
-  assert.equal(slice!.paragraphIndex, 0);
-  assert.equal(slice!.text, "Chapter Heading");
-});
-
-test("locateTitleSlice returns null when first paragraph is full prose", () => {
-  const proseWithoutTitle = "She entered the room. The door swung. Light bled from a lamp. She paused for a beat, listening to the building.\n\nA second paragraph here.";
-  assert.equal(locateTitleSlice(proseWithoutTitle), null);
 });
 
 function makeBlueprint(): CompiledStoryBlueprint {
@@ -286,25 +273,29 @@ test("estimate-cost includes voice-calibration and tournament stage entries", as
   const stageNames: string[] = costEstimate.data.stages.map((s: any) => s.stage);
 
   assert.ok(stageNames.includes("voice-calibration"), "estimate must include voice-calibration");
-  assert.ok(stageNames.includes("tournament-rejudge"), "estimate must include tournament-rejudge");
-  for (const zonePrefix of ["opening-candidate", "ending-candidate", "title-candidate"]) {
-    for (let i = 1; i <= 3; i += 1) {
-      assert.ok(
-        stageNames.includes(`${zonePrefix}-${i}`),
-        `estimate must include ${zonePrefix}-${i}`,
-      );
-    }
+  for (const zonePrefix of ["opening-candidate", "ending-candidate"]) {
+    assert.ok(
+      stageNames.includes(`${zonePrefix}-1`),
+      `estimate must include ${zonePrefix}-1`,
+    );
   }
-  for (const zone of ["opening", "ending", "title"]) {
-    for (let i = 1; i <= 2; i += 1) {
-      assert.ok(
-        stageNames.includes(`tournament-selection-${zone}-${i}`),
-        `estimate must include tournament-selection-${zone}-${i}`,
-      );
-    }
+  for (const zone of ["opening", "ending"]) {
+    assert.ok(
+      stageNames.includes(`tournament-selection-${zone}-1`),
+      `estimate must include tournament-selection-${zone}-1`,
+    );
   }
 
-  for (const removed of ["polish-plan", "polish-rejudge", "reader-simulation"]) {
+  for (const removed of [
+    "polish-plan",
+    "polish-rejudge",
+    "reader-simulation",
+    "tournament-rejudge",
+    "title-candidate-1",
+    "tournament-selection-title-1",
+    "opening-candidate-2",
+    "opening-candidate-3",
+  ]) {
     assert.ok(!stageNames.includes(removed), `estimate must NOT include ${removed}`);
   }
 });

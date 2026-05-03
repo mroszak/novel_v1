@@ -533,7 +533,7 @@ export interface TournamentPairResult {
   rationale: string;
 }
 
-export type TournamentZone = "opening" | "ending" | "title";
+export type TournamentZone = "opening" | "ending";
 
 export interface TournamentResult {
   zone: TournamentZone;
@@ -546,14 +546,13 @@ export interface TournamentResult {
 }
 
 export interface TournamentMerged {
-  status: "applied" | "skipped" | "validators-failed" | "rejudge-regressed";
+  status: "applied" | "skipped" | "validators-failed";
   reason: string;
   zones: Record<TournamentZone, TournamentResult | null>;
   preReviewScore: number | null;
   postReviewScore: number | null;
   preProse: string;
   finalProse: string;
-  finalTitle: string | null;
 }
 
 export interface LocalizedAuditPatchResult {

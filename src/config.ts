@@ -126,8 +126,8 @@ export const config = {
     max: {
       judgePassThreshold: 86,
       pairwiseTolerance: 3,
-      maxFixAttempts: 3,
-      maxLiteraryRetryAttempts: 2,
+      maxFixAttempts: 1,
+      maxLiteraryRetryAttempts: 0,
       alwaysRunSpecCritique: true,
       skipRevisionThreshold: 93,
     },
@@ -306,15 +306,6 @@ export const config = {
       maxOutputTokens: 2000,
       contextWindowTokens: 70000,
       thinkingBudgetTokens: 1200,
-    } satisfies AnthropicStageProfile,
-    titleCandidate: {
-      stageName: "title-candidate",
-      provider: "anthropic",
-      model: anthropicPrimaryModel,
-      inputTokenBudget: 26000,
-      maxOutputTokens: 800,
-      contextWindowTokens: 50000,
-      thinkingBudgetTokens: 600,
     } satisfies AnthropicStageProfile,
     tournamentSelection: {
       stageName: "tournament-selection",

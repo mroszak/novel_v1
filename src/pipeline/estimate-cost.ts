@@ -291,39 +291,26 @@ export async function estimateChapterCost(params: {
   for (const stageProfile of [
     config.stageProfiles.openingCandidate,
     config.stageProfiles.endingCandidate,
-    config.stageProfiles.titleCandidate,
   ]) {
-    for (let candidate = 1; candidate <= 3; candidate += 1) {
-      stages.push({
-        ...estimateStageCost({
-          stage: stageProfile,
-          estimatedInputTokens: strippedPacketTokens + styleRulesTokens + selectedProseTokens,
-        }),
-        stage: `${stageProfile.stageName}-${candidate}`,
-        notes: [tournamentNote],
-      });
-    }
+    stages.push({
+      ...estimateStageCost({
+        stage: stageProfile,
+        estimatedInputTokens: strippedPacketTokens + styleRulesTokens + selectedProseTokens,
+      }),
+      stage: `${stageProfile.stageName}-1`,
+      notes: [tournamentNote],
+    });
   }
-  for (const zone of ["opening", "ending", "title"]) {
-    for (let pair = 1; pair <= 2; pair += 1) {
-      stages.push({
-        ...estimateStageCost({
-          stage: config.stageProfiles.tournamentSelection,
-          estimatedInputTokens: strippedPacketTokens + selectedProseTokens / 2,
-        }),
-        stage: `${config.stageProfiles.tournamentSelection.stageName}-${zone}-${pair}`,
-        notes: [tournamentNote],
-      });
-    }
+  for (const zone of ["opening", "ending"]) {
+    stages.push({
+      ...estimateStageCost({
+        stage: config.stageProfiles.tournamentSelection,
+        estimatedInputTokens: strippedPacketTokens + selectedProseTokens / 2,
+      }),
+      stage: `${config.stageProfiles.tournamentSelection.stageName}-${zone}-1`,
+      notes: [tournamentNote],
+    });
   }
-  stages.push({
-    ...estimateStageCost({
-      stage: config.stageProfiles.literaryJudge,
-      estimatedInputTokens: judgeInput(selectedProseTokens),
-    }),
-    stage: "tournament-rejudge",
-    notes: ["Conditional: runs only after tournament merges at least one zone; reverted if it regresses."],
-  });
 
   // ── Post-selection: delta, memory, initial audit ──
 
