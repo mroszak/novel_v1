@@ -183,6 +183,23 @@ export async function generateText(params: {
           .join("");
       }
 
+      const stopReason = (finalMessage as { stop_reason?: string | null }).stop_reason ?? null;
+      if (stopReason === "max_tokens") {
+        const outputTokens = (finalMessage as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? null;
+        throw new BlockedPipelineError(
+          "BLOCKED_PROVIDER_FAILURE",
+          params.stage.stageName,
+          `Anthropic stage ${params.stage.stageName} hit max_tokens cap (${params.stage.maxOutputTokens}); output is truncated.`,
+          {
+            provider: "anthropic",
+            model: params.stage.model,
+            stopReason,
+            maxOutputTokens: params.stage.maxOutputTokens,
+            outputTokens,
+          },
+        );
+      }
+
       return {
         value: prose.trim(),
         usage: normalizeUsage(finalMessage, params.stage.model),

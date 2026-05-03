@@ -181,6 +181,36 @@ test("buildDraftSystemPrompt embeds voice target guidance", () => {
   assert.match(prompt, /Sentence-length target/);
 });
 
+test("buildDraftSystemPrompt instructs the model to land mandatory beats before texture", () => {
+  const prompt = buildDraftSystemPrompt({
+    genreContract: {
+      primaryGenre: "literary suspense",
+      contributingGenres: [],
+      toneKeywords: [],
+      readerExperience: "x",
+      controls: {
+        pacingCurve: "slow", sceneDensity: "medium", dialogueRatioTarget: "balanced",
+        interiorityRatioTarget: "close", revealCadence: "controlled", hookStyle: "image",
+        endingMode: "haunting", povDistance: "close", ambiguityTolerance: "high",
+        sensoryDensity: "image-heavy", proseCompression: "lyrical",
+        emotionalDwellExpectation: "earned", violenceExplicitness: "implied",
+        romanceProminence: "low", validatorThresholdOverrides: [],
+      },
+      aiRefinementUsed: false,
+      aiRefinementNotes: [],
+    },
+    storyPromise: makeBlueprint().storyPromise,
+    marketPositioning: makeBlueprint().marketPositioning,
+    chapterFunction: { function: "opening", riskLevel: "low", pacingDirective: "Open quietly.", judgeWeights: {} },
+    styleRules: [],
+    antiPatterns: [],
+    comparables: [],
+  });
+  assert.match(prompt, /Land EVERY mandatory beat/);
+  assert.match(prompt, /trim the early luxuriance, not the required ending/);
+  assert.match(prompt, /targetWordBand/);
+});
+
 test("buildDraftSystemPrompt omits voice section when absent", () => {
   const prompt = buildDraftSystemPrompt({
     genreContract: {

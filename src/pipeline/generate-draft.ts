@@ -108,6 +108,8 @@ export function buildDraftSystemPrompt(params: {
   sections.push(
     [
       "UNIVERSAL CRAFT CONSTRAINTS:",
+      "- Land EVERY mandatory beat in the approved spec, in spec order, before spending budget on extra texture or atmosphere. The chapter ending image is non-negotiable; reach it. If you must trim, trim the early luxuriance, not the required ending.",
+      "- Budget the chapter against the targetWordBand in the packet. Aim for the middle of the band, not the top. Treat each scene as a budget envelope; if a scene is overrunning, compress it and move on rather than carrying the overrun forward.",
       "- Never use filter words as first resort (felt, seemed, noticed, appeared, watched, realized).",
       '- Never use dead cliches (heart pounded, blood ran cold, couldn\'t believe, let out a breath).',
       "- Never open a scene with weather, a gerund phrase, or throat-clearing exposition.",
