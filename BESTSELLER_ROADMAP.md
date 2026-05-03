@@ -1,5 +1,35 @@
 # Bestseller Roadmap
 
+> **v2 status (2026).** This document is now historical context for v2 of the engine. The v2 build collapsed and reshaped the original 4-phase plan into the single canonical pipeline that now ships in this repo. Read this for the intent and rationale behind individual items; read `README.md`, `AGENTS.md`, and `docs/voice-grit-spec.md` for what actually runs today.
+>
+> What shipped to v2 canon:
+>
+> - **Item 16 (Voice grit pass)** shipped. Canonical contract lives at `docs/voice-grit-spec.md`. Implemented by `src/pipeline/voice-grit-pass.ts`. Always advisory + fail-soft.
+> - **Continuity foundation** shipped. The `## Continuity Manifest` blueprint section, the parser, the deterministic compile, the `ContinuityActiveSlice` packet field, the post-publish `update-continuity-state.ts`, and the continuity-manifest validators are all live.
+> - **Market Promise** shipped. The `## Market Promise` blueprint section drives the spec, draft, judge, and audit prompts — including the chapter-function-aware reader job ("opening = make the premise irresistible", etc.).
+> - **Author brief** shipped. One cached model call per blueprint; deterministic fallback when no credentials.
+> - **Anti-committee judge + bestseller question** shipped in `judge-draft.ts`.
+> - **Opening + ending tournament** simplified to 1 candidate per zone (no title generation, no separate rejudge stage). Permanent v2 feature.
+>
+> What dropped:
+>
+> - **Polish-pass** removed entirely. The mid-chapter polish zones are no longer rewritten.
+> - **Reader-simulation** removed entirely. Fold it back in only if Phase 9 acceptance testing surfaces a clear page-turn gap.
+> - **Quality profiles** (`max` / `standard` / `rerun`) removed entirely. One canonical pipeline, one `qualitySettings` block in `src/config.ts`.
+> - **Title-candidate tournament** removed. The chapter title comes from the spec.
+> - **Tournament rejudge stage** collapsed. The 1-candidate compare is itself the quality gate.
+> - **Literary retry loop** + **post-fix literary rescue** removed. Continuity-fix loop capped at 1 attempt.
+> - **`--quality` CLI flag** and **`Default Quality Profile` blueprint metadata** removed.
+>
+> What's deferred:
+>
+> - Reader-simulation (advisory, ~$0.30/chapter) is reintroducible if Phase 9 testing shows a page-turn observability gap.
+> - Future "bestseller" gating that promotes voice-grit and reader-job adherence to hard blockers — not active in v2.
+>
+> The remainder of this file is the original 4-phase plan. Treat it as design rationale, not as a description of the running engine.
+
+---
+
 A 4-phase plan to evolve the Novel Creator GPT pipeline from a high-quality chapter generator into a **reader-addiction engine** capable of producing commercial-masterpiece-tier output, while preserving the existing drop-in-blueprint operator workflow.
 
 This document is the canonical reference for the 15 planned upgrades, their scope, build order, fail-soft behavior, and acceptance criteria.

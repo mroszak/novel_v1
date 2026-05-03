@@ -4,32 +4,50 @@ globs: src/**/*.ts
 alwaysApply: false
 ---
 
-# Pipeline Contract
+# Pipeline Contract (v2)
 
 When changing stages, reruns, flags, or artifacts, review all affected contract files together:
 
-- `src/config.ts` for stage profiles, budgets, defaults, and paths
+- `src/config.ts` for stage profiles, `qualitySettings`, defaults, and paths
 - `src/types/index.ts` for options, artifact data, statuses, and telemetry
 - `src/index.ts` for CLI flags and help text
+- `src/blueprint/parse-blueprint.ts` for the Market Promise + Continuity Manifest sections
+- `src/blueprint/compile-author-brief.ts`, `compile-market-promise.ts`, `compile-continuity-manifest.ts`
+- `src/pipeline/compile-blueprint.ts` for blueprint-level cached artifacts
+- `src/pipeline/compile-chapter-packet.ts` for the per-chapter packet contract
 - `src/pipeline/generate-spec.ts` for spec-loop sequencing and critique gating
-- `src/pipeline/judge-draft.ts` for pass-threshold logic and review blocking signals
+- `src/pipeline/judge-draft.ts` for pass-threshold logic, anti-committee principles, and the bestseller question
+- `src/pipeline/voice-grit-pass.ts` (canonical contract: `docs/voice-grit-spec.md`)
+- `src/pipeline/opening-ending-tournament.ts` for the 1-candidate-per-zone opening + ending compare
 - `src/pipeline/run-chapter.ts` for orchestration, reuse, and blocking behavior
+- `src/pipeline/update-continuity-state.ts` for post-publish state merge
+- `src/validators/index.ts` and `src/validators/continuity-manifest.ts`
 - `src/pipeline/estimate-cost.ts` when stage names, prompt surfaces, or conditional stage behavior change
 - `src/pipeline/stage-utils.ts` for artifact paths/envelopes/status writing
-- `README.md`, `AGENTS.md`, and relevant `.cursor/rules/*.mdc` when operator-visible behavior or persistent project context changes
+- `README.md`, `AGENTS.md`, `BESTSELLER_ROADMAP.md`, `BLUEPRINT_TEMPLATE.md`, `docs/voice-grit-spec.md`, and relevant `.cursor/rules/*.mdc` when operator-visible behavior or persistent project context changes
 - focused tests when runtime behavior changes
 
 Checklist:
 
 - New stage output is persisted as `ArtifactEnvelope<T>`
-- Reused artifacts still validate metadata identity
+- Reused artifacts still validate metadata identity (artifactType, blueprintHash, blueprintVersion, chapterNumber)
 - Smoke mode still has a deterministic path when practical
 - Cost/usage collection stays wired for any new provider call
-- Parallelized stages preserve existing required-vs-optional decision semantics
-- Skip paths still write the downstream artifact contract for `selection`, `selected`, and `review`
-- Conditional stages keep their runtime and estimate naming aligned, including `literary-judge-revision`, `literary-judge-post-fix`, and `*-fix-N`
-- Phase 1 post-selection stages (`polish-plan`, `polish-rejudge`, `opening-candidate-N`, `ending-candidate-N`, `title-candidate-N`, `tournament-selection-{zone}-N`, `tournament-rejudge`, `reader-simulation`, `voice-calibration`) stay advisory and fail-soft in `max`, and are skipped entirely on `standard` and `rerun`. Polish and tournament must own mutually exclusive zones. Reader-simulation must run on the final enhanced prose (after polish/tournament), not raw `selected`.
-- Polish and tournament rejudges must call `judgeDraft({ persistArtifact: false })` and write `chapter-N-polish-rejudge.json` / `chapter-N-tournament-rejudge.json` themselves. They must not overwrite `chapter-N-draft-review.json` or `chapter-N-revised-review.json`.
-- Polish patches are restricted to the paragraph tail (last sentence). Tournament zone artifacts must record `applied` state before persisting.
-- Voice-target and previous reader-sim are loaded with soft metadata validation (mismatches return null, never throw).
-- CLI/operator docs stay aligned when flags or runtime stage behavior change
+
+Skip-revision artifact contract (CRITICAL):
+
+- When the draft clears `qualitySettings.skipRevisionThreshold` AND has no blocking review signals, revision is skipped.
+- The skip path MUST still write `chapter-N-selection.json`, `chapter-N-selected.json`, and `chapter-N-review.json` before voice-grit runs. Rerun-from-judge / rerun-from-memory / audit-only depend on these.
+
+Single-pipeline invariants (no profile gating):
+
+- Voice-grit runs before the opening/ending tournament so the tournament still owns its reserved zones.
+- Voice-grit and tournament are advisory and fail-soft. Either throwing or discarding leaves `selected` unchanged for downstream stages.
+- Voice-grit must follow `docs/voice-grit-spec.md`: reserved zones blocked, ticSource validated against `activeTraits` / `dialogueHabits` (taboos excluded), count caps enforced, atomic whole-batch discard on rejudge regression > 1pt or new blocking review signal.
+- Tournament writes `chapter-N-tournament-{opening,ending}.json` zone artifacts (with the final `applied` state) and a merged `chapter-N-tournament-merged.json`.
+- Tournament zone artifact must record the final `applied` state before persisting.
+- Author brief is one cached model call per blueprint, deterministic-fallback when no credentials or `--no-genre-ai`.
+- Voice-target and continuity slice are loaded with soft metadata validation (mismatches return null, never throw).
+- Continuity-state update is a deterministic post-publish merge that writes `artifacts/blueprint/continuity-state-after-N.json`. Skipped when the blueprint omits a Continuity Manifest.
+
+CLI/operator docs stay aligned when flags or runtime stage behavior change.
