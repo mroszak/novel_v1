@@ -118,7 +118,6 @@ export async function reviseDraft(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: draft,
     usage,
   });

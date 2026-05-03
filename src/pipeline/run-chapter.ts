@@ -117,7 +117,6 @@ function createSelectedDraftArtifact(params: {
     blueprintHash: selectedArtifact.blueprintHash,
     blueprintVersion: selectedArtifact.blueprintVersion,
     chapterNumber: selectedArtifact.chapterNumber,
-    qualityProfile: selectedArtifact.qualityProfile,
     data: {
       prose: selectedArtifact.data.prose,
       wordCount: selectedArtifact.data.wordCount,
@@ -162,7 +161,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       blueprintHash: compilation.parsed.blueprintHash,
       blueprintVersion: compilation.parsed.metadata.blueprintVersion,
       chapterNumber: options.chapterNumber,
-      qualityProfile: options.qualityProfile,
     };
 
     result.blueprintHash = compilation.parsed.blueprintHash;
@@ -186,7 +184,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       console.error(`[ch${options.chapterNumber}] Building chapter packet...`);
       packetArtifact = await compileChapterPacket({
         chapterNumber: options.chapterNumber,
-        qualityProfile: options.qualityProfile,
         blueprintArtifacts: compilation.artifacts,
       });
     }
@@ -195,7 +192,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
     if (options.estimateCost) {
       result.costEstimateArtifactPath = await estimateChapterCost({
         chapterNumber: options.chapterNumber,
-        qualityProfile: options.qualityProfile,
         blueprintArtifacts: compilation.artifacts,
         packet: packetArtifact.data,
         skipSpecCritique: options.skipSpecCritique,
@@ -297,7 +293,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       });
       collectUsage(usages, config.stageProfiles.literaryJudge.stageName, draftReviewArtifact);
 
-      const skipThreshold = config.qualityProfiles[options.qualityProfile].skipRevisionThreshold;
+      const skipThreshold = config.qualitySettings.skipRevisionThreshold;
       if (shouldSkipRevision({
         skipRevisionThreshold: skipThreshold,
         overallScore: draftReviewArtifact.data.overallScore,
@@ -323,7 +319,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           blueprintHash: packetArtifact.blueprintHash,
           blueprintVersion: packetArtifact.blueprintVersion,
           chapterNumber: packetArtifact.chapterNumber,
-          qualityProfile: packetArtifact.qualityProfile,
           data: skipSelection,
         });
         await writeJson(chapterArtifactPath(options.chapterNumber, "selection"), selectionArtifact);
@@ -333,7 +328,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           blueprintHash: packetArtifact.blueprintHash,
           blueprintVersion: packetArtifact.blueprintVersion,
           chapterNumber: packetArtifact.chapterNumber,
-          qualityProfile: packetArtifact.qualityProfile,
           data: {
             winner: "draft",
             prose: draftArtifact.data.prose,
@@ -392,7 +386,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: compilation.parsed.blueprintHash,
         blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: "BLOCKED_QUALITY",
         stage: "literary-judge",
         message: "Selected chapter did not clear the literary quality threshold.",
@@ -493,7 +486,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
     let currentDeltaArtifact = deltaArtifact;
     let currentMemoryArtifact = memoryArtifact;
 
-    const maxFixAttempts = config.qualityProfiles[options.qualityProfile].maxFixAttempts;
+    const maxFixAttempts = config.qualitySettings.maxFixAttempts;
     let fixAttempt = 0;
     let localizedAuditPatchApplied = false;
     let localizedAuditPatchAttempt = 0;
@@ -647,7 +640,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: compilation.parsed.blueprintHash,
         blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: "BLOCKED_AUDIT_FIX_LOOP_EXHAUSTED",
         stage: "final-audit",
         message: "Final audit still reports blocking errors after exhausting the surgical fix loop.",
@@ -696,7 +688,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           chapterNumber: options.chapterNumber,
           blueprintHash: compilation.parsed.blueprintHash,
           blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-          qualityProfile: options.qualityProfile,
           status: "BLOCKED_QUALITY",
           stage: localizedOnly ? "localized-audit-patch" : "continuity-fix",
           message: localizedOnly
@@ -731,7 +722,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
 
     result.costSummaryArtifactPath = await writeCostSummaryArtifact({
       chapterNumber: options.chapterNumber,
-      qualityProfile: options.qualityProfile,
       usages,
       blueprintHash: compilation.parsed.blueprintHash,
       blueprintVersion: compilation.parsed.metadata.blueprintVersion,
@@ -741,7 +731,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       chapterNumber: options.chapterNumber,
       blueprintHash: compilation.parsed.blueprintHash,
       blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-      qualityProfile: options.qualityProfile,
       status: "SUCCESS",
       stage: "publish",
       message: "Chapter passed literary judgment and final audit and was published.",
@@ -758,7 +747,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: parsedBlueprintIdentity.blueprintHash,
         blueprintVersion: parsedBlueprintIdentity.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: error.code,
         stage: error.stage,
         message: error.message,
@@ -774,7 +762,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: parsedBlueprintIdentity.blueprintHash,
         blueprintVersion: parsedBlueprintIdentity.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: "BLOCKED_BLUEPRINT_UNDERSPECIFIED",
         stage: "blueprint-validation",
         message,
@@ -788,7 +775,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: parsedBlueprintIdentity.blueprintHash,
         blueprintVersion: parsedBlueprintIdentity.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: "BLOCKED_BUDGET",
         stage: "token-budget",
         message,
@@ -802,7 +788,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         chapterNumber: options.chapterNumber,
         blueprintHash: parsedBlueprintIdentity.blueprintHash,
         blueprintVersion: parsedBlueprintIdentity.blueprintVersion,
-        qualityProfile: options.qualityProfile,
         status: "BLOCKED_RUNTIME_CONFIGURATION",
         stage: "configuration",
         message,

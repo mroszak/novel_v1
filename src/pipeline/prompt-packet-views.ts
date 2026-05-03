@@ -35,7 +35,6 @@ export interface SpecStoryStateView {
 export interface SpecPacketView {
   chapterNumber: number;
   title: string;
-  qualityProfile: ChapterPacket["qualityProfile"];
   riskLevel: ChapterPacket["riskLevel"];
   purpose: string;
   chapterFunction: ChapterPacket["chapterFunction"];
@@ -54,7 +53,6 @@ export interface SpecPacketView {
 export interface DeltaPacketView {
   chapterNumber: number;
   title: string;
-  qualityProfile: ChapterPacket["qualityProfile"];
   riskLevel: ChapterPacket["riskLevel"];
   purpose: string;
   chapterFunction: ChapterPacket["chapterFunction"];
@@ -144,7 +142,6 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
   return {
     chapterNumber: packet.chapterNumber,
     title: packet.title,
-    qualityProfile: packet.qualityProfile,
     riskLevel: packet.riskLevel,
     purpose: packet.purpose,
     chapterFunction: packet.chapterFunction,
@@ -165,7 +162,6 @@ export function buildDeltaPacketView(packet: ChapterPacket): DeltaPacketView {
   return {
     chapterNumber: packet.chapterNumber,
     title: packet.title,
-    qualityProfile: packet.qualityProfile,
     riskLevel: packet.riskLevel,
     purpose: packet.purpose,
     chapterFunction: packet.chapterFunction,

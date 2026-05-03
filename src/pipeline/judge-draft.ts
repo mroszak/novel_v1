@@ -180,7 +180,7 @@ export async function judgeDraft(params: {
   persistArtifact?: boolean;
 }): Promise<ArtifactEnvelope<DraftReview>> {
   const { candidateId, packetArtifact, approvedSpecArtifact, draftArtifact, blueprintArtifacts, smoke } = params;
-  const passThreshold = config.qualityProfiles[packetArtifact.data.qualityProfile].judgePassThreshold;
+  const passThreshold = config.qualitySettings.judgePassThreshold;
   const storyCore = blueprintArtifacts.compiledBlueprint.data;
   let review: DraftReview;
   let usage: ArtifactEnvelope<DraftReview>["usage"];
@@ -269,7 +269,6 @@ export async function judgeDraft(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: review,
     usage,
   });

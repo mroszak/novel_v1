@@ -169,7 +169,6 @@ export async function runFinalAudit(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: validatorReport,
   });
   await writeJson(chapterArtifactPath(packetArtifact.data.chapterNumber, "validators"), validatorArtifact);
@@ -211,7 +210,6 @@ export async function runFinalAudit(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: mergedAudit,
     usage,
   });

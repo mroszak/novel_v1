@@ -190,7 +190,6 @@ export async function updateMemory(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: memory,
     usage,
   });

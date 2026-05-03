@@ -5,7 +5,6 @@ import type {
   ArtifactEnvelope,
   PipelineStatusArtifact,
   PipelineStatusCode,
-  QualityProfile,
 } from "../types/index.js";
 import { readJson, writeJson, writeText } from "../utils/index.js";
 export { countWords } from "../utils/index.js";
@@ -33,7 +32,6 @@ type ArtifactExpectation = {
   blueprintHash?: string;
   blueprintVersion?: string;
   chapterNumber?: number;
-  qualityProfile?: QualityProfile;
 };
 
 export function chapterArtifactPath(chapterNumber: number, suffix: string): string {
@@ -65,7 +63,6 @@ export function createArtifact<T>(params: {
   blueprintHash: string;
   blueprintVersion: string;
   chapterNumber?: number;
-  qualityProfile?: QualityProfile;
   data: T;
   usage?: ArtifactEnvelope<T>["usage"];
 }): ArtifactEnvelope<T> {
@@ -76,7 +73,6 @@ export function createArtifact<T>(params: {
     blueprintHash: params.blueprintHash,
     blueprintVersion: params.blueprintVersion,
     chapterNumber: params.chapterNumber,
-    qualityProfile: params.qualityProfile,
     usage: params.usage,
     data: params.data,
   };
@@ -98,7 +94,6 @@ function validateArtifact<T>(
     ["blueprintHash", artifact.blueprintHash],
     ["blueprintVersion", artifact.blueprintVersion],
     ["chapterNumber", artifact.chapterNumber],
-    ["qualityProfile", artifact.qualityProfile],
   ];
 
   for (const [field, actualValue] of validations) {
@@ -131,7 +126,6 @@ export async function writeStatusArtifact(params: {
   chapterNumber: number;
   blueprintHash: string;
   blueprintVersion: string;
-  qualityProfile: QualityProfile;
   status: PipelineStatusCode;
   stage: string;
   message: string;
@@ -142,7 +136,6 @@ export async function writeStatusArtifact(params: {
     blueprintHash: params.blueprintHash,
     blueprintVersion: params.blueprintVersion,
     chapterNumber: params.chapterNumber,
-    qualityProfile: params.qualityProfile,
     data: {
       status: params.status,
       stage: params.stage,

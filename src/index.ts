@@ -49,7 +49,6 @@ function parseArgs(): RunChapterOptions {
   const options: RunChapterOptions = {
     blueprintPath: config.paths.blueprint,
     chapterNumber: 1,
-    qualityProfile: config.defaultQualityProfile,
     packetOnly: false,
     specOnly: false,
     draftOnly: false,

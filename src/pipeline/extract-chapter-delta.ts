@@ -223,7 +223,6 @@ export async function extractChapterDelta(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: delta,
     usage,
   });

@@ -1,7 +1,5 @@
 import path from "node:path";
 
-import type { QualityProfile } from "./types/index.js";
-
 export interface StageProfileBase {
   stageName: string;
   provider: "openai" | "anthropic";
@@ -80,7 +78,6 @@ export function requireEnv(key: string): string {
 const rootDir = path.resolve(process.env.NOVEL_CREATOR_ROOT ?? process.cwd());
 const artifactSchemaVersion = "engine.v2";
 const blueprintRuntimeCacheVersion = "blueprint-runtime.v1";
-const defaultQualityProfile: QualityProfile = "max";
 const openAiPrimaryModel = optionalEnv(["OPENAI_MODEL_GPT55", "OPENAI_MODEL_GPT54"], "gpt-5.5");
 const anthropicPrimaryModel = optionalEnv(["ANTHROPIC_MODEL_OPUS47", "ANTHROPIC_MODEL_OPUS46"], "claude-opus-4-7");
 
@@ -99,7 +96,6 @@ export const config = {
   rootDir,
   artifactSchemaVersion,
   blueprintRuntimeCacheVersion,
-  defaultQualityProfile,
   defaults: {
     previousChapterExcerptWords: 1800,
     chapterWordBandLeeway: 500,
@@ -122,15 +118,13 @@ export const config = {
       ["ANTHROPIC_OPUS47_OUTPUT_COST_PER_1M", "ANTHROPIC_OPUS46_OUTPUT_COST_PER_1M"],
     ),
   } as Record<string, ModelPricingProfile>,
-  qualityProfiles: {
-    max: {
-      judgePassThreshold: 86,
-      pairwiseTolerance: 3,
-      maxFixAttempts: 1,
-      maxLiteraryRetryAttempts: 0,
-      alwaysRunSpecCritique: true,
-      skipRevisionThreshold: 93,
-    },
+  qualitySettings: {
+    judgePassThreshold: 86,
+    pairwiseTolerance: 3,
+    maxFixAttempts: 1,
+    maxLiteraryRetryAttempts: 0,
+    alwaysRunSpecCritique: false,
+    skipRevisionThreshold: 88,
   },
   paths: {
     blueprint: path.resolve(rootDir, "STORY_BLUEPRINT.md"),

@@ -1,6 +1,3 @@
-export const QUALITY_PROFILES = ["max"] as const;
-export type QualityProfile = (typeof QUALITY_PROFILES)[number];
-
 export const RERUN_STAGES = ["packet", "spec", "draft", "judge", "memory", "audit"] as const;
 export type RerunStage = (typeof RERUN_STAGES)[number];
 
@@ -38,7 +35,6 @@ export interface BlueprintMetadata {
   blueprintVersion: string;
   totalChapters: number;
   defaultChapterWordCount: number;
-  defaultQualityProfile: QualityProfile;
 }
 
 export interface StoryPromiseSection {
@@ -238,7 +234,6 @@ export interface RollingMemory {
 export interface ChapterPacket {
   chapterNumber: number;
   title: string;
-  qualityProfile: QualityProfile;
   riskLevel: RiskLevel;
   purpose: string;
   chapterFunction: ChapterFunctionProfile;
@@ -603,7 +598,6 @@ export interface ArtifactEnvelope<T> {
   blueprintHash: string;
   blueprintVersion: string;
   chapterNumber?: number;
-  qualityProfile?: QualityProfile;
   usage?: StageUsage;
   telemetry?: StageTelemetry;
   data: T;
@@ -637,7 +631,6 @@ export interface StageTokenEstimate {
 
 export interface ChapterCostEstimate {
   chapterNumber: number;
-  qualityProfile: QualityProfile;
   pricingConfigured: boolean;
   totalEstimatedInputTokens: number;
   totalEstimatedOutputTokens: number;
@@ -647,7 +640,6 @@ export interface ChapterCostEstimate {
 
 export interface ChapterCostSummary {
   chapterNumber: number;
-  qualityProfile: QualityProfile;
   pricingConfigured: boolean;
   estimatedFromUsage: boolean;
   totalInputTokens: number;
@@ -679,7 +671,6 @@ export interface RunChapterResult {
 export interface RunChapterOptions {
   blueprintPath: string;
   chapterNumber: number;
-  qualityProfile: QualityProfile;
   packetOnly: boolean;
   specOnly: boolean;
   draftOnly: boolean;

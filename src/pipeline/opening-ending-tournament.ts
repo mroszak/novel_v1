@@ -421,7 +421,6 @@ export async function runOpeningEndingTournament(params: {
         blueprintHash: params.packetArtifact.blueprintHash,
         blueprintVersion: params.packetArtifact.blueprintVersion,
         chapterNumber: params.packetArtifact.chapterNumber,
-        qualityProfile: params.packetArtifact.qualityProfile,
         data: zoneRun.result,
       });
       await writeJson(
@@ -459,7 +458,6 @@ export async function runOpeningEndingTournament(params: {
       blueprintHash: params.packetArtifact.blueprintHash,
       blueprintVersion: params.packetArtifact.blueprintVersion,
       chapterNumber: params.packetArtifact.chapterNumber,
-      qualityProfile: params.packetArtifact.qualityProfile,
       data: merged,
     });
     await writeJson(chapterArtifactPath(params.packetArtifact.data.chapterNumber, "tournament-merged"), mergedArtifact);
@@ -485,7 +483,6 @@ export async function runOpeningEndingTournament(params: {
       blueprintHash: params.packetArtifact.blueprintHash,
       blueprintVersion: params.packetArtifact.blueprintVersion,
       chapterNumber: params.packetArtifact.chapterNumber,
-      qualityProfile: params.packetArtifact.qualityProfile,
       data: merged,
     });
     await writeJson(chapterArtifactPath(params.packetArtifact.data.chapterNumber, "tournament-merged"), mergedArtifact);
@@ -522,7 +519,6 @@ export async function runOpeningEndingTournament(params: {
     blueprintHash: params.packetArtifact.blueprintHash,
     blueprintVersion: params.packetArtifact.blueprintVersion,
     chapterNumber: params.packetArtifact.chapterNumber,
-    qualityProfile: params.packetArtifact.qualityProfile,
     data: merged,
   });
   await writeJson(chapterArtifactPath(params.packetArtifact.data.chapterNumber, "tournament-merged"), mergedArtifact);

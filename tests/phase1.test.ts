@@ -78,7 +78,6 @@ function makeBlueprint(): CompiledStoryBlueprint {
       blueprintVersion: "1.0.0",
       totalChapters: 1,
       defaultChapterWordCount: 2000,
-      defaultQualityProfile: "max",
     },
     storyPromise: {
       corePremise: "A woman discovers she is becoming her own ghost.",
@@ -383,7 +382,6 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
   return {
     chapterNumber: 1,
     title: "Phase 1 Test Chapter",
-    qualityProfile: "max",
     riskLevel: "medium",
     purpose: "Verify rejudge artifact identity.",
     chapterFunction: {
@@ -424,7 +422,6 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       blueprintVersion: "1.0.0",
       totalChapters: 1,
       defaultChapterWordCount: 2000,
-      defaultQualityProfile: "max",
     },
     storyPromise: {
       corePremise: "Test premise.",
@@ -523,7 +520,6 @@ function makePhase1JudgeFixtures() {
     blueprintHash: "test-hash",
     blueprintVersion: "1.0.0",
     chapterNumber: 1,
-    qualityProfile: "max",
     data: packet,
   });
   const approvedSpecArtifact = createArtifact<ChapterSpec>({
@@ -531,7 +527,6 @@ function makePhase1JudgeFixtures() {
     blueprintHash: "test-hash",
     blueprintVersion: "1.0.0",
     chapterNumber: 1,
-    qualityProfile: "max",
     data: {
       title: packet.title,
       purpose: packet.purpose,
@@ -563,7 +558,6 @@ function makePhase1JudgeFixtures() {
     blueprintHash: "test-hash",
     blueprintVersion: "1.0.0",
     chapterNumber: 1,
-    qualityProfile: "max",
     data: { prose: "A short smoke prose body.", wordCount: 6 },
   });
   return { packetArtifact, approvedSpecArtifact, draftArtifact, blueprintArtifacts };

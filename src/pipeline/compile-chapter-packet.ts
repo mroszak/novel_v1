@@ -7,7 +7,6 @@ import type {
   ChapterPacket,
   CharacterCard,
   HandoffMemory,
-  QualityProfile,
   RollingMemory,
   VoiceTarget,
 } from "../types/index.js";
@@ -121,10 +120,9 @@ async function loadVoiceTargetData(params: {
 
 export async function compileChapterPacket(params: {
   chapterNumber: number;
-  qualityProfile: QualityProfile;
   blueprintArtifacts: BlueprintCompilationArtifacts;
 }): Promise<ArtifactEnvelope<ChapterPacket>> {
-  const { chapterNumber, qualityProfile, blueprintArtifacts } = params;
+  const { chapterNumber, blueprintArtifacts } = params;
   const compiledBlueprint = blueprintArtifacts.compiledBlueprint.data;
   const genreContract = blueprintArtifacts.genreContract.data;
   const chapterFunctions = blueprintArtifacts.chapterFunctions.data;
@@ -183,7 +181,6 @@ export async function compileChapterPacket(params: {
   const packet: ChapterPacket = {
     chapterNumber,
     title: chapter.title,
-    qualityProfile,
     riskLevel: chapterFunction.riskLevel,
     purpose: chapter.chapterGoal,
     chapterFunction,
@@ -241,7 +238,6 @@ export async function compileChapterPacket(params: {
     blueprintHash: blueprintArtifacts.compiledBlueprint.blueprintHash,
     blueprintVersion: blueprintArtifacts.compiledBlueprint.blueprintVersion,
     chapterNumber,
-    qualityProfile,
     data: packet,
   });
 

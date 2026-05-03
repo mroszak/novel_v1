@@ -205,7 +205,7 @@ export function shouldRunOpusCritique(
     }
     return { run: required, required };
   }
-  const preferred = config.qualityProfiles[packetArtifact.data.qualityProfile].alwaysRunSpecCritique;
+  const preferred = config.qualitySettings.alwaysRunSpecCritique;
   return { run: required || preferred, required };
 }
 
@@ -353,7 +353,6 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      qualityProfile: packetArtifact.qualityProfile,
       data: createSmokeSpec(packetArtifact.data),
     });
   } else {
@@ -373,7 +372,6 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      qualityProfile: packetArtifact.qualityProfile,
       data: result.value,
       usage: result.usage,
     });
@@ -389,7 +387,6 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      qualityProfile: packetArtifact.qualityProfile,
       data: createSmokeSelfRedTeam(specArtifact.data),
     });
     await writeJson(
@@ -408,7 +405,6 @@ export async function runSpecLoop(params: {
         blueprintHash: packetArtifact.blueprintHash,
         blueprintVersion: packetArtifact.blueprintVersion,
         chapterNumber: packetArtifact.chapterNumber,
-        qualityProfile: packetArtifact.qualityProfile,
         data: {
           majorRisks: [],
           continuityThreats: [],
@@ -439,7 +435,7 @@ export async function runSpecLoop(params: {
       }),
     };
 
-    const alwaysCritique = config.qualityProfiles[packetArtifact.data.qualityProfile].alwaysRunSpecCritique
+    const alwaysCritique = config.qualitySettings.alwaysRunSpecCritique
       && !params.skipSpecCritique;
 
     if (alwaysCritique) {
@@ -462,7 +458,6 @@ export async function runSpecLoop(params: {
           blueprintHash: packetArtifact.blueprintHash,
           blueprintVersion: packetArtifact.blueprintVersion,
           chapterNumber: packetArtifact.chapterNumber,
-          qualityProfile: packetArtifact.qualityProfile,
           data: parseAnthropicJson<OpusSpecCritique>(critiqueOutcome.value),
           usage: critiqueOutcome.usage,
         });
@@ -479,7 +474,6 @@ export async function runSpecLoop(params: {
         blueprintHash: packetArtifact.blueprintHash,
         blueprintVersion: packetArtifact.blueprintVersion,
         chapterNumber: packetArtifact.chapterNumber,
-        qualityProfile: packetArtifact.qualityProfile,
         data: redTeamOutcome.value,
         usage: redTeamOutcome.usage,
       });
@@ -505,7 +499,6 @@ export async function runSpecLoop(params: {
         blueprintHash: packetArtifact.blueprintHash,
         blueprintVersion: packetArtifact.blueprintVersion,
         chapterNumber: packetArtifact.chapterNumber,
-        qualityProfile: packetArtifact.qualityProfile,
         data: redTeamResult.value,
         usage: redTeamResult.usage,
       });
@@ -528,7 +521,6 @@ export async function runSpecLoop(params: {
             blueprintHash: packetArtifact.blueprintHash,
             blueprintVersion: packetArtifact.blueprintVersion,
             chapterNumber: packetArtifact.chapterNumber,
-            qualityProfile: packetArtifact.qualityProfile,
             data: parseAnthropicJson<OpusSpecCritique>(critiqueResult.value),
             usage: critiqueResult.usage,
           });
@@ -555,7 +547,6 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      qualityProfile: packetArtifact.qualityProfile,
       data: specArtifact.data,
     });
   } else {
@@ -576,7 +567,6 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      qualityProfile: packetArtifact.qualityProfile,
       data: result.value,
       usage: result.usage,
     });

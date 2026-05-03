@@ -172,7 +172,6 @@ export async function applyLocalizedAuditPatch(params: {
     blueprintHash: params.selectedArtifact.blueprintHash,
     blueprintVersion: params.selectedArtifact.blueprintVersion,
     chapterNumber: params.selectedArtifact.chapterNumber,
-    qualityProfile: params.selectedArtifact.qualityProfile,
     data: patch,
   });
   await writeJson(

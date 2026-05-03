@@ -63,7 +63,6 @@ export function estimateStageCost(params: {
 
 export async function writeCostEstimateArtifact(params: {
   chapterNumber: number;
-  qualityProfile: ChapterCostEstimate["qualityProfile"];
   stages: StageTokenEstimate[];
   blueprintHash: string;
   blueprintVersion: string;
@@ -82,10 +81,8 @@ export async function writeCostEstimateArtifact(params: {
     blueprintHash: params.blueprintHash,
     blueprintVersion: params.blueprintVersion,
     chapterNumber: params.chapterNumber,
-    qualityProfile: params.qualityProfile,
     data: {
       chapterNumber: params.chapterNumber,
-      qualityProfile: params.qualityProfile,
       pricingConfigured,
       totalEstimatedInputTokens,
       totalEstimatedOutputTokens,
@@ -116,7 +113,6 @@ export function addEstimatedCostToUsage(usage: StageUsage): StageUsage {
 
 export async function writeCostSummaryArtifact(params: {
   chapterNumber: number;
-  qualityProfile: ChapterCostSummary["qualityProfile"];
   usages: Array<{ stage: string; usage: StageUsage }>;
   blueprintHash: string;
   blueprintVersion: string;
@@ -141,10 +137,8 @@ export async function writeCostSummaryArtifact(params: {
     blueprintHash: params.blueprintHash,
     blueprintVersion: params.blueprintVersion,
     chapterNumber: params.chapterNumber,
-    qualityProfile: params.qualityProfile,
     data: {
       chapterNumber: params.chapterNumber,
-      qualityProfile: params.qualityProfile,
       pricingConfigured,
       estimatedFromUsage: true,
       totalInputTokens,

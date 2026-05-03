@@ -72,12 +72,11 @@ function estimateAnthropicStageRequest(params: {
 
 export async function estimateChapterCost(params: {
   chapterNumber: number;
-  qualityProfile: ChapterCostEstimate["qualityProfile"];
   blueprintArtifacts: BlueprintCompilationArtifacts;
   packet: ChapterPacket;
   skipSpecCritique: boolean;
 }): Promise<string> {
-  const profile = config.qualityProfiles[params.qualityProfile];
+  const profile = config.qualitySettings;
   const storyCore = params.blueprintArtifacts.compiledBlueprint.data;
 
   // Build smoke fixtures to size every token pool from representative data
@@ -426,7 +425,6 @@ export async function estimateChapterCost(params: {
 
   return writeCostEstimateArtifact({
     chapterNumber: params.chapterNumber,
-    qualityProfile: params.qualityProfile,
     stages,
     blueprintHash: params.blueprintArtifacts.compiledBlueprint.blueprintHash,
     blueprintVersion: params.blueprintArtifacts.compiledBlueprint.blueprintVersion,

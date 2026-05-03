@@ -343,7 +343,6 @@ test("loadArtifact rejects reused artifacts with mismatched metadata", async (t)
     blueprintHash: "correct-hash",
     blueprintVersion: "1.0.0",
     chapterNumber: 1,
-    qualityProfile: "max",
     data: { ok: true },
   });
   await writeFile(artifactPath, JSON.stringify(artifact, null, 2), "utf8");
@@ -354,7 +353,6 @@ test("loadArtifact rejects reused artifacts with mismatched metadata", async (t)
       blueprintHash: "different-hash",
       blueprintVersion: "1.0.0",
       chapterNumber: 1,
-      qualityProfile: "max",
     }),
     /metadata mismatch/i,
   );
@@ -525,8 +523,7 @@ test("shouldRunOpusCritique still runs required critique when --skip-spec-critiq
       blueprintHash: "h",
       blueprintVersion: "1.0.0",
       chapterNumber: 1,
-      qualityProfile: "max",
-      data: { riskLevel, qualityProfile: "max" } as ChapterPacket,
+      data: { riskLevel } as ChapterPacket,
     });
 
   const noEscalation: SelfRedTeamReport = {
@@ -579,7 +576,7 @@ test("hasBlockingAuditIssues blocks on requiresFix even without error-severity i
 
 test("createSmokeReview fails draft under max quality threshold", () => {
   const draft: ChapterDraft = { prose: "Smoke prose.", wordCount: 50 };
-  const maxThreshold = config.qualityProfiles.max.judgePassThreshold;
+  const maxThreshold = config.qualitySettings.judgePassThreshold;
 
   const draftReview = createSmokeReview("draft", draft, maxThreshold);
   assert.ok(draftReview.overallScore < maxThreshold, `Draft derived score ${draftReview.overallScore} must be below max threshold ${maxThreshold}`);
@@ -598,7 +595,7 @@ test("createSmokeSelection uses real pairwise tolerance from quality profile", (
   const scoreDelta = revisedReview.overallScore - draftReview.overallScore;
   assert.ok(scoreDelta > 0, "Revision must outscore draft");
 
-  const maxTolerance = config.qualityProfiles.max.pairwiseTolerance;
+  const maxTolerance = config.qualitySettings.pairwiseTolerance;
   const maxSelection = createSmokeSelection(draftReview, revisedReview, maxTolerance);
   assert.ok(scoreDelta > maxTolerance, `Score delta ${scoreDelta} must exceed max tolerance ${maxTolerance}`);
   assert.equal(maxSelection.withinTolerance, false, "Must be outside max tolerance");
@@ -1473,7 +1470,6 @@ function makeHeavyPacket(): ChapterPacket {
   return {
     chapterNumber: 2,
     title: "Chapter Two",
-    qualityProfile: "max",
     riskLevel: "medium",
     purpose: "Advance the central conflict.",
     chapterFunction: {
@@ -1537,7 +1533,6 @@ function makeBudgetTestStoryCore(): CompiledStoryBlueprint {
       blueprintVersion: "1.0.0",
       totalChapters: 12,
       defaultChapterWordCount: 3500,
-      defaultQualityProfile: "max",
     },
     storyPromise: {
       corePremise: "A sealed luxury habitat becomes a pressure chamber of lies.",

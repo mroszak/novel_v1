@@ -1,6 +1,5 @@
 import {
   CHAPTER_FUNCTIONS,
-  QUALITY_PROFILES,
   type ParsedStoryBlueprint,
 } from "../types/index.js";
 
@@ -51,10 +50,6 @@ export function validateBlueprint(blueprint: ParsedStoryBlueprint): void {
 
   if (!blueprint.metadata.blueprintVersion) {
     errors.push("Metadata.Blueprint Version is required.");
-  }
-
-  if (!QUALITY_PROFILES.includes(blueprint.metadata.defaultQualityProfile)) {
-    errors.push(`Metadata.Default Quality Profile must be one of: ${QUALITY_PROFILES.join(", ")}.`);
   }
 
   if (!Number.isInteger(blueprint.metadata.totalChapters) || blueprint.metadata.totalChapters < 1) {

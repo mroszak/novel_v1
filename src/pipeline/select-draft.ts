@@ -107,7 +107,7 @@ export async function selectDraft(params: {
     smoke,
   } = params;
 
-  const tolerance = config.qualityProfiles[packetArtifact.data.qualityProfile].pairwiseTolerance;
+  const tolerance = config.qualitySettings.pairwiseTolerance;
   const order = choosePresentationOrder(packetArtifact.blueprintHash);
 
   let selection: PairwiseSelection;
@@ -176,7 +176,6 @@ export async function selectDraft(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: selection,
     usage,
   });
@@ -191,7 +190,6 @@ export async function selectDraft(params: {
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    qualityProfile: packetArtifact.qualityProfile,
     data: {
       winner,
       prose: selectedDraft.prose,

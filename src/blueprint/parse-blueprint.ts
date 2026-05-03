@@ -110,10 +110,6 @@ export async function parseBlueprint(blueprintPath: string): Promise<ParsedStory
         Number.parseInt(frontmatter.totalChapters ?? "", 10) || 0,
       ),
       defaultChapterWordCount: defaultWordCount,
-      defaultQualityProfile: (asString(
-        metadataFields["Default Quality Profile"],
-        "standard",
-      ).toLowerCase() || "standard") as ParsedStoryBlueprint["metadata"]["defaultQualityProfile"],
     },
     storyPromise: {
       corePremise: asString(storyPromiseFields["Core Premise"]),
