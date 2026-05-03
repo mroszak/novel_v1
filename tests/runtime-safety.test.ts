@@ -1578,7 +1578,6 @@ function makeHeavyPacket(): ChapterPacket {
       knowledgeWarnings: [],
     },
     voiceTarget: null,
-    previousReaderSimulation: null,
   };
 }
 

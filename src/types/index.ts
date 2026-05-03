@@ -272,7 +272,6 @@ export interface ChapterPacket {
     knowledgeWarnings: string[];
   };
   voiceTarget: VoiceTarget | null;
-  previousReaderSimulation: ReaderSimulation | null;
 }
 
 export interface ChapterSpec {
@@ -494,67 +493,6 @@ export interface FinalAuditReport {
 export interface ContinuityFixResult {
   prose: string;
   appliedFixes: string[];
-}
-
-export type PolishZone = "paragraph-end" | "scene-break-leadout";
-
-export interface PolishPatch {
-  zone: PolishZone;
-  paragraphIndex: number;
-  originalText: string;
-  proposedText: string;
-  rationale: string;
-  confidence: number;
-}
-
-export interface PolishPlan {
-  patches: PolishPatch[];
-  notes: string[];
-}
-
-export interface PolishedSelected {
-  prose: string;
-  wordCount: number;
-  appliedPatches: PolishPatch[];
-  skippedPatches: Array<PolishPatch & { skipReason: string }>;
-}
-
-export interface PolishDiff {
-  status: "applied" | "no-patches" | "validators-failed" | "rejudge-regressed" | "skipped";
-  reason: string;
-  appliedPatches: PolishPatch[];
-  skippedPatches: Array<PolishPatch & { skipReason: string }>;
-  preReviewScore: number | null;
-  postReviewScore: number | null;
-  preProse: string;
-  polishedProse: string;
-  finalProse: string;
-}
-
-export const READER_PERSONA_IDS = ["airport", "book-club", "genre-obsessive"] as const;
-export type ReaderPersonaId = (typeof READER_PERSONA_IDS)[number];
-
-export interface ReaderFlaggedPassage {
-  excerpt: string;
-  reason: string;
-  persona: ReaderPersonaId;
-}
-
-export interface ReaderPersonaReview {
-  persona: ReaderPersonaId;
-  skimRisk: number;
-  confusionRisk: number;
-  turnPull: number;
-  shareScore: number;
-  notes: string;
-}
-
-export interface ReaderSimulation {
-  personas: ReaderPersonaReview[];
-  flaggedPassages: ReaderFlaggedPassage[];
-  averageTurnPull: number;
-  averageShareScore: number;
-  summary: string;
 }
 
 export interface VoiceFingerprint {

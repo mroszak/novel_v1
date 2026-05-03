@@ -8,7 +8,6 @@ import type {
   CharacterCard,
   HandoffMemory,
   QualityProfile,
-  ReaderSimulation,
   RollingMemory,
   VoiceTarget,
 } from "../types/index.js";
@@ -112,38 +111,6 @@ async function loadPreviousChapterFull(chapterNumber: number): Promise<string | 
   return readText(previousChapterPath);
 }
 
-async function loadPreviousReaderSimulationData(params: {
-  chapterNumber: number;
-  blueprintHash: string;
-  blueprintVersion: string;
-  qualityProfile: QualityProfile;
-}): Promise<ReaderSimulation | null> {
-  if (params.chapterNumber <= 1) {
-    return null;
-  }
-  const previousReaderSimPath = chapterArtifactPath(params.chapterNumber - 1, "reader-sim");
-  if (!(await fileExists(previousReaderSimPath))) {
-    return null;
-  }
-  let artifact: ArtifactEnvelope<ReaderSimulation>;
-  try {
-    artifact = await readJson<ArtifactEnvelope<ReaderSimulation>>(previousReaderSimPath);
-  } catch {
-    return null;
-  }
-
-  // Soft-fail metadata validation. The previous chapter's reader-sim is an
-  // advisory input; a mismatch (different blueprint, version, profile, or
-  // chapter number) silently drops it instead of corrupting the next packet.
-  if (artifact.schemaVersion !== config.artifactSchemaVersion) return null;
-  if (artifact.artifactType !== "reader-simulation") return null;
-  if (artifact.blueprintHash !== params.blueprintHash) return null;
-  if (artifact.blueprintVersion !== params.blueprintVersion) return null;
-  if (artifact.qualityProfile !== params.qualityProfile) return null;
-  if (artifact.chapterNumber !== params.chapterNumber - 1) return null;
-  return artifact.data;
-}
-
 async function loadVoiceTargetData(params: {
   blueprintHash: string;
   blueprintVersion: string;
@@ -184,10 +151,9 @@ export async function compileChapterPacket(params: {
   const previousMemory = previousMemoryArtifact?.data ?? buildInitialMemory(compiledBlueprint);
   const previousChapterFull = await loadPreviousChapterFull(chapterNumber);
 
-  // Phase 1 advisory inputs (voice target, previous reader-sim) are loaded
-  // only on the `max` quality profile and only when their persisted metadata
-  // matches the current blueprint identity. This keeps `standard` and `rerun`
-  // profiles behaviorally identical to the pre-Phase-1 packet shape.
+  // Voice target is an advisory input loaded only on the `max` quality
+  // profile and only when its persisted metadata matches the current blueprint
+  // identity. Mismatches silently drop the voice target.
   const phase1Enabled = qualityProfile === "max";
   const blueprintIdentity = {
     blueprintHash: blueprintArtifacts.compiledBlueprint.blueprintHash,
@@ -195,14 +161,6 @@ export async function compileChapterPacket(params: {
   };
   const voiceTarget = phase1Enabled
     ? await loadVoiceTargetData(blueprintIdentity)
-    : null;
-  const previousReaderSimulation = phase1Enabled
-    ? await loadPreviousReaderSimulationData({
-      chapterNumber,
-      blueprintHash: blueprintIdentity.blueprintHash,
-      blueprintVersion: blueprintIdentity.blueprintVersion,
-      qualityProfile,
-    })
     : null;
   const targetWordBand = {
     min: Math.max(1500, chapter.targetWordCount - config.defaults.chapterWordBandLeeway),
@@ -279,7 +237,6 @@ export async function compileChapterPacket(params: {
     handoffMemory,
     compactContext,
     voiceTarget,
-    previousReaderSimulation,
   };
 
   const artifact = createArtifact<ChapterPacket>({

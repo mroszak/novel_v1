@@ -9,7 +9,6 @@ import type {
   ChapterSpec,
   GenreContract,
   MarketPositioningSection,
-  ReaderSimulation,
   StoryPromiseSection,
   VoiceTarget,
 } from "../types/index.js";
@@ -26,9 +25,8 @@ export function buildDraftSystemPrompt(params: {
   antiPatterns: string[];
   comparables: string[];
   voiceTarget?: VoiceTarget | null;
-  previousReaderSimulation?: ReaderSimulation | null;
 }): string {
-  const { genreContract, storyPromise, chapterFunction, styleRules, antiPatterns, comparables, voiceTarget, previousReaderSimulation } = params;
+  const { genreContract, storyPromise, chapterFunction, styleRules, antiPatterns, comparables, voiceTarget } = params;
   const controls = genreContract.controls;
 
   const sections: string[] = [
@@ -89,17 +87,6 @@ export function buildDraftSystemPrompt(params: {
     );
   }
 
-  if (previousReaderSimulation && previousReaderSimulation.flaggedPassages.length > 0) {
-    const flagsByPersona = previousReaderSimulation.flaggedPassages.slice(0, 4)
-      .map((flag) => `- (${flag.persona}) ${flag.reason}`);
-    sections.push(
-      [
-        "PREVIOUS-CHAPTER READER FLAGS (advisory; reduce these failure modes this chapter without changing plot):",
-        ...flagsByPersona,
-      ].join("\n"),
-    );
-  }
-
   sections.push("Match the prose register, sentence complexity, and POV interiority of the previous chapter when one is provided. Voice consistency across chapters is critical.");
   sections.push("Honor the approved spec exactly. Keep the genre contract active. Preserve reveal discipline — never leak withheld information.");
 
@@ -108,13 +95,12 @@ export function buildDraftSystemPrompt(params: {
 
 export function stripHeavyPacketFields(
   packet: ChapterPacket,
-): Omit<ChapterPacket, "rollingMemory" | "handoffMemory" | "compactContext" | "voiceTarget" | "previousReaderSimulation"> {
+): Omit<ChapterPacket, "rollingMemory" | "handoffMemory" | "compactContext" | "voiceTarget"> {
   const {
     rollingMemory: _,
     handoffMemory: _h,
     compactContext: _c,
     voiceTarget: _v,
-    previousReaderSimulation: _r,
     ...core
   } = packet;
   return core;
@@ -145,7 +131,6 @@ export async function generateDraft(params: {
       antiPatterns: storyCore.antiPatterns,
       comparables: storyCore.marketPositioning.comparables,
       voiceTarget: packetArtifact.data.voiceTarget,
-      previousReaderSimulation: packetArtifact.data.previousReaderSimulation,
     });
 
     const result = await generateAnthropicText({

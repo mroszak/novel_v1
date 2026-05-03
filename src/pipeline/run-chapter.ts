@@ -13,8 +13,6 @@ import { runSpecLoop } from "./generate-spec.js";
 import { hasBlockingReviewSignals, judgeDraft } from "./judge-draft.js";
 import { applyLocalizedAuditPatch, applyLocalizedAuditPatchResult } from "./localized-audit-patch.js";
 import { runOpeningEndingTournament } from "./opening-ending-tournament.js";
-import { runPolishPass } from "./polish-pass.js";
-import { runReaderSimulation } from "./reader-simulation.js";
 import { reviseDraft } from "./revise-draft.js";
 import { selectDraft } from "./select-draft.js";
 import {
@@ -515,30 +513,10 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       return result;
     }
 
-    // Phase 1: post-selection enhancement stages (polish + tournament + reader-sim).
-    // All advisory + fail-soft. Per the bestseller roadmap, these run only on the
-    // `max` quality profile. `standard` and `rerun` keep their pre-Phase-1
-    // behavior intact until a future opt-in flag is added.
+    // Post-selection enhancement: opening/ending tournament. Advisory and
+    // fail-soft; if it throws, downstream consumes `selected` unchanged.
     const phase1Enabled = options.qualityProfile === "max";
     if (phase1Enabled && !startsAfterJudge(options)) {
-      try {
-        console.error(`[ch${options.chapterNumber}] Polish pass...`);
-        const polishResult = await runPolishPass({
-          packetArtifact,
-          approvedSpecArtifact,
-          selectedArtifact,
-          selectedReviewArtifact,
-          voiceTarget: packetArtifact.data.voiceTarget,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        selectedArtifact = polishResult.selectedArtifact;
-        selectedReviewArtifact = polishResult.selectedReviewArtifact;
-        for (const u of polishResult.usages) usages.push(u);
-      } catch (error) {
-        console.error(`[polish-pass] Outer failure, keeping selected as-is: ${(error as Error).message}`);
-      }
-
       try {
         console.error(`[ch${options.chapterNumber}] Opening/ending tournament...`);
         const tournamentResult = await runOpeningEndingTournament({
@@ -555,19 +533,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         for (const u of tournamentResult.usages) usages.push(u);
       } catch (error) {
         console.error(`[tournament] Outer failure, keeping selected as-is: ${(error as Error).message}`);
-      }
-
-      try {
-        console.error(`[ch${options.chapterNumber}] Reader simulation...`);
-        const readerSimArtifact = await runReaderSimulation({
-          packetArtifact,
-          selectedArtifact,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        collectUsage(usages, config.stageProfiles.readerSimulation.stageName, readerSimArtifact);
-      } catch (error) {
-        console.error(`[reader-simulation] Failed (advisory), continuing: ${(error as Error).message}`);
       }
     }
 

@@ -8,8 +8,6 @@ import type {
   HandoffMemory,
   MemoryUpdateProposal,
   PairwiseSelection,
-  PolishPlan,
-  ReaderSimulation,
   ReviewScoreBreakdown,
   RollingMemory,
   SelectedChapter,
@@ -18,7 +16,6 @@ import type {
   TournamentZone,
   ValidatorReport,
 } from "../types/index.js";
-import { READER_PERSONA_IDS } from "../types/index.js";
 import { config } from "../config.js";
 import { calculateOverallScore, derivePassesThreshold } from "./judge-draft.js";
 import { countWords } from "./stage-utils.js";
@@ -396,36 +393,6 @@ export function createSmokeAudit(validatorReport: ValidatorReport): FinalAuditRe
         fixInstruction: "Resolve the validator failure and rerun the audit.",
       }]
       : [],
-  };
-}
-
-export function createSmokePolishPlan(): PolishPlan {
-  return {
-    patches: [],
-    notes: ["Smoke polish plan: no patches proposed; downstream consumes selected unchanged."],
-  };
-}
-
-export function createSmokeReaderSimulation(selected: SelectedChapter): ReaderSimulation {
-  const personas = READER_PERSONA_IDS.map((id) => ({
-    persona: id,
-    skimRisk: 30,
-    confusionRisk: 25,
-    turnPull: id === "airport" ? 78 : id === "book-club" ? 74 : 80,
-    shareScore: id === "book-club" ? 76 : 72,
-    notes: `Smoke ${id} review: pacing and pressure feel intentional.`,
-  }));
-  const firstParagraph = selected.prose.split(/\n\n+/)[1]?.trim().slice(0, 220)
-    ?? selected.prose.slice(0, 220);
-  const turnPullValues = personas.map((p) => p.turnPull);
-  const shareValues = personas.map((p) => p.shareScore);
-  const avg = (values: number[]) => Number((values.reduce((s, v) => s + v, 0) / values.length).toFixed(2));
-  return {
-    personas,
-    flaggedPassages: [{ excerpt: firstParagraph, reason: "Smoke flag.", persona: "airport" }],
-    averageTurnPull: avg(turnPullValues),
-    averageShareScore: avg(shareValues),
-    summary: "Smoke reader simulation: chapter holds momentum.",
   };
 }
 

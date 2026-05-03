@@ -157,16 +157,16 @@ export async function judgeDraft(params: {
   blueprintArtifacts: BlueprintCompilationArtifacts;
   smoke: boolean;
   /**
-   * Optional stage profile override. Phase 1 rejudges use cheaper
-   * profiles (e.g. `polishRejudge`) while preserving the literary judge
-   * schema. Defaults to `config.stageProfiles.literaryJudge` so existing
-   * draft/revision callers keep their behavior.
+   * Optional stage profile override. Tournament rejudges may use cheaper
+   * profiles while preserving the literary judge schema. Defaults to
+   * `config.stageProfiles.literaryJudge` so existing draft/revision callers
+   * keep their behavior.
    */
   stageOverride?: OpenAiStageProfile;
   /**
    * Optional override for the artifact envelope's `artifactType` field.
-   * Phase 1 rejudges set this to `"polish-rejudge"` or `"tournament-rejudge"`
-   * so the on-disk envelope identifies which rejudge wrote it. Defaults
+   * Tournament rejudges set this to `"tournament-rejudge"` so the on-disk
+   * envelope identifies which rejudge wrote it. Defaults
    * to the `draft-review` / `revised-review` rule used by initial judges.
    */
   artifactType?: string;

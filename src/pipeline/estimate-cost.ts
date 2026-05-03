@@ -317,26 +317,7 @@ export async function estimateChapterCost(params: {
   const selectedProseTokens = estimateWordTokens(smokeSelected.wordCount);
 
   if (phase1Enabled) {
-    const polishPlanInputTokens = strippedPacketTokens + styleRulesTokens + motifsTokens
-      + selectedProseTokens;
-    const polishNote = "Conditional: runs only when mid-chapter polish zones exist; reverted if validators or re-judge regress.";
-    stages.push({
-      ...estimateStageCost({
-        stage: config.stageProfiles.polishPlan,
-        estimatedInputTokens: polishPlanInputTokens,
-      }),
-      notes: [polishNote],
-    });
-    stages.push({
-      ...estimateStageCost({
-        stage: config.stageProfiles.polishRejudge,
-        estimatedInputTokens: judgeInput(selectedProseTokens),
-      }),
-      stage: config.stageProfiles.polishRejudge.stageName,
-      notes: ["Conditional: runs only after polish-plan applies at least one patch."],
-    });
-
-    const tournamentNote = "Conditional: runs only when the corresponding zone exists in the polished/selected prose; per-zone failures are isolated.";
+    const tournamentNote = "Conditional: runs only when the corresponding zone exists in the selected prose; per-zone failures are isolated.";
     for (const stageProfile of [
       config.stageProfiles.openingCandidate,
       config.stageProfiles.endingCandidate,
@@ -372,14 +353,6 @@ export async function estimateChapterCost(params: {
       }),
       stage: "tournament-rejudge",
       notes: ["Conditional: runs only after tournament merges at least one zone; reverted if it regresses."],
-    });
-
-    stages.push({
-      ...estimateStageCost({
-        stage: config.stageProfiles.readerSimulation,
-        estimatedInputTokens: storyPromiseTokens + genreContractTokens + selectedProseTokens,
-      }),
-      notes: ["Advisory: runs after polish/tournament on the final enhanced prose."],
     });
   }
 

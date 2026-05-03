@@ -15,12 +15,12 @@ import { compactJson, writeJson } from "../utils/index.js";
 export function stripMemoryPacketFields(packet: ChapterPacket): Omit<
   ChapterPacket,
   "rollingMemory" | "handoffMemory" | "compactContext" | "previousChapterExcerpt"
-  | "voiceGuidance" | "pacingGuidance" | "voiceTarget" | "previousReaderSimulation"
+  | "voiceGuidance" | "pacingGuidance" | "voiceTarget"
 > {
   const {
     rollingMemory: _rm, handoffMemory: _hm, compactContext: _cc,
     previousChapterExcerpt: _pe, voiceGuidance: _vg, pacingGuidance: _pg,
-    voiceTarget: _vt, previousReaderSimulation: _prs,
+    voiceTarget: _vt,
     ...core
   } = packet;
   return core;
