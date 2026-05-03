@@ -199,6 +199,21 @@ export interface ContinuityActiveSlice {
   scopeNotes: string[];
 }
 
+export interface ContinuityRevealStatus extends RevealEntry {
+  delivered: boolean;
+}
+
+export interface ContinuityState {
+  chapterNumber: number;
+  persistentObjects: PersistentObject[];
+  spatialRegistry: SpatialNode[];
+  timelineAnchors: TimelineAnchor[];
+  revealSchedule: ContinuityRevealStatus[];
+  relationshipStates: RelationshipState[];
+  motifStates: MotifState[];
+  notes: string[];
+}
+
 export interface AuthorBrief {
   authorialPersona: string;
   craftDirectives: string[];

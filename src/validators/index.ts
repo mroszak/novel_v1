@@ -8,6 +8,7 @@ import type {
   ValidatorReport,
 } from "../types/index.js";
 import { normalizeLookupKey } from "../utils/index.js";
+import { runContinuityManifestValidators } from "./continuity-manifest.js";
 import {
   checkDialogueTags,
   checkParagraphDistribution,
@@ -183,6 +184,11 @@ export function runDeterministicValidators(params: {
     ...checkParagraphDistribution(prose),
     ...checkDialogueTags(prose),
     ...detectKnowledgeLeaks(prose, knowledgeMatrix),
+    ...runContinuityManifestValidators({
+      manifest: blueprintArtifacts.continuityManifest.data,
+      packet,
+      prose,
+    }),
   );
 
   return {

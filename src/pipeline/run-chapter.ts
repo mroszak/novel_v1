@@ -14,6 +14,7 @@ import { hasBlockingReviewSignals, judgeDraft } from "./judge-draft.js";
 import { applyLocalizedAuditPatch, applyLocalizedAuditPatchResult } from "./localized-audit-patch.js";
 import { runOpeningEndingTournament } from "./opening-ending-tournament.js";
 import { reviseDraft } from "./revise-draft.js";
+import { updateContinuityState } from "./update-continuity-state.js";
 import { runVoiceGritPass } from "./voice-grit-pass.js";
 import { selectDraft } from "./select-draft.js";
 import {
@@ -728,6 +729,29 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       options.chapterNumber,
       currentSelectedArtifact.data.prose,
     );
+
+    try {
+      console.error(`[ch${options.chapterNumber}] Updating continuity state...`);
+      await updateContinuityState({
+        chapterNumber: options.chapterNumber,
+        manifest: compilation.artifacts.continuityManifest.data,
+        publishedProse: currentSelectedArtifact.data.prose,
+        declaredReveals: approvedSpecArtifact.data.revealControl
+          ? Object.entries(approvedSpecArtifact.data.revealControl).flatMap(([mode, threads]) => (
+            (threads as string[]).map((thread) => ({
+              thread,
+              learner: "reader",
+              chapter: options.chapterNumber,
+              mode: (mode === "withhold" ? "hint" : mode) as "show" | "hint" | "reveal" | "payoff",
+            }))
+          ))
+          : [],
+        blueprintHash: compilation.parsed.blueprintHash,
+        blueprintVersion: compilation.parsed.metadata.blueprintVersion,
+      });
+    } catch (error) {
+      console.error(`[continuity-state] Update failed (advisory), continuing: ${(error as Error).message}`);
+    }
 
     try {
       console.error(`[ch${options.chapterNumber}] Extracting voice target...`);

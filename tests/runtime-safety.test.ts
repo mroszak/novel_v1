@@ -1358,6 +1358,7 @@ test("PLACEHOLDER_TEXT does not flag normal prose containing 'insert'", () => {
     previousMemory: null,
     blueprintArtifacts: {
       compiledBlueprint: { data: { characters: [], storyPromise: {} } },
+      continuityManifest: { data: null },
     } as unknown as BlueprintCompilationArtifacts,
   });
   assert.ok(
