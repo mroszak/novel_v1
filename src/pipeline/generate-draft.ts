@@ -2,6 +2,7 @@ import { generateText as generateAnthropicText } from "../api/anthropic.js";
 import { config } from "../config.js";
 import type {
   ArtifactEnvelope,
+  AuthorBrief,
   BlueprintCompilationArtifacts,
   ChapterDraft,
   ChapterFunctionProfile,
@@ -9,9 +10,11 @@ import type {
   ChapterSpec,
   GenreContract,
   MarketPositioningSection,
+  MarketPromise,
   StoryPromiseSection,
   VoiceTarget,
 } from "../types/index.js";
+import { mapChapterFunctionToReaderJob } from "./generate-spec.js";
 import { createSmokeDraft } from "./smoke-helpers.js";
 import { chapterArtifactPath, countWords, createArtifact } from "./stage-utils.js";
 import { compactJson, writeJson } from "../utils/index.js";
@@ -25,16 +28,60 @@ export function buildDraftSystemPrompt(params: {
   antiPatterns: string[];
   comparables: string[];
   voiceTarget?: VoiceTarget | null;
+  authorBrief?: AuthorBrief | null;
+  marketPromise?: MarketPromise | null;
 }): string {
-  const { genreContract, storyPromise, chapterFunction, styleRules, antiPatterns, comparables, voiceTarget } = params;
+  const {
+    genreContract, storyPromise, chapterFunction, styleRules, antiPatterns,
+    comparables, voiceTarget, authorBrief, marketPromise,
+  } = params;
   const controls = genreContract.controls;
 
   const sections: string[] = [
     "You are Opus drafting a full novel chapter in one pass. Write polished manuscript prose, not notes. Output only the chapter prose.",
+  ];
 
+  if (authorBrief) {
+    sections.push(
+      [
+        "AUTHORIAL PERSONA:",
+        authorBrief.authorialPersona,
+        "",
+        "CRAFT DIRECTIVES:",
+        ...authorBrief.craftDirectives.map((line) => `- ${line}`),
+      ].join("\n"),
+    );
+  }
+
+  sections.push(
     `STORY PROMISE: ${storyPromise.storyPromise}`,
     `READER PROMISE: ${storyPromise.readerPromise}`,
     `CHAPTER FUNCTION: ${chapterFunction.function} (${chapterFunction.pacingDirective})`,
+  );
+
+  if (marketPromise) {
+    sections.push(
+      [
+        "COMMERCIAL HOOK:",
+        marketPromise.coreCommercialHook,
+        "EMOTIONAL PROMISE:",
+        marketPromise.emotionalPromise,
+      ].join("\n"),
+    );
+  }
+
+  const readerJob = mapChapterFunctionToReaderJob(chapterFunction.function, marketPromise ?? null);
+  if (readerJob) {
+    sections.push(
+      [
+        `READER JOB FOR THIS CHAPTER (function: ${chapterFunction.function}):`,
+        readerJob,
+        "Land this job. The chapter ending must serve it. Do not let it become decoration.",
+      ].join("\n"),
+    );
+  }
+
+  sections.push(
 
     [
       "PROSE CRAFT DIRECTIVES:",
@@ -48,7 +95,7 @@ export function buildDraftSystemPrompt(params: {
       `- Pacing curve: ${controls.pacingCurve}`,
       `- Emotional dwell: ${controls.emotionalDwellExpectation}`,
     ].join("\n"),
-  ];
+  );
 
   if (styleRules.length > 0) {
     sections.push(`STYLE RULES (follow precisely):\n${styleRules.map((r) => `- ${r}`).join("\n")}`);
@@ -131,6 +178,8 @@ export async function generateDraft(params: {
       antiPatterns: storyCore.antiPatterns,
       comparables: storyCore.marketPositioning.comparables,
       voiceTarget: packetArtifact.data.voiceTarget,
+      authorBrief: packetArtifact.data.authorBrief,
+      marketPromise: packetArtifact.data.marketPromise,
     });
 
     const result = await generateAnthropicText({
@@ -152,6 +201,9 @@ export async function generateDraft(params: {
         "<continuity_memory>",
         compactJson(packetArtifact.data.rollingMemory),
         "</continuity_memory>",
+        "<continuity_active_slice>",
+        compactJson(packetArtifact.data.continuityActiveSlice),
+        "</continuity_active_slice>",
         "<handoff_memory>",
         compactJson(packetArtifact.data.handoffMemory),
         "</handoff_memory>",

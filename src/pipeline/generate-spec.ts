@@ -4,7 +4,9 @@ import { config } from "../config.js";
 import type {
   ArtifactEnvelope,
   BlueprintCompilationArtifacts,
+  ChapterFunction,
   ChapterPacket,
+  ChapterRetentionFunction,
   ChapterSpec,
   CompiledStoryBlueprint,
   GenreContract,
@@ -209,6 +211,26 @@ export function shouldRunOpusCritique(
   return { run: required || preferred, required };
 }
 
+export function mapChapterFunctionToReaderJob(
+  chapterFunction: ChapterFunction,
+  marketPromise: ChapterPacket["marketPromise"],
+): string | null {
+  if (!marketPromise || marketPromise.chapterRetentionStrategy.length === 0) return null;
+  const map: Record<ChapterFunction, ChapterRetentionFunction> = {
+    opening: "opening",
+    escalation: "early-escalation",
+    midpoint: "midpoint",
+    reveal: "midpoint",
+    reversal: "late-escalation",
+    climax: "climax",
+    aftermath: "aftermath",
+    resolution: "aftermath",
+  };
+  const target = map[chapterFunction];
+  const entry = marketPromise.chapterRetentionStrategy.find((e) => e.chapterFunction === target);
+  return entry?.readerJob ?? null;
+}
+
 export function buildSpecGenerationRequest(params: {
   storyCore: CompiledStoryBlueprint;
   genreContract: GenreContract;
@@ -220,26 +242,63 @@ export function buildSpecGenerationRequest(params: {
   schema: typeof chapterSpecSchema;
 } {
   const promptPacket = buildSpecPacketView(params.packet);
+  const marketPromise = params.packet.marketPromise;
+  const continuitySlice = params.packet.continuityActiveSlice;
+  const readerJob = mapChapterFunctionToReaderJob(params.packet.chapterFunction.function, marketPromise);
+
+  const promptParts: string[] = [
+    `Story promise: ${compactJson(params.storyCore.storyPromise)}`,
+    `Market positioning: ${compactJson(params.storyCore.marketPositioning)}`,
+  ];
+
+  if (marketPromise) {
+    promptParts.push(
+      `Market promise: ${compactJson({
+        coreCommercialHook: marketPromise.coreCommercialHook,
+        emotionalPromise: marketPromise.emotionalPromise,
+        tropeStack: marketPromise.tropeStack,
+        freshnessAngle: marketPromise.freshnessAngle,
+        pacingContract: marketPromise.pacingContract,
+      })}`,
+    );
+  }
+
+  if (readerJob) {
+    promptParts.push(
+      `READER JOB FOR THIS CHAPTER FUNCTION (${params.packet.chapterFunction.function}): ${readerJob}`,
+      "The spec must target this reader job explicitly. The chapter ending hook must serve it. Mandatory beats must be staged in service of it.",
+    );
+  }
+
+  promptParts.push(
+    `Genre contract: ${compactJson(params.genreContract)}`,
+    `Section digests: ${compactJson(params.storyCore.sectionDigests)}`,
+    `Style rules:\n${params.storyCore.styleRules.join("\n") || "None"}`,
+    `Anti-patterns:\n${params.storyCore.antiPatterns.join("\n") || "None"}`,
+    `Motif bank: ${params.storyCore.motifBank.join(" | ") || "None"}`,
+  );
+
+  if (continuitySlice) {
+    promptParts.push(
+      `Continuity active slice (declare your continuity intentions per scene; do not contradict): ${compactJson(continuitySlice)}`,
+    );
+  }
+
+  promptParts.push(`Chapter packet: ${compactJson(promptPacket)}`);
+
   return {
     instructions: [
       "You are the planning model for a chapter-by-chapter novel engine.",
       "Create a machine-usable chapter spec for one chapter only.",
       "Honor reveal control, mandatory beats, active cast, target word band, ending hook, and continuity notes.",
+      "When a Market Promise is provided, target its commercial hook and emotional promise. When a reader job is provided for this chapter function, the spec must serve it explicitly.",
+      "When a continuity active slice is provided, declare your continuity intentions per scene and do not contradict it.",
       "Keep the plan genre-adaptive and specific enough for a full-chapter Opus draft.",
       "For each scene in scenePlan, include emotionalArc (the POV character's emotional trajectory through the scene), sensoryAnchor (the dominant sensory environment), and dialogueStrategy (how dialogue serves the scene).",
       "In proseGuidance, include 2-4 concrete prose targets: dominant sensory channel for the chapter, a signature metaphor or image family, and the primary dialogue tactic for the POV character.",
       "Style rules from the author's blueprint take priority over any general guidance.",
     ].join("\n"),
-    prompt: [
-      `Story promise: ${compactJson(params.storyCore.storyPromise)}`,
-      `Market positioning: ${compactJson(params.storyCore.marketPositioning)}`,
-      `Genre contract: ${compactJson(params.genreContract)}`,
-      `Section digests: ${compactJson(params.storyCore.sectionDigests)}`,
-      `Style rules:\n${params.storyCore.styleRules.join("\n") || "None"}`,
-      `Anti-patterns:\n${params.storyCore.antiPatterns.join("\n") || "None"}`,
-      `Motif bank: ${params.storyCore.motifBank.join(" | ") || "None"}`,
-      `Chapter packet: ${compactJson(promptPacket)}`,
-    ].join("\n\n"),
+    prompt: promptParts.join("\n\n"),
     schemaName: "chapter_spec",
     schema: chapterSpecSchema,
   };
