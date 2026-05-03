@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { hasOpenAiCredentials } from "../api/openai.js";
 import { config } from "../config.js";
+import { compileAuthorBrief } from "../blueprint/compile-author-brief.js";
 import { compileChapterFunctions } from "../blueprint/compile-chapter-functions.js";
 import { compileContinuityManifest } from "../blueprint/compile-continuity-manifest.js";
 import { compileGenreContract } from "../blueprint/compile-genre-contract.js";
@@ -11,6 +12,7 @@ import { parseBlueprint } from "../blueprint/parse-blueprint.js";
 import { validateBlueprint } from "../blueprint/validate-blueprint.js";
 import type {
   ArtifactEnvelope,
+  AuthorBrief,
   BlueprintCompilationArtifacts,
   ChapterFunctionMap,
   CompiledStoryBlueprint,
@@ -26,7 +28,8 @@ type BlueprintArtifactType =
   | "genre-contract"
   | "chapter-functions"
   | "market-promise"
-  | "continuity-manifest";
+  | "continuity-manifest"
+  | "author-brief";
 
 function createArtifact<T>(
   artifactType: BlueprintArtifactType,
@@ -50,6 +53,7 @@ async function writeCanonicalArtifacts(artifacts: BlueprintCompilationArtifacts)
     chapterFunctions: path.join(config.paths.blueprintArtifacts, "chapter-functions.json"),
     marketPromise: path.join(config.paths.blueprintArtifacts, "market-promise.json"),
     continuityManifest: path.join(config.paths.blueprintArtifacts, "continuity-manifest.json"),
+    authorBrief: path.join(config.paths.blueprintArtifacts, "author-brief.json"),
   };
 
   await writeJson(canonicalTargets.compiledBlueprint, artifacts.compiledBlueprint);
@@ -57,6 +61,7 @@ async function writeCanonicalArtifacts(artifacts: BlueprintCompilationArtifacts)
   await writeJson(canonicalTargets.chapterFunctions, artifacts.chapterFunctions);
   await writeJson(canonicalTargets.marketPromise, artifacts.marketPromise);
   await writeJson(canonicalTargets.continuityManifest, artifacts.continuityManifest);
+  await writeJson(canonicalTargets.authorBrief, artifacts.authorBrief);
 }
 
 async function writeCachedArtifacts(
@@ -68,6 +73,7 @@ async function writeCachedArtifacts(
   await writeJson(path.join(cacheDir, "chapter-functions.json"), artifacts.chapterFunctions);
   await writeJson(path.join(cacheDir, "market-promise.json"), artifacts.marketPromise);
   await writeJson(path.join(cacheDir, "continuity-manifest.json"), artifacts.continuityManifest);
+  await writeJson(path.join(cacheDir, "author-brief.json"), artifacts.authorBrief);
 }
 
 function resolveGenreCompilationMode(noGenreAi: boolean): string {
@@ -114,6 +120,7 @@ async function loadCachedArtifacts(
   const chapterFunctionsPath = path.join(cacheDir, "chapter-functions.json");
   const marketPromisePath = path.join(cacheDir, "market-promise.json");
   const continuityManifestPath = path.join(cacheDir, "continuity-manifest.json");
+  const authorBriefPath = path.join(cacheDir, "author-brief.json");
 
   const allExist = await Promise.all([
     fileExists(compiledBlueprintPath),
@@ -121,6 +128,7 @@ async function loadCachedArtifacts(
     fileExists(chapterFunctionsPath),
     fileExists(marketPromisePath),
     fileExists(continuityManifestPath),
+    fileExists(authorBriefPath),
   ]);
 
   if (!allExist.every(Boolean)) {
@@ -133,6 +141,7 @@ async function loadCachedArtifacts(
     chapterFunctions: await readJson<ArtifactEnvelope<ChapterFunctionMap>>(chapterFunctionsPath),
     marketPromise: await readJson<ArtifactEnvelope<MarketPromise | null>>(marketPromisePath),
     continuityManifest: await readJson<ArtifactEnvelope<ContinuityManifest | null>>(continuityManifestPath),
+    authorBrief: await readJson<ArtifactEnvelope<AuthorBrief>>(authorBriefPath),
   };
 
   return matchesCachedArtifact(artifacts.compiledBlueprint, "compiled-blueprint", blueprint)
@@ -140,6 +149,7 @@ async function loadCachedArtifacts(
     && matchesCachedArtifact(artifacts.chapterFunctions, "chapter-functions", blueprint)
     && matchesCachedArtifact(artifacts.marketPromise, "market-promise", blueprint)
     && matchesCachedArtifact(artifacts.continuityManifest, "continuity-manifest", blueprint)
+    && matchesCachedArtifact(artifacts.authorBrief, "author-brief", blueprint)
     ? artifacts
     : null;
 }
@@ -189,6 +199,11 @@ export async function compileBlueprintRuntime(options: {
     parsed,
     compileContinuityManifest(parsed),
   );
+  const authorBrief = createArtifact(
+    "author-brief",
+    parsed,
+    await compileAuthorBrief(parsed, { noModel: options.noGenreAi }),
+  );
 
   const artifacts: BlueprintCompilationArtifacts = {
     compiledBlueprint,
@@ -196,6 +211,7 @@ export async function compileBlueprintRuntime(options: {
     chapterFunctions,
     marketPromise,
     continuityManifest,
+    authorBrief,
   };
 
   await writeCachedArtifacts(cacheDir, artifacts);

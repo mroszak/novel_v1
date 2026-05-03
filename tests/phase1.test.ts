@@ -415,6 +415,7 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
     voiceTarget: null,
     marketPromise: null,
     continuityActiveSlice: null,
+    authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
   };
 }
 
@@ -526,6 +527,12 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       blueprintHash: "test-hash",
       blueprintVersion: "1.0.0",
       data: null,
+    }),
+    authorBrief: createArtifact({
+      artifactType: "author-brief",
+      blueprintHash: "test-hash",
+      blueprintVersion: "1.0.0",
+      data: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" as const },
     }),
   };
 }

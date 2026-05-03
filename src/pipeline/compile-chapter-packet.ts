@@ -342,6 +342,7 @@ export async function compileChapterPacket(params: {
     voiceTarget,
     marketPromise,
     continuityActiveSlice,
+    authorBrief: blueprintArtifacts.authorBrief.data,
   };
 
   const artifact = createArtifact<ChapterPacket>({

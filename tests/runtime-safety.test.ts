@@ -1524,6 +1524,7 @@ function makeHeavyPacket(): ChapterPacket {
     voiceTarget: null,
     marketPromise: null,
     continuityActiveSlice: null,
+    authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
   };
 }
 

@@ -199,6 +199,44 @@ export interface ContinuityActiveSlice {
   scopeNotes: string[];
 }
 
+export interface AuthorBrief {
+  authorialPersona: string;
+  craftDirectives: string[];
+  source: "model" | "deterministic";
+}
+
+export type GritTexture =
+  | "prosody-irregularity"
+  | "voice-tic"
+  | "interrupted-observation"
+  | "strategic-under-explanation"
+  | "specificity-swap"
+  | "asymmetric-paragraph-weight";
+
+export interface GritPatch {
+  texture: GritTexture;
+  originalText: string;
+  replacementText: string;
+  earnedJustification: string;
+  ticSource?: string;
+}
+
+export interface GritPlan {
+  patches: GritPatch[];
+  notes: string[];
+}
+
+export interface VoiceGritDiff {
+  status: "applied" | "no-patches" | "skipped" | "validators-failed" | "rejudge-regressed";
+  reason: string;
+  appliedPatches: GritPatch[];
+  skippedPatches: Array<GritPatch & { skipReason: string }>;
+  preReviewScore: number | null;
+  postReviewScore: number | null;
+  preProse: string;
+  finalProse: string;
+}
+
 export interface ParsedStoryBlueprint {
   schemaVersion: string;
   blueprintHash: string;
@@ -362,6 +400,7 @@ export interface ChapterPacket {
   voiceTarget: VoiceTarget | null;
   marketPromise: MarketPromise | null;
   continuityActiveSlice: ContinuityActiveSlice | null;
+  authorBrief: AuthorBrief;
 }
 
 export interface ChapterSpec {
@@ -711,6 +750,7 @@ export interface BlueprintCompilationArtifacts {
   chapterFunctions: ArtifactEnvelope<ChapterFunctionMap>;
   marketPromise: ArtifactEnvelope<MarketPromise | null>;
   continuityManifest: ArtifactEnvelope<ContinuityManifest | null>;
+  authorBrief: ArtifactEnvelope<AuthorBrief>;
 }
 
 export interface StageTokenEstimate {
