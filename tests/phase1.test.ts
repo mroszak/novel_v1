@@ -91,6 +91,7 @@ function makeBlueprint(): CompiledStoryBlueprint {
       shelfPositioning: "haunting, ghost-adjacent, literary",
       comparables: ["The Haunting of Hill House", "Piranesi"],
     },
+    marketPromise: null,
     genre: {
       primaryGenre: "literary suspense",
       subgenres: ["psychological"],
@@ -98,6 +99,7 @@ function makeBlueprint(): CompiledStoryBlueprint {
       readerExperience: "Quiet dread.",
       runtimeOverrides: {},
     },
+    continuityManifest: null,
     canonLaw: [],
     antiPatterns: [],
     styleRules: ["Lean on close third.", "Let setting carry mood."],
@@ -411,6 +413,8 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
       knowledgeWarnings: [],
     },
     voiceTarget: null,
+    marketPromise: null,
+    continuityActiveSlice: null,
   };
 }
 
@@ -435,6 +439,7 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       shelfPositioning: "Test shelf.",
       comparables: ["Comparable Title"],
     },
+    marketPromise: null,
     genre: {
       primaryGenre: "thriller",
       subgenres: [],
@@ -442,6 +447,7 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       readerExperience: "Pressure.",
       runtimeOverrides: {},
     },
+    continuityManifest: null,
     canonLaw: [],
     antiPatterns: [],
     styleRules: ["Lean on close third."],
@@ -508,6 +514,18 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       blueprintHash: "test-hash",
       blueprintVersion: "1.0.0",
       data: chapterFunctionsData,
+    }),
+    marketPromise: createArtifact({
+      artifactType: "market-promise",
+      blueprintHash: "test-hash",
+      blueprintVersion: "1.0.0",
+      data: null,
+    }),
+    continuityManifest: createArtifact({
+      artifactType: "continuity-manifest",
+      blueprintHash: "test-hash",
+      blueprintVersion: "1.0.0",
+      data: null,
     }),
   };
 }

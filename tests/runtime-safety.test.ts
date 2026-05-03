@@ -1522,6 +1522,8 @@ function makeHeavyPacket(): ChapterPacket {
       knowledgeWarnings: [],
     },
     voiceTarget: null,
+    marketPromise: null,
+    continuityActiveSlice: null,
   };
 }
 
@@ -1546,6 +1548,7 @@ function makeBudgetTestStoryCore(): CompiledStoryBlueprint {
       shelfPositioning: "A Cold War survival thriller under the sea.",
       comparables: ["The Abyss", "The Poseidon Adventure"],
     },
+    marketPromise: null,
     genre: {
       primaryGenre: "thriller",
       subgenres: ["disaster thriller"],
@@ -1553,6 +1556,7 @@ function makeBudgetTestStoryCore(): CompiledStoryBlueprint {
       readerExperience: "Pressure and consequence.",
       runtimeOverrides: {},
     },
+    continuityManifest: null,
     canonLaw: ["The ocean always wins any delay."],
     antiPatterns: ["No miracle fixes.", "No cartoon villains."],
     styleRules: ["Keep POV tight.", "Let action carry emotion."],

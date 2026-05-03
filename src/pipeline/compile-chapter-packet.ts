@@ -6,10 +6,13 @@ import type {
   BlueprintCompilationArtifacts,
   ChapterPacket,
   CharacterCard,
+  ContinuityActiveSlice,
+  ContinuityManifest,
   HandoffMemory,
   RollingMemory,
   VoiceTarget,
 } from "../types/index.js";
+import { estimateTextTokens } from "../metrics/token-budget.js";
 import {
   fileExists,
   normalizeLookupKey,
@@ -118,6 +121,99 @@ async function loadVoiceTargetData(params: {
   return artifact?.data ?? null;
 }
 
+const CONTINUITY_SLICE_TOKEN_CAP = 4000;
+
+function buildContinuityActiveSlice(params: {
+  manifest: ContinuityManifest | null;
+  chapterNumber: number;
+  activeCastNames: string[];
+  mandatoryBeats: string[];
+  revealBudget: { show: string[]; hint: string[]; reveal: string[]; withhold: string[] };
+}): ContinuityActiveSlice | null {
+  if (!params.manifest) return null;
+
+  const activeCastKeys = new Set(params.activeCastNames.map((name) => normalizeLookupKey(name)));
+  const beatHay = [
+    ...params.mandatoryBeats,
+    ...params.revealBudget.show,
+    ...params.revealBudget.hint,
+    ...params.revealBudget.reveal,
+    ...params.revealBudget.withhold,
+  ].join(" ").toLowerCase();
+
+  const objectMatches = (haystack: string): boolean => {
+    if (!haystack) return false;
+    const lower = haystack.toLowerCase();
+    if (beatHay.includes(lower) || lower.includes(beatHay.slice(0, 32))) return true;
+    for (const name of activeCastKeys) {
+      if (name && lower.includes(name)) return true;
+    }
+    return false;
+  };
+
+  const persistentObjects = params.manifest.persistentObjects.filter((obj) => {
+    if (obj.lastSeenChapter > params.chapterNumber) return false;
+    return objectMatches(obj.name) || objectMatches(obj.possessor) || objectMatches(obj.state);
+  });
+
+  const spatialRegistry = params.manifest.spatialRegistry.filter((space) => (
+    objectMatches(space.name) || objectMatches(space.description)
+  ));
+
+  const timelineAnchors = params.manifest.timelineAnchors;
+
+  const revealSchedule = params.manifest.revealSchedule.filter((reveal) => (
+    reveal.chapter >= params.chapterNumber - 1 && reveal.chapter <= params.chapterNumber + 1
+  ));
+
+  const relationshipStates = params.manifest.relationshipStates.filter((rel) => {
+    const lower = rel.pair.toLowerCase();
+    for (const name of activeCastKeys) {
+      if (name && lower.includes(name)) return true;
+    }
+    return false;
+  });
+
+  const motifStates = params.manifest.motifStates;
+
+  const scopeNotes: string[] = [];
+  const dropped = {
+    persistentObjects: params.manifest.persistentObjects.length - persistentObjects.length,
+    spatialRegistry: params.manifest.spatialRegistry.length - spatialRegistry.length,
+    revealSchedule: params.manifest.revealSchedule.length - revealSchedule.length,
+    relationshipStates: params.manifest.relationshipStates.length - relationshipStates.length,
+  };
+  for (const [k, v] of Object.entries(dropped)) {
+    if (v > 0) scopeNotes.push(`Filtered ${v} ${k} entries out of active scope.`);
+  }
+
+  let slice: ContinuityActiveSlice = {
+    persistentObjects,
+    spatialRegistry,
+    timelineAnchors,
+    revealSchedule,
+    relationshipStates,
+    motifStates,
+    scopeNotes,
+  };
+
+  let tokens = estimateTextTokens(JSON.stringify(slice));
+  if (tokens > CONTINUITY_SLICE_TOKEN_CAP) {
+    const trim = <T>(arr: T[], floor: number) => arr.slice(-Math.max(floor, Math.floor(arr.length / 2)));
+    slice = {
+      ...slice,
+      persistentObjects: trim(persistentObjects, 4),
+      spatialRegistry: trim(spatialRegistry, 4),
+      revealSchedule: trim(revealSchedule, 4),
+      relationshipStates: trim(relationshipStates, 3),
+    };
+    tokens = estimateTextTokens(JSON.stringify(slice));
+    slice.scopeNotes = [...scopeNotes, `Trimmed slice to ~${tokens} tokens (cap ${CONTINUITY_SLICE_TOKEN_CAP}).`];
+  }
+
+  return slice;
+}
+
 export async function compileChapterPacket(params: {
   chapterNumber: number;
   blueprintArtifacts: BlueprintCompilationArtifacts;
@@ -157,6 +253,19 @@ export async function compileChapterPacket(params: {
     blueprintVersion: blueprintArtifacts.compiledBlueprint.blueprintVersion,
   };
   const voiceTarget = await loadVoiceTargetData(blueprintIdentity);
+  const marketPromise = blueprintArtifacts.marketPromise.data;
+  const continuityActiveSlice = buildContinuityActiveSlice({
+    manifest: blueprintArtifacts.continuityManifest.data,
+    chapterNumber,
+    activeCastNames: chapter.activeCast,
+    mandatoryBeats: chapter.mandatoryBeats,
+    revealBudget: {
+      show: chapter.show,
+      hint: chapter.hint,
+      reveal: chapter.reveal,
+      withhold: chapter.withhold,
+    },
+  });
   const targetWordBand = {
     min: Math.max(1500, chapter.targetWordCount - config.defaults.chapterWordBandLeeway),
     target: chapter.targetWordCount,
@@ -231,6 +340,8 @@ export async function compileChapterPacket(params: {
     handoffMemory,
     compactContext,
     voiceTarget,
+    marketPromise,
+    continuityActiveSlice,
   };
 
   const artifact = createArtifact<ChapterPacket>({

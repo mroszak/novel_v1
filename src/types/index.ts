@@ -110,6 +110,95 @@ export interface ChapterOutline {
   notes: string[];
 }
 
+export type ChapterRetentionFunction =
+  | "opening"
+  | "early-escalation"
+  | "midpoint"
+  | "late-escalation"
+  | "climax"
+  | "aftermath";
+
+export interface MarketPromise {
+  readerAvatar: string;
+  shelfComps: string[];
+  coreCommercialHook: string;
+  tropeStack: string[];
+  freshnessAngle: string;
+  pacingContract: string;
+  emotionalPromise: string;
+  coverBlurbKeywords: string[];
+  seriesPotential: string;
+  chapterRetentionStrategy: Array<{
+    chapterFunction: ChapterRetentionFunction;
+    readerJob: string;
+  }>;
+}
+
+export interface PersistentObject {
+  name: string;
+  state: string;
+  possessor: string;
+  lastSeenChapter: number;
+}
+
+export interface SpatialNode {
+  name: string;
+  description: string;
+  access: string;
+  condition: string;
+}
+
+export interface TimelineAnchor {
+  label: string;
+  description: string;
+  offset: string;
+}
+
+export type RevealMode = "show" | "hint" | "reveal" | "payoff";
+
+export interface RevealEntry {
+  thread: string;
+  learner: string;
+  chapter: number;
+  mode: RevealMode;
+}
+
+export interface RelationshipState {
+  pair: string;
+  trust: string;
+  distance: string;
+  dependency: string;
+  rivalry: string;
+}
+
+export type MotifStage = "introduced" | "recurring" | "inverted" | "paid-off";
+
+export interface MotifState {
+  motif: string;
+  intensity: string;
+  lastChapter: number;
+  stage: MotifStage;
+}
+
+export interface ContinuityManifest {
+  persistentObjects: PersistentObject[];
+  spatialRegistry: SpatialNode[];
+  timelineAnchors: TimelineAnchor[];
+  revealSchedule: RevealEntry[];
+  relationshipStates: RelationshipState[];
+  motifStates: MotifState[];
+}
+
+export interface ContinuityActiveSlice {
+  persistentObjects: PersistentObject[];
+  spatialRegistry: SpatialNode[];
+  timelineAnchors: TimelineAnchor[];
+  revealSchedule: RevealEntry[];
+  relationshipStates: RelationshipState[];
+  motifStates: MotifState[];
+  scopeNotes: string[];
+}
+
 export interface ParsedStoryBlueprint {
   schemaVersion: string;
   blueprintHash: string;
@@ -118,7 +207,9 @@ export interface ParsedStoryBlueprint {
   metadata: BlueprintMetadata;
   storyPromise: StoryPromiseSection;
   marketPositioning: MarketPositioningSection;
+  marketPromise: MarketPromise | null;
   genre: GenreBlueprintSection;
+  continuityManifest: ContinuityManifest | null;
   canonLaw: string[];
   antiPatterns: string[];
   styleRules: string[];
@@ -132,7 +223,9 @@ export interface CompiledStoryBlueprint {
   metadata: BlueprintMetadata;
   storyPromise: StoryPromiseSection;
   marketPositioning: MarketPositioningSection;
+  marketPromise: MarketPromise | null;
   genre: GenreBlueprintSection;
+  continuityManifest: ContinuityManifest | null;
   canonLaw: string[];
   antiPatterns: string[];
   styleRules: string[];
@@ -267,6 +360,8 @@ export interface ChapterPacket {
     knowledgeWarnings: string[];
   };
   voiceTarget: VoiceTarget | null;
+  marketPromise: MarketPromise | null;
+  continuityActiveSlice: ContinuityActiveSlice | null;
 }
 
 export interface ChapterSpec {
@@ -614,6 +709,8 @@ export interface BlueprintCompilationArtifacts {
   compiledBlueprint: ArtifactEnvelope<CompiledStoryBlueprint>;
   genreContract: ArtifactEnvelope<GenreContract>;
   chapterFunctions: ArtifactEnvelope<ChapterFunctionMap>;
+  marketPromise: ArtifactEnvelope<MarketPromise | null>;
+  continuityManifest: ArtifactEnvelope<ContinuityManifest | null>;
 }
 
 export interface StageTokenEstimate {
