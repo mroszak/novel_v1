@@ -1,0 +1,14 @@
+---
+description: Core guardrails for Novel Creator GPT changes
+alwaysApply: true
+---
+
+# Core Guardrails
+
+- Treat `STORY_BLUEPRINT.md` as author-owned input and `chapters/*.md` as published output. Do not rewrite either unless the user explicitly asks.
+- Treat `artifacts/` as runtime output, not source files to hand-edit.
+- Keep `README.md`, `AGENTS.md`, and `.cursor/rules/*.mdc` aligned when runtime behavior, model defaults, or project contracts change.
+- Prefer smoke or fixture-backed validation over live provider calls.
+- After substantive runtime edits, run `npm test` and `npm run typecheck`.
+- Keep failures structured. Prefer blocked pipeline results over silent fallbacks.
+- Preserve CLI exit semantics: `1` for unexpected runtime failure, `2` for blocked pipeline outcomes.

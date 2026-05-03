@@ -1,0 +1,198 @@
+import { generateText as generateAnthropicText } from "../api/anthropic.js";
+import { config } from "../config.js";
+import type {
+  ArtifactEnvelope,
+  BlueprintCompilationArtifacts,
+  ChapterDraft,
+  ChapterFunctionProfile,
+  ChapterPacket,
+  ChapterSpec,
+  GenreContract,
+  MarketPositioningSection,
+  ReaderSimulation,
+  StoryPromiseSection,
+  VoiceTarget,
+} from "../types/index.js";
+import { createSmokeDraft } from "./smoke-helpers.js";
+import { chapterArtifactPath, countWords, createArtifact } from "./stage-utils.js";
+import { compactJson, writeJson } from "../utils/index.js";
+
+export function buildDraftSystemPrompt(params: {
+  genreContract: GenreContract;
+  storyPromise: StoryPromiseSection;
+  marketPositioning: MarketPositioningSection;
+  chapterFunction: ChapterFunctionProfile;
+  styleRules: string[];
+  antiPatterns: string[];
+  comparables: string[];
+  voiceTarget?: VoiceTarget | null;
+  previousReaderSimulation?: ReaderSimulation | null;
+}): string {
+  const { genreContract, storyPromise, chapterFunction, styleRules, antiPatterns, comparables, voiceTarget, previousReaderSimulation } = params;
+  const controls = genreContract.controls;
+
+  const sections: string[] = [
+    "You are Opus drafting a full novel chapter in one pass. Write polished manuscript prose, not notes. Output only the chapter prose.",
+
+    `STORY PROMISE: ${storyPromise.storyPromise}`,
+    `READER PROMISE: ${storyPromise.readerPromise}`,
+    `CHAPTER FUNCTION: ${chapterFunction.function} (${chapterFunction.pacingDirective})`,
+
+    [
+      "PROSE CRAFT DIRECTIVES:",
+      "- Write in close third person anchored to the POV character's sensory and emotional filter. Every observation passes through their specific knowledge, fears, and blind spots.",
+      "- Vary sentence length deliberately. Short blunt clauses for impact and pressure. Longer flowing sentences for observation, interiority, and earned stillness.",
+      "- Open each scene with the POV character's body in space — position, sensation, immediate environment — before any thought or exposition.",
+      "- Dialogue under stress shortens, sharpens, and hides more than it explains. Characters speak around the truth, not at it.",
+      "- Earn every emotional beat through action and consequence. Never explain theme when behavior can carry it.",
+      `- Prose compression: ${controls.proseCompression}`,
+      `- Sensory palette: ${controls.sensoryDensity}`,
+      `- Pacing curve: ${controls.pacingCurve}`,
+      `- Emotional dwell: ${controls.emotionalDwellExpectation}`,
+    ].join("\n"),
+  ];
+
+  if (styleRules.length > 0) {
+    sections.push(`STYLE RULES (follow precisely):\n${styleRules.map((r) => `- ${r}`).join("\n")}`);
+  }
+
+  if (antiPatterns.length > 0) {
+    sections.push(`HARD CONSTRAINTS (never do these):\n${antiPatterns.map((p) => `- ${p}`).join("\n")}`);
+  }
+
+  sections.push(
+    [
+      "UNIVERSAL CRAFT CONSTRAINTS:",
+      "- Never use filter words as first resort (felt, seemed, noticed, appeared, watched, realized).",
+      '- Never use dead cliches (heart pounded, blood ran cold, couldn\'t believe, let out a breath).',
+      "- Never open a scene with weather, a gerund phrase, or throat-clearing exposition.",
+      "- Never let two consecutive sentences share the same grammatical structure.",
+      "- Never summarize a scene that should be dramatized.",
+    ].join("\n"),
+  );
+
+  if (comparables.length > 0) {
+    sections.push(`Write at the literary quality level of: ${comparables.join(", ")}. Match their tension architecture and sentence sophistication.`);
+  }
+
+  if (voiceTarget && voiceTarget.guidanceLines.length > 0) {
+    const sourceLabel = voiceTarget.source === "style-sample"
+      ? "from author-supplied STYLE_SAMPLE.md"
+      : voiceTarget.source === "derived"
+        ? `derived from your published chapter(s) ${voiceTarget.derivedFromChapters.join(", ")}`
+        : "blueprint fallback";
+    sections.push(
+      [
+        `VOICE SIGNATURE TARGET (${sourceLabel}). Honor these as authorial voice constraints:`,
+        ...voiceTarget.guidanceLines.map((line) => `- ${line}`),
+      ].join("\n"),
+    );
+  }
+
+  if (previousReaderSimulation && previousReaderSimulation.flaggedPassages.length > 0) {
+    const flagsByPersona = previousReaderSimulation.flaggedPassages.slice(0, 4)
+      .map((flag) => `- (${flag.persona}) ${flag.reason}`);
+    sections.push(
+      [
+        "PREVIOUS-CHAPTER READER FLAGS (advisory; reduce these failure modes this chapter without changing plot):",
+        ...flagsByPersona,
+      ].join("\n"),
+    );
+  }
+
+  sections.push("Match the prose register, sentence complexity, and POV interiority of the previous chapter when one is provided. Voice consistency across chapters is critical.");
+  sections.push("Honor the approved spec exactly. Keep the genre contract active. Preserve reveal discipline — never leak withheld information.");
+
+  return sections.join("\n\n");
+}
+
+export function stripHeavyPacketFields(
+  packet: ChapterPacket,
+): Omit<ChapterPacket, "rollingMemory" | "handoffMemory" | "compactContext" | "voiceTarget" | "previousReaderSimulation"> {
+  const {
+    rollingMemory: _,
+    handoffMemory: _h,
+    compactContext: _c,
+    voiceTarget: _v,
+    previousReaderSimulation: _r,
+    ...core
+  } = packet;
+  return core;
+}
+
+export async function generateDraft(params: {
+  packetArtifact: ArtifactEnvelope<ChapterPacket>;
+  approvedSpecArtifact: ArtifactEnvelope<ChapterSpec>;
+  blueprintArtifacts: BlueprintCompilationArtifacts;
+  smoke: boolean;
+}): Promise<ArtifactEnvelope<ChapterDraft>> {
+  const { packetArtifact, approvedSpecArtifact, blueprintArtifacts, smoke } = params;
+  const storyCore = blueprintArtifacts.compiledBlueprint.data;
+
+  let draft: ChapterDraft;
+  let usage: ArtifactEnvelope<ChapterDraft>["usage"];
+
+  if (smoke) {
+    draft = createSmokeDraft(packetArtifact.data, approvedSpecArtifact.data, false);
+    usage = undefined;
+  } else {
+    const systemPrompt = buildDraftSystemPrompt({
+      genreContract: blueprintArtifacts.genreContract.data,
+      storyPromise: storyCore.storyPromise,
+      marketPositioning: storyCore.marketPositioning,
+      chapterFunction: packetArtifact.data.chapterFunction,
+      styleRules: storyCore.styleRules,
+      antiPatterns: storyCore.antiPatterns,
+      comparables: storyCore.marketPositioning.comparables,
+      voiceTarget: packetArtifact.data.voiceTarget,
+      previousReaderSimulation: packetArtifact.data.previousReaderSimulation,
+    });
+
+    const result = await generateAnthropicText({
+      stage: config.stageProfiles.drafting,
+      system: systemPrompt,
+      prompt: [
+        "<genre_contract>",
+        compactJson(blueprintArtifacts.genreContract.data),
+        "</genre_contract>",
+        "<chapter_packet>",
+        compactJson(stripHeavyPacketFields(packetArtifact.data)),
+        "</chapter_packet>",
+        "<approved_spec>",
+        compactJson(approvedSpecArtifact.data),
+        "</approved_spec>",
+        "<motifs>",
+        storyCore.motifBank.join("\n"),
+        "</motifs>",
+        "<continuity_memory>",
+        compactJson(packetArtifact.data.rollingMemory),
+        "</continuity_memory>",
+        "<handoff_memory>",
+        compactJson(packetArtifact.data.handoffMemory),
+        "</handoff_memory>",
+        "<previous_chapter>",
+        packetArtifact.data.compactContext.previousChapterFull ?? "No previous chapter.",
+        "</previous_chapter>",
+      ].join("\n"),
+    });
+
+    draft = {
+      prose: result.value,
+      wordCount: countWords(result.value),
+    };
+    usage = result.usage;
+  }
+
+  const artifact = createArtifact<ChapterDraft>({
+    artifactType: "chapter-draft",
+    blueprintHash: packetArtifact.blueprintHash,
+    blueprintVersion: packetArtifact.blueprintVersion,
+    chapterNumber: packetArtifact.chapterNumber,
+    qualityProfile: packetArtifact.qualityProfile,
+    data: draft,
+    usage,
+  });
+
+  await writeJson(chapterArtifactPath(packetArtifact.data.chapterNumber, "draft"), artifact);
+  return artifact;
+}

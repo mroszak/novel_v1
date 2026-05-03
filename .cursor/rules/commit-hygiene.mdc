@@ -1,0 +1,40 @@
+---
+description: Pre-commit doc-sync check for maintenance markdown and rule files
+alwaysApply: true
+---
+
+# Commit Hygiene
+
+When the user asks to commit (with or without push), perform a quick doc-sync check before staging.
+
+## Maintenance doc set
+
+- `README.md`
+- `AGENTS.md`
+- `STORYBOARD_PIPELINE.md`
+- `BESTSELLER_ROADMAP.md`
+- `.cursor/rules/*.mdc`
+
+## Check
+
+Scan the changeset. If any change touches:
+
+- a CLI flag, env var, command, model default, stage name, artifact contract, or operator-visible behavior
+- a project structure invariant or persistent ownership rule
+- a new pipeline stage, profile, or quality threshold
+- the build sequence, acceptance criteria, or status of any item in `BESTSELLER_ROADMAP.md`
+
+then for each maintenance doc that mentions the affected surface, identify stale references and propose specific edits. Confirm once with the user, then commit everything together in the same commit (or a paired commit when the doc-sync edits would obscure the substantive change).
+
+## Out of scope
+
+- Not a hook or a gate; advisory only.
+- Not a doc generator; only updates existing references the change clearly requires.
+- Not for cosmetic rewrites.
+- Pre-existing modifications the user did not author this session are still treated as user WIP and never auto-staged without explicit confirmation.
+
+## Default behavior
+
+- No relevant references → commit as-is, no prompt.
+- Stale references → propose updates, one confirmation, single commit.
+- Unsure → ask the user before committing.

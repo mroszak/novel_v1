@@ -1,0 +1,28 @@
+{
+  "name": "novel-creator-gpt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Blueprint-first chapter-by-chapter novel engine",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "chapter": "tsx src/index.ts",
+    "compile:blueprint": "tsx src/index.ts --compile-blueprint",
+    "smoke": "tsx src/index.ts --smoke",
+    "test": "node --test --import tsx tests/*.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "dotenv": "^17.3.1",
+    "openai": "^6.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

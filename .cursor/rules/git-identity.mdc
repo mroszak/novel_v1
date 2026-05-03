@@ -1,0 +1,14 @@
+---
+description: Git and GitHub identity for this project
+alwaysApply: true
+---
+
+# Git & GitHub Identity
+
+- The user has **two GitHub accounts** (personal and work). This project belongs to the **personal** account.
+- Personal GitHub username: **mroszak** (email: mroszak@gmail.com)
+- Remote uses **SSH**: `git@github.com:mroszak/story_writer.git`
+- SSH key at `~/.ssh/id_ed25519` is tied to the personal account.
+- **Never push via HTTPS** for this repo — HTTPS credentials resolve to the work account.
+- When pushing, always use `git push origin main` (SSH remote is already configured).
+- **Never push to or interact with the work GitHub account** from this project.

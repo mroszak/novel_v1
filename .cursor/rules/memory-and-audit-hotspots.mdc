@@ -1,0 +1,16 @@
+---
+description: Protect rolling-memory and final-audit invariants
+globs: src/pipeline/**/*.ts
+alwaysApply: false
+---
+
+# Memory And Audit Hot Spots
+
+- In `build-rolling-memory.ts`, de-duping should keep the most specific fact, not the shortest paraphrase.
+- In `build-rolling-memory.ts`, only clear `mustNotKnowYet` when a single `knows` entry fully covers the forbidden fact's meaningful tokens; loose overlap is not enough.
+- Keep `activeTraits`, `dialogueHabits`, and `tabooNotes` semantically separate when merging voice data.
+- Do not map generic `voiceNotes` directly into `tabooNotes`.
+- Any synthesized voice card should carry a valid `updatedFromChapter`.
+- In final-audit flow, blocking decisions should follow the audit contract consistently, not ad hoc status/string heuristics.
+- `POST_FIX_WORD_COUNT` is advisory-only and must not flip audit blocking by itself.
+- If you touch these areas, add or update a focused regression test in `tests/runtime-safety.test.ts`.

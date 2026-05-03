@@ -1,0 +1,26 @@
+---
+description: Testing patterns for CLI and pipeline changes
+globs: tests/**/*.ts
+alwaysApply: false
+---
+
+# Testing Patterns
+
+- Prefer isolated-root CLI tests via `createTempRoot()` and `NOVEL_CREATOR_ROOT`.
+- Prefer `--smoke` coverage over live API calls.
+- Assert both terminal status/output and written artifacts when behavior changes.
+- Add focused regression tests for:
+  - rerun checkpoint reuse
+  - artifact metadata validation
+  - judge threshold/selection overrides
+  - spec critique gating, including `--skip-spec-critique` and required high-risk/escalated paths
+  - skip-revision behavior and the downstream `selection` / `selected` / `review` artifacts it synthesizes
+  - fix-loop and `literary-judge-post-fix` behavior when audit blocking changes
+  - cost-estimate stage lists and notes when stage naming or conditional execution changes
+  - rolling-memory merge behavior
+  - final-audit blocking behavior
+  - deterministic validator edge cases, especially duplicate-paragraph and knowledge-leak boundary matching
+  - `mustNotKnowYet` convergence rules in `build-rolling-memory.ts`
+  - smoke-helper calibration whenever validator changes are supposed to keep smoke output clean
+  - Phase 1 zone ownership (polish vs tournament), polish confidence-threshold gating, voice fingerprint extraction, and the reader-sim → next-chapter advisory hand-off
+  - voice-target loading/extraction fail-soft behavior (chapter 1 with no prior chapters, with `STYLE_SAMPLE.md` present, and after `STYLE_SAMPLE.md` is removed)

@@ -1,0 +1,35 @@
+---
+description: Update all pipeline contract surfaces together
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Pipeline Contract
+
+When changing stages, reruns, flags, or artifacts, review all affected contract files together:
+
+- `src/config.ts` for stage profiles, budgets, defaults, and paths
+- `src/types/index.ts` for options, artifact data, statuses, and telemetry
+- `src/index.ts` for CLI flags and help text
+- `src/pipeline/generate-spec.ts` for spec-loop sequencing and critique gating
+- `src/pipeline/judge-draft.ts` for pass-threshold logic and review blocking signals
+- `src/pipeline/run-chapter.ts` for orchestration, reuse, and blocking behavior
+- `src/pipeline/estimate-cost.ts` when stage names, prompt surfaces, or conditional stage behavior change
+- `src/pipeline/stage-utils.ts` for artifact paths/envelopes/status writing
+- `README.md`, `AGENTS.md`, and relevant `.cursor/rules/*.mdc` when operator-visible behavior or persistent project context changes
+- focused tests when runtime behavior changes
+
+Checklist:
+
+- New stage output is persisted as `ArtifactEnvelope<T>`
+- Reused artifacts still validate metadata identity
+- Smoke mode still has a deterministic path when practical
+- Cost/usage collection stays wired for any new provider call
+- Parallelized stages preserve existing required-vs-optional decision semantics
+- Skip paths still write the downstream artifact contract for `selection`, `selected`, and `review`
+- Conditional stages keep their runtime and estimate naming aligned, including `literary-judge-revision`, `literary-judge-post-fix`, and `*-fix-N`
+- Phase 1 post-selection stages (`polish-plan`, `polish-rejudge`, `opening-candidate-N`, `ending-candidate-N`, `title-candidate-N`, `tournament-selection-{zone}-N`, `tournament-rejudge`, `reader-simulation`, `voice-calibration`) stay advisory and fail-soft in `max`, and are skipped entirely on `standard` and `rerun`. Polish and tournament must own mutually exclusive zones. Reader-simulation must run on the final enhanced prose (after polish/tournament), not raw `selected`.
+- Polish and tournament rejudges must call `judgeDraft({ persistArtifact: false })` and write `chapter-N-polish-rejudge.json` / `chapter-N-tournament-rejudge.json` themselves. They must not overwrite `chapter-N-draft-review.json` or `chapter-N-revised-review.json`.
+- Polish patches are restricted to the paragraph tail (last sentence). Tournament zone artifacts must record `applied` state before persisting.
+- Voice-target and previous reader-sim are loaded with soft metadata validation (mismatches return null, never throw).
+- CLI/operator docs stay aligned when flags or runtime stage behavior change
