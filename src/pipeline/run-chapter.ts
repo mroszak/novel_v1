@@ -14,6 +14,7 @@ import { hasBlockingReviewSignals, judgeDraft } from "./judge-draft.js";
 import { applyLocalizedAuditPatch, applyLocalizedAuditPatchResult } from "./localized-audit-patch.js";
 import { runOpeningEndingTournament } from "./opening-ending-tournament.js";
 import { reviseDraft } from "./revise-draft.js";
+import { runVoiceGritPass } from "./voice-grit-pass.js";
 import { selectDraft } from "./select-draft.js";
 import {
   BlockedPipelineError,
@@ -397,9 +398,29 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       return result;
     }
 
-    // Post-selection enhancement: opening/ending tournament. Advisory and
-    // fail-soft; if it throws, downstream consumes `selected` unchanged.
+    // Post-selection enhancements (advisory + fail-soft; downstream consumes
+    // `selected` unchanged on any thrown error). Order is critical: voice-grit
+    // runs before the opening/ending tournament so the tournament still owns
+    // its reserved zones (opening, ending, paragraph-end, scene-break leadout).
     if (!startsAfterJudge(options)) {
+      try {
+        console.error(`[ch${options.chapterNumber}] Voice-grit pass...`);
+        const gritResult = await runVoiceGritPass({
+          packetArtifact,
+          approvedSpecArtifact,
+          selectedArtifact,
+          selectedReviewArtifact,
+          voiceTarget: packetArtifact.data.voiceTarget,
+          blueprintArtifacts: compilation.artifacts,
+          smoke: options.smoke,
+        });
+        selectedArtifact = gritResult.selectedArtifact;
+        selectedReviewArtifact = gritResult.selectedReviewArtifact;
+        for (const u of gritResult.usages) usages.push(u);
+      } catch (error) {
+        console.error(`[voice-grit] Outer failure, keeping selected as-is: ${(error as Error).message}`);
+      }
+
       try {
         console.error(`[ch${options.chapterNumber}] Opening/ending tournament...`);
         const tournamentResult = await runOpeningEndingTournament({
