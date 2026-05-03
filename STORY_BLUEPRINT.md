@@ -240,33 +240,144 @@ The Aurelia is, by design, an ensemble novel — but a strong novel needs a stru
   - Says one full English paragraph in the entire book — to Halloran, at the airlock, at chapter 19.
 - Knowledge Boundary: Confirms, on board, that the Soviet sub fired first; the cast does not insist on the confirmation, and Halloran writes it down anyway. Survives the night physically — he reaches the surface aboard Lift 12 with Erik, Adriana, and Halloran — but he is never officially recorded as a rescued survivor on the U.S. side; the book leaves his post-rescue fate (whether the Soviets get him back, whether the Americans hold him, whether anyone ever tells Anya) productively ambiguous. Drafting note: Yuri lives at the surface; only his official record is erased.
 
-### Key Supporting Character — Hugo & Vivienne Marchetti (Older Couple)
-- Name: Hugo Marchetti and Vivienne Marchetti
+### Key Supporting Character — Hugo Marchetti
+- Name: Hugo Marchetti
 - Role: supporting
-- Desire: To celebrate their forty-third anniversary in the most ridiculous building they have ever heard of, and to come home and tell their grandson about it.
-- Fear: That the night will require one of them to keep going without the other, and that they will, between them, be the kind of people who can.
-- Contradiction: Their grace under pressure is the moral grain of the book and the mechanism by which the book takes one of them; the book asks the reader to love them precisely so that the loss has weight.
-- Public Face: Mid-seventies; he was a structural welder before he was a small-town building inspector; she taught second grade for forty-one years; they are dressed for a black-tie dinner because they have always known how.
-- Private Truth: Vivienne wears a silver lifeboat-shaped pendant given to her by her late son, who served in the merchant marine; she has worn it every day for nineteen years. The pendant is a planted setup at chapter 1 and a payoff at chapters 11, 18, 21, and 25.
+- Desire: To celebrate his forty-third anniversary with Vivienne in the most ridiculous building he has ever heard of, and to come home and tell their grandson about it.
+- Fear: That the night will require Vivienne to keep going without him, and that he will, when the moment comes, be the kind of man who can let her.
+- Contradiction: His grace under pressure is the moral grain of the book and the mechanism by which the book takes him; the book asks the reader to love him precisely so the loss has weight when he goes back through the seal door for the Senator.
+- Public Face: Mid-seventies; was a structural welder before he was a small-town building inspector; dressed for a black-tie dinner because he has always known how.
+- Private Truth: Speaks in load tolerances when he is calm and in single nouns when he is afraid; that pattern is the tell that he is about to do something dangerous.
 - Voice Notes:
-  - Sentence rhythms learned in the 1930s; warm, clipped, polite; never sentimental about themselves.
-  - Hugo speaks in load tolerances when he is calm and in single nouns when he is afraid; Vivienne is the inverse.
-  - Their dialogue together is older than the building.
-- Knowledge Boundary: Civilian; knowledge bounded by what they are told and what they observe. Hugo dies at chapter 18 saving a Senator; Vivienne survives, walks Maddie to the airlock at chapter 21, refuses her place on the lift list, is later persuaded onto Lift 7, and is part of the Aurelia group on the surface.
+  - Sentence rhythms learned in the 1930s; warm, clipped, polite; never sentimental about himself.
+  - Load-tolerance metaphors when calm; single nouns when afraid.
+  - With Vivienne, dialogue older than the building.
+- Knowledge Boundary: Civilian; knowledge bounded by what he is told and what he observes. Dies at chapter 18 at the Le Hublot seal door saving a Senator who froze in the dining room.
 
-### Key Supporting Character — Ben & Cora Aldridge with Maddie (Young Couple & Child)
-- Name: Ben Aldridge, Cora Aldridge, and Maddie Aldridge
+### Key Supporting Character — Vivienne Marchetti
+- Name: Vivienne Marchetti
 - Role: supporting
-- Desire: To honeymoon properly, take Cora's nine-year-old niece on the trip of her life, and get her home to her mother on Tuesday.
-- Fear: That the night will require Ben and Cora to be the kind of parents Maddie does not yet have, and that they will not yet be old enough.
-- Contradiction: They are the family unit the reader is asked to spend the book hoping survives; the book lets them survive, and asks the reader to look at the cost of that survival as honestly as the cost of the deaths.
-- Public Face: Late twenties / early thirties; Ben is a grade school music teacher; Cora is a hospital pharmacist; Maddie is nine and counting things.
-- Private Truth: Cora is six weeks pregnant and has not told Ben yet; the book never names the pregnancy on page, but it shapes what she is willing to risk.
+- Desire: To celebrate her forty-third anniversary with Hugo and come home and tell their grandson about it; after chapter 18, to walk Maddie to the airlock and not look back.
+- Fear: That she will be the one of them who has to keep going.
+- Contradiction: Her grace under pressure is older than the building; the book lets her survive Hugo's death, walks her to the airlock with Maddie, and asks her to choose the living after she has refused her own place.
+- Public Face: Mid-seventies; taught second grade for forty-one years; dressed for a black-tie dinner because she has always known how.
+- Private Truth: Wears a silver lifeboat-shaped pendant given to her by her late son, who served in the merchant marine; has worn it every day for nineteen years. Sets her wristwatch forty-three minutes fast — one minute for each year of marriage.
+- Voice Notes:
+  - Sentence rhythms learned in the 1930s; warm, clipped, polite; never sentimental about herself.
+  - Inverse of Hugo: long sentences when afraid, single nouns when calm.
+  - Refuses to use the word "grief"; lets others use it for her.
+- Knowledge Boundary: Civilian. Survives the night. Walks Maddie to the airlock at chapter 21, refuses her own place on the lift list, is persuaded onto Lift 7 (~T+27:00) by Sandoval, and reaches the surface aboard the USCGC Vigilant with the busboy beside her.
+
+### Key Supporting Character — Ben Aldridge
+- Name: Ben Aldridge
+- Role: supporting
+- Desire: To honeymoon properly with Cora and to be the uncle Maddie remembers from this trip.
+- Fear: That the night will require him to be the kind of father he has not yet learned to be.
+- Contradiction: A grade-school music teacher who reads people without trying and is now in a building that punishes hesitation; he reads McGowan's face at chapter 21 a second before Cora does.
+- Public Face: Early thirties; grade school music teacher; quietly observant.
+- Private Truth: Has noticed Cora is slipping the wedding band on and off without thinking and has not yet asked her why; suspects he already knows.
+- Voice Notes:
+  - Truncated, overlapping rhythms with Cora — two people finishing each other's sentences.
+  - Quieter than the room; carries weight without raising volume.
+- Knowledge Boundary: Civilian. Survives. Boards Lift 3 with Cora and Maddie at chapter 21.
+
+### Key Supporting Character — Cora Aldridge
+- Name: Cora Aldridge
+- Role: supporting
+- Desire: To get her nine-year-old niece home to her mother on Tuesday.
+- Fear: That the night will require her to choose between being a wife, an aunt, and a mother she has not yet told her husband she is becoming.
+- Contradiction: A hospital pharmacist's clinical training surfaces in her body language under pressure (hand flat to her abdomen, rings off and on without thinking); competence that will not let her speak the truth she is carrying.
+- Public Face: Late twenties; hospital pharmacist; six-week-old wedding band loose on her finger.
+- Private Truth: Six weeks pregnant; has not told Ben yet; the book never names the pregnancy on page, but it shapes what she is willing to risk.
+- Voice Notes:
+  - Truncated, overlapping rhythms with Ben.
+  - Clinical noun-precision when she is afraid; the wedding band's drift on her finger registers in body language, not dialogue.
+- Knowledge Boundary: Civilian. Survives. Boards Lift 3 with Ben and Maddie at chapter 21.
+
+### Key Supporting Character — Maddie Aldridge
+- Name: Maddie Aldridge
+- Role: supporting
+- Desire: To count what is in front of her.
+- Fear: That she will lose count.
+- Contradiction: The simplest POV in the book; her counting motif is the book's quiet thread, and she is the only character who pays off the absent Aurelia by leaving it out of the count.
+- Public Face: Nine years old; Cora's niece; on the trip of her life with her aunt and uncle.
+- Private Truth: Counts everything she sees; carries Vivienne's pendant in her closed hand from chapter 21 through chapter 25.
 - Voice Notes:
   - Maddie's POV, used once at chapter 25, must be the simplest in the book — short sentences, declarative, anchored in counting.
-  - Ben and Cora speak in the truncated, overlapping rhythms of two people who already finish each other's sentences.
-  - The pendant transfers from Vivienne to Maddie at chapter 21 (after returning to Vivienne via the busboy in chapter 18) and stays in Maddie's hand through chapter 25.
-- Knowledge Boundary: Civilians; the book uses them as the reader's emotional ground. Maddie's chapter-25 POV pays off the counting motif planted at chapter 5. All three survive.
+  - Numbers before adjectives.
+- Knowledge Boundary: Civilian. Survives. Maddie's chapter-25 POV pays off the counting motif planted at chapter 5; she does not add the dark water where the Aurelia's surface marker lights had been to the count.
+
+### Minor Character — Daniel Park
+- Name: Daniel Park
+- Role: minor
+- Desire: To work the Aurelia's opening dinner well and to be remembered by name on his first VIP shift.
+- Fear: That he will trip a tray in front of the Senator.
+- Public Face: Early twenties; new waiter; proud of the uniform; knows the service-route gangway better than the VIP corridor.
+- Private Truth: Has been on the southwest gallery side all night because the maître d' put him there for being slow on the atrium floor.
+- Knowledge Boundary: Civilian staff. Aware of nothing structural; learns nothing about the cover-up; trusts the building.
+
+### Minor Character — Lt. Cmdr. Ennis
+- Name: Lt. Cmdr. Ennis
+- Role: minor
+- Desire: To get his sailors out of the water and back aboard Charlotte without filing the wrong sentence into the wrong log.
+- Fear: That his name will be on the order he is being asked to repeat.
+- Public Face: Charlotte's executive officer; the most senior man Beckwith could spare from a damaged sub.
+- Private Truth: Carries written instructions he is uneasy about and a story about Charlotte's torpedo run he has been told to repeat.
+- Knowledge Boundary: Knows what Charlotte fired and at whom; knows what the Navy wishes the civilian record to say about it; chooses silence over dispute when his commander refuses an order.
+
+### Minor Character — Petty Officer Cole
+- Name: Petty Officer Cole
+- Role: minor
+- Desire: To call sonar contacts the way the manual says.
+- Fear: That a contact he calls right will mean someone he cannot see has died.
+- Public Face: Charlotte's third-class sonarman, very young.
+- Private Truth: Trusts the manual to tell him what to call.
+- Knowledge Boundary: Knows only what sonar tells him; uses the plain word for what he hears even when the bridge would prefer he not.
+
+### Minor Character — Soviet Captain
+- Name: Soviet Captain
+- Role: minor
+- Desire: To survive the contact.
+- Fear: That his sub is already lost.
+- Public Face: Voice-only on Charlotte's intercept channel; never seen.
+- Private Truth: Aware his command is over before the Aurelia is.
+- Knowledge Boundary: Charlotte hears him through radio fragments only; never makes contact with the Aurelia.
+
+### Minor Character — Esteban Ortiz
+- Name: Esteban Ortiz
+- Role: minor
+- Desire: To finish the patch and get back inside.
+- Fear: That he will not, and that Sandoval will have to choose between him and the submersible.
+- Public Face: Senior diver, Reyes's hire; the most experienced man Reyes has on exterior repairs.
+- Private Truth: Trusts Reyes's engineering and Sandoval's piloting; understands a patch can buy time but not survival.
+- Knowledge Boundary: Knows the exterior of the building better than any man aboard; aware of the cover-up only by inference, never told directly.
+
+### Minor Character — McGowan
+- Name: McGowan
+- Role: minor
+- Desire: To be the kind of guest the Aurelia's magazine cover will quote favorably.
+- Fear: That he has misjudged what the night was for.
+- Public Face: Loud at dinner about the magazine cover; the Tampa senator's seatmate.
+- Private Truth: Reads the room better than his dinner-table volume suggests; capable of a small private decency without expecting credit for it.
+- Knowledge Boundary: Civilian guest; aware of nothing technical; takes his cues from the staff and from the people in front of him in the queue.
+
+### Minor Character — The Senator
+- Name: The Senator
+- Role: minor
+- Desire: To be at the Aurelia's opening because his constituents back home will read about it.
+- Fear: That he is physically slower than his bearing suggests, and that the night may require him to admit it.
+- Public Face: Florida senator; unexpectedly kind to staff; keeps asking what the depth is and forgetting the answer.
+- Private Truth: A man whose age the room has politely agreed not to notice.
+- Knowledge Boundary: Civilian guest; the book never gives him a first name; relies on staff to tell him what bulkhead and what depth.
+
+### Minor Character — The Busboy
+- Name: The Busboy
+- Role: minor
+- Desire: To do his shift well, and to stay near Vivienne after she steadies him at the gallery seal door.
+- Fear: That he will lose the pendant Vivienne placed in his hand.
+- Public Face: Young Aurelia banquet staffer; nameless on page.
+- Private Truth: Carries the pendant in his apron pocket as a keepsake, not a duty; never asks Vivienne about it.
+- Knowledge Boundary: Civilian staff. Aware of nothing structural; loyalty is to the person in front of him, not to the building.
 
 ## Relationship Dynamics
 The Aurelia, on the night the book takes place, is a building of pressure lines as carefully drawn as its load paths.
@@ -582,8 +693,10 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Adriana Vauclair
   - Felix Crane
   - Reed Halloran
-  - Hugo and Vivienne Marchetti
-  - Ben and Cora Aldridge
+  - Hugo Marchetti
+  - Vivienne Marchetti
+  - Ben Aldridge
+  - Cora Aldridge
   - Maddie Aldridge
   - Dr. Eve Sandoval
 - Mandatory Beats:
@@ -629,8 +742,8 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Active Cast:
   - Cmdr. Leonard Beckwith
   - Lt. Cmdr. Ennis
-  - Petty Officer 3rd Class Cole (sonarman)
-  - Soviet captain (radio fragments only)
+  - Petty Officer Cole
+  - Soviet Captain
 - Mandatory Beats:
   - Submarine confrontation begins, escalates, breaks.
   - Soviet sub fires first; Charlotte is hit; bulkhead 4 floods.
@@ -668,8 +781,8 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Tomás Reyes
   - Roland Vauclair
   - Adriana Vauclair
-  - Felix Crane (passing)
-  - Dr. Eve Sandoval (passing)
+  - Felix Crane
+  - Dr. Eve Sandoval
 - Mandatory Beats:
   - First tremor felt by Erik.
   - Pressure alarm reset.
@@ -702,10 +815,9 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Active Cast:
   - Felix Crane
   - Reed Halloran
-  - Adriana Vauclair (in distance)
-  - Vivienne Marchetti (brief)
-  - Hugo Marchetti (brief)
-  - Le Hublot staff
+  - Adriana Vauclair
+  - Vivienne Marchetti
+  - Hugo Marchetti
 - Mandatory Beats:
   - Crane switches the cassette recorder on.
   - Halloran takes a phone call he does not want anyone to see.
@@ -738,9 +850,8 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Adriana Vauclair
   - Roland Vauclair
   - Tomás Reyes
-  - Erik Halvorsen (over radio)
-  - Maddie Aldridge (passing)
-  - Aurelia staff
+  - Erik Halvorsen
+  - Maddie Aldridge
 - Mandatory Beats:
   - Adriana sees her father refuse to act.
   - Adriana finds the Coral Suite empty.
@@ -774,7 +885,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Erik Halvorsen
   - Tomás Reyes
   - Reed Halloran
-  - Roland Vauclair (in distance, on the dais)
+  - Roland Vauclair
 - Mandatory Beats:
   - The structural diagnosis is made on page.
   - Erik does not yet tell the guests.
@@ -808,9 +919,9 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Active Cast:
   - Dr. Eve Sandoval
   - Daniel Park
-  - Erik Halvorsen (arriving at the end)
-  - Tomás Reyes (arriving at the end)
-  - Roland Vauclair (on radio)
+  - Erik Halvorsen
+  - Tomás Reyes
+  - Roland Vauclair
 - Mandatory Beats:
   - The first death happens on page.
   - Sandoval, not the protagonist, calls it.
@@ -844,7 +955,6 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Adriana Vauclair
   - Tomás Reyes
   - Erik Halvorsen
-  - Submersible pilots
 - Mandatory Beats:
   - The rescue request is made and accepted.
   - All three submersibles leave at once.
@@ -909,8 +1019,8 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Felix Crane
   - Reed Halloran
   - Lt. Cmdr. Ennis
-  - Roland Vauclair (on dais)
-  - Bystanders (including the Senator who will not survive chapter 18)
+  - Roland Vauclair
+  - The Senator
 - Mandatory Beats:
   - First submersible returns with sailors.
   - Crane gets close to Ennis and is intercepted.
@@ -944,9 +1054,9 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Erik Halvorsen
   - Hugo Marchetti
   - Vivienne Marchetti
-  - The busboy
-  - Dr. Eve Sandoval (medical)
-  - Tomás Reyes (engineering)
+  - The Busboy
+  - Dr. Eve Sandoval
+  - Tomás Reyes
 - Mandatory Beats:
   - First flooding event lands on page.
   - The Marchettis survive together; the busboy receives the pendant.
@@ -1015,7 +1125,6 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Roland Vauclair
   - Reed Halloran
   - Erik Halvorsen
-  - All guests (silent crowd)
 - Mandatory Beats:
   - The surface delays evacuation, on the open intercom.
   - Adriana takes the intercom and breaks publicly with her father.
@@ -1047,8 +1156,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Ending Hook: The XO opens his mouth to speak. The chapter ends before he answers.
 - Active Cast:
   - Cmdr. Leonard Beckwith
-  - Lt. Cmdr. Ennis (XO; returned to Charlotte at the end of chapter 10 on a returning submersible cycle)
-  - Watch crew
+  - Lt. Cmdr. Ennis
 - Mandatory Beats:
   - The order to ignore Soviet survivors is shown in writing.
   - Beckwith refuses, on record, in front of his XO.
@@ -1079,7 +1187,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Ending Hook: Reyes, alone at the engineering board, looks up at his wife's photograph taped to the inside of the panel and says, in Spanish, "I am sorry."
 - Active Cast:
   - Tomás Reyes
-  - Erik Halvorsen (over radio)
+  - Erik Halvorsen
   - Maddie Aldridge
   - Cora Aldridge
   - Hugo Marchetti
@@ -1114,9 +1222,9 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Ending Hook: Sandoval, watching Nereid sink past the airlock window, sees, very faintly, a hand wave from a porthole far down in the dark — the Soviet sub.
 - Active Cast:
   - Dr. Eve Sandoval
-  - Esteban Ortiz (senior diver)
-  - Tomás Reyes (over radio)
-  - Erik Halvorsen (over radio)
+  - Esteban Ortiz
+  - Tomás Reyes
+  - Erik Halvorsen
 - Mandatory Beats:
   - External repair attempt is staged.
   - Nereid is lost.
@@ -1150,7 +1258,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Roland Vauclair
   - Reed Halloran
   - Tomás Reyes
-  - Adriana Vauclair (entering at the end)
+  - Adriana Vauclair
 - Mandatory Beats:
   - The third memo is read aloud.
   - Vauclair admits the design compromises.
@@ -1187,8 +1295,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Vivienne Marchetti
   - Maddie Aldridge
   - The Senator
-  - The young busboy (with Vivienne since chapter 11)
-  - Bystanders
+  - The Busboy
 - Mandatory Beats:
   - Le Hublot fails at ~T+20:30, before the formal civilian-evac sequence opens at T+24:00.
   - Hugo dies saving the Senator.
@@ -1224,7 +1331,6 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Erik Halvorsen
   - Tomás Reyes
   - Dr. Eve Sandoval
-  - Submersible pilot
 - Mandatory Beats:
   - Halloran disobeys orders on paper, on the open intercom.
   - Lemekhin is brought aboard.
@@ -1297,8 +1403,6 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Maddie Aldridge
   - Vivienne Marchetti
   - McGowan
-  - Submersible pilot
-  - Queued guests
 - Mandatory Beats:
   - The pendant transfers permanently to Maddie.
   - McGowan's surprise grace.
@@ -1401,8 +1505,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Roland Vauclair
   - Adriana Vauclair
   - Reed Halloran
-  - Yuri Lemekhin
-  - Submersible pilot
+  - Kapitan-Leytenant Yuri Lemekhin
 - Mandatory Beats:
   - Reyes's death lands on page (functional, not noble — only he holds the sequence).
   - Vauclair stays with the building, on his own choice.
@@ -1439,10 +1542,8 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - Maddie Aldridge
   - Cora Aldridge
   - Ben Aldridge
-  - Vivienne Marchetti (two rows of blankets away)
-  - The young busboy from chapter 11 (with Vivienne)
-  - Coast Guard officer
-  - Navy lieutenant (in distance)
+  - Vivienne Marchetti
+  - The Busboy
 - Mandatory Beats:
   - The Aurelia is gone from the count.
   - Maddie counts at the surface.
@@ -1479,9 +1580,15 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Active Cast:
   - Erik Halvorsen
   - Felix Crane
-  - The editor
-  - Two men in suits
-  - Survivors named in passing (Sandoval, Halloran, Adriana, Lemekhin, the Aldridges, Vivienne, McGowan)
+  - Dr. Eve Sandoval
+  - Reed Halloran
+  - Adriana Vauclair
+  - Kapitan-Leytenant Yuri Lemekhin
+  - Ben Aldridge
+  - Cora Aldridge
+  - Maddie Aldridge
+  - Vivienne Marchetti
+  - McGowan
 - Mandatory Beats:
   - Erik's debrief (without giving up the tape).
   - Crane's delivery of the tape.

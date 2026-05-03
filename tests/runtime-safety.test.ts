@@ -994,7 +994,7 @@ test("compactJson produces valid minified output", () => {
   assert.deepEqual(JSON.parse(result), data);
 });
 
-test("buildLocalizedAuditPatchResult fixes temporal mismatch and dock-two repetition locally", () => {
+test("buildLocalizedAuditPatchResult fixes temporal mismatch but leaves REPETITION for the LLM continuity fix", () => {
   const prose = [
     "The signal rode a frequency they had cleaned off the guest-facing channels hours ago.",
     "The Dock Two intake was already crowded, and the Dock Two intake stayed in view while the crowd kept walking.",
@@ -1021,18 +1021,18 @@ test("buildLocalizedAuditPatchResult fixes temporal mismatch and dock-two repeti
   };
 
   const patch = buildLocalizedAuditPatchResult(prose, audit);
-  assert.ok(patch, "Localized patch should be produced for supported temporal/repetition issues");
+  assert.ok(patch, "Localized patch should be produced for the temporal issue");
   assert.equal(patch.requiresDeltaRefresh, false, "Cosmetic localized patch should skip delta/memory refresh");
   assert.ok(patch.appliedFixes.includes("Temporal inconsistency in radio-suppression line"));
   assert.ok(!patch.prose.includes("hours ago"), "Temporal phrase should be localized to the chapter timeline");
   assert.ok(patch.prose.includes("earlier tonight"));
   assert.ok(
-    !patch.prose.includes("the Dock Two intake stayed in view"),
-    "Second repeated phrase should be varied deterministically",
+    !patch.appliedFixes.includes("REPETITION"),
+    "REPETITION must NOT be patched locally — the deterministic replacement was unsafe and regressed prose; the LLM continuity fix handles repetition",
   );
   assert.ok(
-    patch.prose.includes("the intake stayed in view"),
-    "Generic replacement should keep the last noun of the repeated phrase",
+    patch.prose.includes("the Dock Two intake stayed in view"),
+    "Repeated phrase should be left untouched for the LLM continuity fix",
   );
 });
 

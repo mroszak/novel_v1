@@ -74,7 +74,7 @@ Voice-grit + tournament invariants:
 - Any voice card synthesized from chapter data should carry a valid `updatedFromChapter`.
 - In `src/pipeline/generate-spec.ts`, `mapChapterFunctionToReaderJob` is the single source for translating `ChapterFunction` to `ChapterRetentionFunction`. Reuse it from judge + draft + audit prompts.
 - In `src/pipeline/run-chapter.ts`, `skipRevisionThreshold` may short-circuit revision only when the first draft passes threshold and has no blocking review signals. The skip path must still write `selection`, `selected`, and `review`.
-- In `src/pipeline/run-chapter.ts`, final audit blocking should follow the audit contract consistently, `POST_FIX_WORD_COUNT` remains advisory-only, and `qualitySettings.maxFixAttempts` (default 1) caps the continuity fix loop.
+- In `src/pipeline/run-chapter.ts`, final audit blocking should follow the audit contract consistently, `POST_FIX_WORD_COUNT` remains advisory-only, and `qualitySettings.maxFixAttempts` (default 2) caps the continuity fix loop.
 - Voice-grit must NOT touch reserved zones; the tournament owns opening + ending; polish-pass and reader-simulation are NOT part of v2.
 - `voice-target.json`, `market-promise.json`, `continuity-manifest.json`, `author-brief.json`, and `continuity-state-after-N.json` are loaded with soft metadata validation (schema, artifactType, `blueprintHash`, `blueprintVersion`). Mismatches drop silently rather than throwing.
 - In `src/validators/prose-quality.ts`, knowledge-leak matching should stay boundary-aware: allow punctuated mentions like `Lena,` or `Lena's`, but reject substring matches like `annual` for `Ann`.

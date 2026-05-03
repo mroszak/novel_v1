@@ -72,60 +72,8 @@ function applyTemporalPatch(prose: string, issue: FinalAuditIssue): string | nul
   return replaceNthOccurrence(prose, target, replacement, 1);
 }
 
-function extractRepetitionEvidence(issue: FinalAuditIssue): string | null {
-  const marker = "evidence:";
-  const index = issue.fixInstruction.toLowerCase().indexOf(marker);
-  if (index === -1) {
-    const quoted = parseQuotedPhrases(issue.description);
-    return quoted[0] ?? null;
-  }
-
-  const raw = issue.fixInstruction.slice(index + marker.length).trim();
-  return raw.length > 0 ? raw : null;
-}
-
-const PREP_PREFIX_RE = /^(from|at|into|toward|towards|near|past|through|inside|outside|beneath|above|around|along|across|behind|beyond|beside|between|over|under|within)\s+/i;
-
-function buildGenericReplacement(phrase: string): string | null {
-  const trimmed = phrase.trim();
-  if (trimmed.length < 4) return null;
-
-  const prepMatch = trimmed.match(PREP_PREFIX_RE);
-  const prefix = prepMatch ? prepMatch[0] : "";
-  const core = trimmed.slice(prefix.length);
-
-  const words = core.split(/\s+/);
-  if (words.length < 2) return null;
-
-  const lastWord = words[words.length - 1]!;
-  const article = /^[aeiou]/i.test(lastWord) ? "the" : "the";
-  return `${prefix}${article} ${lastWord}`.replace(/\s+/g, " ").trim();
-}
-
-function applyRepetitionPatch(prose: string, issue: FinalAuditIssue): string | null {
-  if (issue.title !== "REPETITION") {
-    return null;
-  }
-
-  const evidence = extractRepetitionEvidence(issue);
-  if (!evidence) {
-    return null;
-  }
-
-  const replacement = buildGenericReplacement(evidence);
-  if (!replacement) {
-    return null;
-  }
-
-  if (replacement.toLowerCase() === evidence.trim().toLowerCase()) {
-    return null;
-  }
-
-  return replaceNthOccurrence(prose, evidence, replacement, 2);
-}
-
 function applyIssuePatch(prose: string, issue: FinalAuditIssue): string | null {
-  return applyTemporalPatch(prose, issue) ?? applyRepetitionPatch(prose, issue);
+  return applyTemporalPatch(prose, issue);
 }
 
 export function buildLocalizedAuditPatchResult(
