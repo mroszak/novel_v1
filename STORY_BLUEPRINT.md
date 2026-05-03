@@ -315,11 +315,11 @@ The reader knows by chapter 2 that something has gone wrong outside the hotel; t
 
 The southwest crack is visible to the reader from chapter 1 (cosmetic), suggested as wrong by Erik at chapter 3, diagnosed structurally by Erik at chapter 6, confessed to Vauclair at chapter 7, and breached on page at chapter 11.
 
-The submarine clash is on page in chapter 2 (reader); Halloran knows from chapter 7 onward; Erik, Reyes, and Sandoval learn at chapter 12; the wider cast learns through Adriana's intercom break at chapter 13.
+The submarine clash is on page in chapter 2 (reader); Halloran knows from chapter 7 onward; Erik, Reyes, and Sandoval learn at chapter 12; the wider hotel population infers a military cause from Adriana's chapter 13 intercom break (she names only the surface delay, not its reason) and learns it undeniably at chapter 19, when Halloran disobeys on the open intercom and Lemekhin steps off Daphne in Soviet uniform.
 
 The Soviet sub's survivors are first hinted at chapter 9 (anomalous Morse return), confirmed to the protagonist at chapter 12, retrieved at chapter 19.
 
-The cover-up is confirmed to the reader at chapter 13 (midpoint) and to the wider cast at chapter 16. The cover-up's details — the sealed envelope to Ennis, Beckwith's refused order, the surface delays — are paid out across chapters 10, 13, 14, and 19.
+The cover-up is confirmed to the reader and the inner cast at chapter 13 — that confirmation is the midpoint, the moment the book changes shape from disaster novel to cover-up novel — but it is not made undeniable to the wider hotel population until chapter 19, when Halloran disobeys on the open intercom and Lemekhin arrives in uniform. The cover-up's details — the sealed envelope to Ennis, Beckwith's refused order, the surface delays — are paid out across chapters 10, 13, 14, and 19.
 
 Vauclair's third overruled memo (the burned one Erik kept in carbon) is the structural-design reveal at chapter 17. Vauclair's confession on tape lands at chapter 23.
 
@@ -339,7 +339,7 @@ What absolutely must remain hidden until the right chapter:
 ## Act Spine and Chapter-by-Chapter Obligations
 Act I (chapters 1-7): the Aurelia is celebrated and faintly wrong; the submarine clash happens on page (chapter 2) and the impact is dismissed as cosmetic; the first internal failure is investigated; the structural diagnosis is made; the first death lands. Chapter 7 closes the act with the cosmetic crack reframed as structural and the southwest sector identified as the wound. Chapter 1 must place the reader inside the building before any disaster information arrives. Chapter 7 must land the first death on the page, not off it.
 
-Act IIa (chapters 8-13): the Navy rescue request commandeers all three submersibles; the first major flood happens; the journalist's thread sharpens; the Soviet Morse signal is detected and protected; the midpoint at chapter 13 confirms to protagonist and reader that the surface is delaying rescue to bury the submarine clash. Chapter 13 must turn the disaster novel into a cover-up novel.
+Act IIa (chapters 8-13): the Navy rescue request commandeers all three submersibles; the first major flood happens; the journalist's thread sharpens; the Soviet Morse signal is detected and protected; the midpoint at chapter 13 confirms to the reader and the inner cast that the surface is actively delaying rescue, and the reader infers (from chapters 2, 10, 12, and 13 cumulatively) that the delay is to bury the submarine clash, even though Adriana herself does not yet know the reason when she takes the intercom. Chapter 13 must turn the disaster novel into a cover-up novel.
 
 Act IIb (chapters 14-19): the cover-up is held on paper inside the Navy and on the open intercom inside the Aurelia. Vauclair's denial deepens. The architect's burned memo returns. An external-repair attempt at chapter 16 (T+18:00) costs the submersible Nereid (the diver Ortiz survives, badly cold-shocked); the design-flaw confession lands at chapter 17; the Le Hublot seal event at chapter 18 (~T+20:30, before formal evac opens) costs Hugo Marchetti, who pushes a Senator through a closing bulkhead and stays on the wrong side himself; the Soviet survivor is brought aboard at chapter 19 (~T+22:00); Halloran begins to break. Chapter 17 must confess design-level guilt without sentimentality.
 
@@ -440,10 +440,10 @@ Notes: Vauclair, Reyes (in the southwest corridor), and unnamed staff who stayed
 - T+8:30 | all three submersibles depart with sailors | +8:30
 - T+10:00 | first major flooding event, southwest gallery | +10:00
 - T+12:00 | Soviet Morse signal received and translated | +12:00
-- T+14:00 | midpoint: cover-up confirmed on the open intercom | +14:00
+- T+14:00 | midpoint: cover-up confirmed to reader and inner cast; Adriana's intercom break reveals surface delay (not its reason) to the wider hotel | +14:00
 - T+18:00 | external repair attempt; Nereid lost | +18:00
 - T+22:00 | Soviet survivor (Lemekhin) brought aboard | +22:00
-- T+26:00 | terminal cascade begins; second major breach in southwest sector | +26:00
+- T+23:00 | terminal cascade begins; second major breach in southwest sector | +23:00
 - T+28:00 | bracing reveal; Reyes claims the corridor | +28:00
 - T+30:00 | sacrifice and seal | +30:00
 - T+31:00 | last submersible to surface | +31:00
@@ -461,9 +461,9 @@ Notes: Vauclair, Reyes (in the southwest corridor), and unnamed staff who stayed
 - Submersibles dispatched for sailors | hotel guests | 8 | reveal
 - Soviet survivors | reader | 9 | hint
 - Soviet survivors | Erik | 12 | reveal
-- Soviet survivors | hotel cast | 13 | reveal
+- Soviet survivors | hotel cast | 19 | reveal
 - Cover-up | reader | 13 | reveal
-- Cover-up | hotel cast | 16 | reveal
+- Cover-up | hotel cast | 19 | reveal
 - Erik's third memo | reader | 1 | hint
 - Erik's third memo | Vauclair | 17 | payoff
 - Erik's third memo | recorded onto cassette | 23 | payoff
@@ -1030,7 +1030,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Reveal:
   - The surface is slowing rescue.
 - Withhold:
-  - That the slowing is to bury the submarine clash (lands at chapter 14 by inference, chapter 16 to the wider cast).
+  - That the slowing is to bury the submarine clash (lands at chapter 14 by inference, chapter 19 to the wider cast).
 - Risk Flags:
   - anchor
   - reveal-sensitive
@@ -1251,7 +1251,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Title: Cascade
 - Function: escalation
 - POV: Erik Halvorsen
-- Summary: The Aurelia begins terminal cascade; the southwest sector takes a second, larger breach; two more compartments seal; the engineering spine begins to lose pumping capacity; Reyes calculates eight hours; Erik calculates four; they average; the remaining guests — about one hundred and forty — must be evacuated by the two remaining submersibles in lifts of twelve, on a rotation that will take six hours minimum; Vauclair, on the dais, is still trying to hold the room with reassurance and a third toast; Erik walks the length of the atrium, takes the open intercom out of Adriana's hand without asking, and orders the public rooms abandoned and every guest moved to Airlock B before the official surface evacuation order is approved — he names corridors, names the sealed sectors, names the rotation, and names the people who must move now; Vauclair tries to step in; Erik says, in front of staff, the press, and three hundred people, "Roland, sit down" — the first time he has used Vauclair's first name in eighteen months, and the room hears it as the architect formally taking the building back from the man who built it; the math does not work without losing the southwest service corridor, and the southwest service corridor contains the bracing that is keeping the building alive; Erik understands what the climax is; he does not yet say it.
+- Summary: The Aurelia begins terminal cascade; the southwest sector takes a second, larger breach; two more compartments seal; the engineering spine begins to lose pumping capacity; Reyes calculates eight hours; Erik calculates four; they average; the remaining people — about one hundred and forty-four guests, staff, and inner-circle holdouts — must be evacuated by the two remaining submersibles in lifts of twelve, on a rotation that will take six hours minimum; Vauclair, on the dais, is still trying to hold the room with reassurance and a third toast; Erik walks the length of the atrium, takes the open intercom out of Adriana's hand without asking, and orders the public rooms abandoned and every guest moved to Airlock B before the official surface evacuation order is approved — he names corridors, names the sealed sectors, names the rotation, and names the people who must move now; Vauclair tries to step in; Erik says, in front of staff, the press, and more than a hundred remaining guests, "Roland, sit down" — the first time he has used Vauclair's first name in eighteen months, and the room hears it as the architect formally taking the building back from the man who built it; the math does not work without losing the southwest service corridor, and the southwest service corridor contains the bracing that is keeping the building alive; Erik understands what the climax is; he does not yet say it.
 - Chapter Goal: Establish the climax mathematics; make the sacrifice mathematical, not dramatic; sharpen the Erik/Reyes silence; deliver Erik's first costly active reversal — he was not loud enough before, and his redemption begins with him being loud, ugly, inconvenient, and correct in front of the whole room.
 - Target Word Count: 4400
 - Ending Hook: Reyes looks at Erik across the engineering board. He says, "If we don't hold the corridor, we lose the building before the lifts finish." Erik does not answer.
@@ -1281,6 +1281,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - anchor
 - Notes:
   - This chapter is a clock chapter; resist sentimentality, lean on the numbers.
+  - Distinguish T+23:00 (Erik and Reyes recognize the cascade is terminal; the cast that knows is small) from T+24:00 (Erik's intercom order turns that recognition into operational policy and Lift 1 departs). The hour between is taut, not panicked — the public room still has Vauclair on the dais and the orchestra still recovering.
 
 ### Chapter 21
 - Title: The Pendant
