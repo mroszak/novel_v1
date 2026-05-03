@@ -28,7 +28,7 @@ per chapter:
        revise → judge → pairwise-select → write the same artifacts
   → voice-grit pass        (advisory, fail-soft; reserved zones blocked)
   → opening + ending tournament (1 candidate per zone, advisory, fail-soft)
-  → delta → memory → final audit → (1 fix attempt if needed) → publish
+  → delta → memory → final audit → (up to 2 fix attempts if needed) → publish
   → continuity-state-update (deterministic post-publish merge)
   → voice-calibration       (deterministic post-publish extraction)
 ```
@@ -115,7 +115,7 @@ Both sections are optional. An empty/absent section means the engine works with 
 | author-brief (one-time per blueprint) | GPT-5.5 medium | ~$0.05 amortized |
 | continuity-state-update / continuity-manifest / market-promise compiles | deterministic | $0.00 |
 
-With one revision pass: ~$7.35. With revision + 1 fix attempt: ~$9–11. Twelve chapters: $60–130. Wall-time: ~10–15 min/chapter typical.
+With one revision pass: ~$7.35. With revision + up to 2 fix attempts: ~$10–13. Twelve chapters: $70–160. Wall-time: ~10–20 min/chapter typical.
 
 Real numbers come from `--estimate-cost` and from actual provider invoices after the first live runs.
 

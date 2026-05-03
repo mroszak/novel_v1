@@ -25,7 +25,11 @@ function buildSmokeFix(
 }
 
 function buildAuditChecklist(audit: FinalAuditReport): string {
-  return audit.issues
+  const errorIssues = audit.issues.filter((issue) => issue.severity === "error");
+  if (errorIssues.length === 0) {
+    return "(no error-severity issues; warnings appear in <audit_report> for context but are not mandatory fixes for this pass)";
+  }
+  return errorIssues
     .map((issue, index) => `${index + 1}. [${issue.severity}] ${issue.title}: ${issue.fixInstruction}`)
     .join("\n");
 }
@@ -60,13 +64,14 @@ export async function fixContinuity(params: {
       stage: config.stageProfiles.continuityFix,
       system: [
         "You are Opus performing a surgical continuity fix on a novel chapter.",
-        "Make the smallest necessary changes to resolve every audit failure in a single pass.",
-        "Every error-severity issue in the audit report is mandatory; do not leave any one partially fixed.",
+        "Address ONLY the error-severity issues in <audit_checklist>. Warning-severity items in <audit_report> are advisory; do not regenerate prose to address them in this pass.",
+        "Make the smallest possible delta. Sentences not implicated by an error must remain byte-identical. Do NOT reword, polish, or paraphrase clean prose.",
+        "If a previous fix attempt has already cleaned the chapter and only added length-band issues remain, you may add a short scene-extension paragraph rather than rewriting earlier prose.",
         "If a line causes a knowledge-boundary or factual-audit error, cut or relocate it instead of preserving it for style.",
         "If an issue says a POV character knows too much, remove the forbidden inference rather than paraphrasing it in the same POV.",
         "If an issue says route naming or geography is inconsistent, pick one clear label and use it consistently everywhere.",
-        "Preserve working prose, voice, pacing, and scene architecture only after the audit failures are fully resolved.",
-        "Output only the fixed chapter prose.",
+        "Voice notes and motif phrases in the chapter packet are BEHAVIOR DESCRIPTIONS, not lines to write into prose. Never quote them verbatim; never use any four-word span from the packet as prose. Render the same behavior with varied surface wording.",
+        "Output only the fixed chapter prose. No commentary, no diff markup.",
       ].join("\n"),
       prompt: [
         "<audit_checklist>",

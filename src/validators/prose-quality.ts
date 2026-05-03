@@ -65,19 +65,21 @@ export function detectRepetition(prose: string): ValidatorIssue[] {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
+  // 4-word phrase echoes are statistically common in literary prose at ~4000 words.
+  // Two occurrences are typically incidental; three is suspicious; four+ is a craft failure.
   for (const [phrase, count] of counts) {
-    if (count >= 3) {
+    if (count >= 4) {
       issues.push({
         severity: "error",
         code: "REPETITION",
         message: `Phrase "${phrase}" repeated ${count} times.`,
         evidence: [phrase],
       });
-    } else if (count === 2) {
+    } else if (count === 3) {
       issues.push({
         severity: "warning",
         code: "REPETITION",
-        message: `Phrase "${phrase}" appears twice.`,
+        message: `Phrase "${phrase}" repeated 3 times.`,
         evidence: [phrase],
       });
     }

@@ -97,6 +97,30 @@ export function hasBlockingAuditIssues(audit: {
   return audit.requiresFix || audit.issues.some((issue) => issue.severity === "error");
 }
 
+/**
+ * After a successful continuity-fix attempt, downgrade WORD_BAND to a warning
+ * so the loop does not trigger another fresh rewrite solely to expand prose.
+ *
+ * The fix loop's failure mode is non-convergent: an attempt that cleans repetition
+ * by cutting content trips WORD_BAND on the next audit; the subsequent attempt has
+ * to expand and tends to re-introduce the original phrasing from packet priming.
+ * Accepting a slightly-short clean chapter beats a re-bloated dirty one.
+ */
+export function downgradePostFixWordBandError<
+  T extends { requiresFix: boolean; issues: Array<{ severity: string; title: string }> },
+>(audit: T): T {
+  const errors = audit.issues.filter((i) => i.severity === "error");
+  if (errors.length === 0) return audit;
+  if (!errors.every((i) => i.title === "WORD_BAND")) return audit;
+  return {
+    ...audit,
+    issues: audit.issues.map((i) =>
+      i.severity === "error" && i.title === "WORD_BAND" ? { ...i, severity: "warning" } : i,
+    ),
+    requiresFix: false,
+  };
+}
+
 export function shouldSkipRevision(params: {
   skipRevisionThreshold: number | null;
   overallScore: number;
@@ -597,6 +621,11 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         blueprintArtifacts: compilation.artifacts,
         smoke: options.smoke,
       });
+      const downgradedAuditData = downgradePostFixWordBandError(auditRun.auditArtifact.data);
+      if (downgradedAuditData !== auditRun.auditArtifact.data) {
+        auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgradedAuditData };
+        await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+      }
       collectUsage(usages, `${config.stageProfiles.finalAudit.stageName}-fix-${fixAttempt}`, auditRun.auditArtifact);
     }
 

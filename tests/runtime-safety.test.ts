@@ -18,7 +18,7 @@ import {
 } from "../src/pipeline/judge-draft.js";
 import { buildSpecPacketView } from "../src/pipeline/prompt-packet-views.js";
 import { buildFinalAuditPrompt } from "../src/pipeline/final-audit.js";
-import { hasBlockingAuditIssues, shouldSkipRevision } from "../src/pipeline/run-chapter.js";
+import { downgradePostFixWordBandError, hasBlockingAuditIssues, shouldSkipRevision } from "../src/pipeline/run-chapter.js";
 import { resolveSelectionDecision } from "../src/pipeline/select-draft.js";
 import { createSmokeDelta, createSmokeMemory, createSmokeReview, createSmokeSelection, createSmokeValidatorReport } from "../src/pipeline/smoke-helpers.js";
 import { BlockedPipelineError, createArtifact, loadArtifact } from "../src/pipeline/stage-utils.js";
@@ -825,7 +825,23 @@ test("buildRollingMemory merges emotionalStates with newest chapter winning per 
 
 // --- Prose validator tests ---
 
-test("detectRepetition flags 4-word phrases repeated 3+ times as errors", () => {
+test("detectRepetition flags 4-word phrases repeated 4+ times as errors", () => {
+  const prose = [
+    "The corridor closed around her as the lights flickered overhead.",
+    "The corridor closed around her while she pressed forward into the dark.",
+    "Again the corridor closed around her and she faltered at the threshold.",
+    "Once more the corridor closed around her, and she did not stop.",
+    "Beyond the door, everything changed.",
+  ].join("\n\n");
+
+  const issues = detectRepetition(prose);
+  assert.ok(
+    issues.some((i) => i.severity === "error" && i.code === "REPETITION"),
+    "Must flag 4+ repetitions as error",
+  );
+});
+
+test("detectRepetition flags exactly 3 repetitions as warning, not error", () => {
   const prose = [
     "The corridor closed around her as the lights flickered overhead.",
     "The corridor closed around her while she pressed forward into the dark.",
@@ -834,9 +850,30 @@ test("detectRepetition flags 4-word phrases repeated 3+ times as errors", () => 
   ].join("\n\n");
 
   const issues = detectRepetition(prose);
+  const repIssues = issues.filter((i) => i.code === "REPETITION");
   assert.ok(
-    issues.some((i) => i.severity === "error" && i.code === "REPETITION"),
-    "Must flag 3+ repetitions as error",
+    repIssues.some((i) => i.severity === "warning"),
+    "3 occurrences must produce a warning",
+  );
+  assert.ok(
+    !repIssues.some((i) => i.severity === "error"),
+    "3 occurrences must NOT produce an error (4+ is the new threshold)",
+  );
+});
+
+test("detectRepetition does not flag exactly 2 occurrences", () => {
+  const prose = [
+    "She held the line and the line held her.",
+    "The harbor lights blinked once on the far side of the channel.",
+    "On the far side of the channel, the lighthouse kept its rhythm.",
+  ].join("\n\n");
+
+  const issues = detectRepetition(prose);
+  const repIssues = issues.filter((i) => i.code === "REPETITION");
+  assert.equal(
+    repIssues.length,
+    0,
+    "Two occurrences of a 4-word span are incidental and must not flag at all",
   );
 });
 
@@ -1235,6 +1272,56 @@ test("hasBlockingAuditIssues ignores POST_FIX_WORD_COUNT warning", () => {
     false,
     "Warning-only audit (including POST_FIX_WORD_COUNT) must not block",
   );
+});
+
+// --- WORD_BAND post-fix downgrade ---
+
+test("downgradePostFixWordBandError downgrades when WORD_BAND is the only error", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", title: "WORD_BAND" },
+      { severity: "warning", title: "REPETITION" },
+    ],
+  };
+  const next = downgradePostFixWordBandError(audit);
+  assert.equal(next.requiresFix, false, "Sole WORD_BAND error must clear requiresFix");
+  assert.equal(
+    next.issues.find((i) => i.title === "WORD_BAND")?.severity,
+    "warning",
+    "WORD_BAND must be downgraded to warning",
+  );
+  assert.equal(
+    hasBlockingAuditIssues(next),
+    false,
+    "Downgraded audit must no longer block the loop",
+  );
+});
+
+test("downgradePostFixWordBandError preserves WORD_BAND severity when other errors remain", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", title: "WORD_BAND" },
+      { severity: "error", title: "Timeline contradiction" },
+    ],
+  };
+  const next = downgradePostFixWordBandError(audit);
+  assert.equal(next.requiresFix, true, "Other errors must keep the audit blocking");
+  assert.equal(
+    next.issues.find((i) => i.title === "WORD_BAND")?.severity,
+    "error",
+    "WORD_BAND must remain an error when there are non-WORD_BAND blockers",
+  );
+});
+
+test("downgradePostFixWordBandError is a no-op when there are no errors", () => {
+  const audit = {
+    requiresFix: false,
+    issues: [{ severity: "warning", title: "REPETITION" }],
+  };
+  const next = downgradePostFixWordBandError(audit);
+  assert.deepEqual(next, audit, "No-op when no errors are present");
 });
 
 // --- mustNotKnowYet convergence strictness ---

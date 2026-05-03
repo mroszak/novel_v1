@@ -113,6 +113,9 @@ export function buildDraftSystemPrompt(params: {
       "- Never open a scene with weather, a gerund phrase, or throat-clearing exposition.",
       "- Never let two consecutive sentences share the same grammatical structure.",
       "- Never summarize a scene that should be dramatized.",
+      "- Voice notes, character habits, and motifs in the packet are BEHAVIOR PATTERNS, not phrases to copy. If a voice note says 'counts before he speaks,' dramatize the silence — never write the literal phrase 'counted before he spoke' or any near-verbatim variant. Render the same behavior with different surface wording across recurrences.",
+      "- A four-word span from the prompt context (voice notes, motif descriptions, mandatory beats) must NEVER appear verbatim in your prose. The prompt is scaffolding; the prose is craft.",
+      "- A motif image (e.g., a hidden object pressing against ribs) may appear at most TWICE in a chapter, and the second occurrence must vary the wording and the sensory frame from the first. Repeating a motif sentence verbatim is a craft failure even if the motif itself is required.",
     ].join("\n"),
   );
 
