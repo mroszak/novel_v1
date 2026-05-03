@@ -38,8 +38,7 @@ export async function reviseDraft(params: {
   let usage: ArtifactEnvelope<ChapterDraft>["usage"];
 
   if (smoke) {
-    const literaryRetryAttempt = draftArtifact.artifactType === "selected-chapter-draft" ? 1 : 0;
-    draft = createSmokeDraft(packetArtifact.data, approvedSpecArtifact.data, true, literaryRetryAttempt);
+    draft = createSmokeDraft(packetArtifact.data, approvedSpecArtifact.data, true);
     usage = undefined;
   } else {
     const storyCore = blueprintArtifacts.compiledBlueprint.data;

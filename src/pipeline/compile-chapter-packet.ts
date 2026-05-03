@@ -151,17 +151,14 @@ export async function compileChapterPacket(params: {
   const previousMemory = previousMemoryArtifact?.data ?? buildInitialMemory(compiledBlueprint);
   const previousChapterFull = await loadPreviousChapterFull(chapterNumber);
 
-  // Voice target is an advisory input loaded only on the `max` quality
-  // profile and only when its persisted metadata matches the current blueprint
-  // identity. Mismatches silently drop the voice target.
-  const phase1Enabled = qualityProfile === "max";
+  // Voice target is an advisory input loaded only when its persisted
+  // metadata matches the current blueprint identity. Mismatches silently
+  // drop the voice target.
   const blueprintIdentity = {
     blueprintHash: blueprintArtifacts.compiledBlueprint.blueprintHash,
     blueprintVersion: blueprintArtifacts.compiledBlueprint.blueprintVersion,
   };
-  const voiceTarget = phase1Enabled
-    ? await loadVoiceTargetData(blueprintIdentity)
-    : null;
+  const voiceTarget = await loadVoiceTargetData(blueprintIdentity);
   const targetWordBand = {
     min: Math.max(1500, chapter.targetWordCount - config.defaults.chapterWordBandLeeway),
     target: chapter.targetWordCount,

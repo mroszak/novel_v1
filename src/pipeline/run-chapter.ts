@@ -32,7 +32,6 @@ import type {
   ChapterPacket,
   ChapterSpec,
   DraftReview,
-  LiteraryRetryRecord,
   PairwiseSelection,
   RollingMemory,
   RunChapterOptions,
@@ -106,53 +105,6 @@ export function shouldSkipRevision(params: {
     && params.overallScore >= params.skipRevisionThreshold
     && params.passesThreshold
     && !hasBlockingReviewSignals(params.review);
-}
-
-export function shouldRetryLiterary(params: {
-  allowRetries: boolean;
-  passesThreshold: boolean;
-  attemptNumber: number;
-  maxLiteraryRetryAttempts: number;
-}): boolean {
-  return params.allowRetries
-    && !params.passesThreshold
-    && params.attemptNumber < params.maxLiteraryRetryAttempts;
-}
-
-function applyLiteraryRetry(params: {
-  selectedArtifact: ArtifactEnvelope<SelectedChapter>;
-  revisedDraftArtifact: ArtifactEnvelope<ChapterDraft>;
-  revisedReviewArtifact: ArtifactEnvelope<DraftReview>;
-  attemptNumber: number;
-  reviewStage: string;
-}): ArtifactEnvelope<SelectedChapter> {
-  const {
-    selectedArtifact,
-    revisedDraftArtifact,
-    revisedReviewArtifact,
-    attemptNumber,
-    reviewStage,
-  } = params;
-  const retryRecord: LiteraryRetryRecord = {
-    attemptNumber,
-    stage: reviewStage,
-    overallScore: revisedReviewArtifact.data.overallScore,
-    passesThreshold: revisedReviewArtifact.data.passesThreshold,
-    blockingIssues: [...revisedReviewArtifact.data.blockingIssues],
-  };
-
-  return {
-    ...selectedArtifact,
-    createdAt: new Date().toISOString(),
-    data: {
-      ...selectedArtifact.data,
-      winner: "revision",
-      prose: revisedDraftArtifact.data.prose,
-      wordCount: revisedDraftArtifact.data.wordCount,
-      review: revisedReviewArtifact.data,
-      literaryRetries: [...(selectedArtifact.data.literaryRetries ?? []), retryRecord],
-    },
-  };
 }
 
 function createSelectedDraftArtifact(params: {
@@ -434,64 +386,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
 
     result.selectedArtifactPath = chapterArtifactPath(options.chapterNumber, "selected");
 
-    const allowLiteraryRetries = !startsAfterJudge(options);
-    const maxLiteraryRetryAttempts = config.qualityProfiles[options.qualityProfile].maxLiteraryRetryAttempts;
-    let literaryRetryAttempt = 0;
-    while (shouldRetryLiterary({
-      allowRetries: allowLiteraryRetries,
-      passesThreshold: selectedReviewArtifact.data.passesThreshold,
-      attemptNumber: literaryRetryAttempt,
-      maxLiteraryRetryAttempts,
-    })) {
-      literaryRetryAttempt += 1;
-      console.error(
-        `[ch${options.chapterNumber}] Literary retry attempt ${literaryRetryAttempt}/${maxLiteraryRetryAttempts}...`,
-      );
-
-      const selectedDraftArtifact = createArtifact<ChapterDraft>({
-        artifactType: "selected-chapter-draft",
-        blueprintHash: selectedArtifact.blueprintHash,
-        blueprintVersion: selectedArtifact.blueprintVersion,
-        chapterNumber: selectedArtifact.chapterNumber,
-        qualityProfile: selectedArtifact.qualityProfile,
-        data: {
-          prose: selectedArtifact.data.prose,
-          wordCount: selectedArtifact.data.wordCount,
-        },
-      });
-      const retriedDraftArtifact = await reviseDraft({
-        packetArtifact,
-        approvedSpecArtifact,
-        draftArtifact: selectedDraftArtifact,
-        draftReviewArtifact: selectedReviewArtifact,
-        blueprintArtifacts: compilation.artifacts,
-        smoke: options.smoke,
-      });
-      const retriedReviewArtifact = await judgeDraft({
-        candidateId: "revision",
-        packetArtifact,
-        approvedSpecArtifact,
-        draftArtifact: retriedDraftArtifact,
-        blueprintArtifacts: compilation.artifacts,
-        smoke: options.smoke,
-      });
-      const revisionStage = `${config.stageProfiles.revision.stageName}-retry-${literaryRetryAttempt}`;
-      const reviewStage = `${config.stageProfiles.literaryJudge.stageName}-retry-${literaryRetryAttempt}`;
-      collectUsage(usages, revisionStage, retriedDraftArtifact);
-      collectUsage(usages, reviewStage, retriedReviewArtifact);
-
-      selectedReviewArtifact = retriedReviewArtifact;
-      selectedArtifact = applyLiteraryRetry({
-        selectedArtifact,
-        revisedDraftArtifact: retriedDraftArtifact,
-        revisedReviewArtifact: retriedReviewArtifact,
-        attemptNumber: literaryRetryAttempt,
-        reviewStage,
-      });
-      await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), selectedArtifact);
-      await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
-    }
-
     if (!selectedReviewArtifact.data.passesThreshold) {
       result.status = "BLOCKED_QUALITY";
       result.statusArtifactPath = await writeStatusArtifact({
@@ -500,14 +394,11 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         blueprintVersion: compilation.parsed.metadata.blueprintVersion,
         qualityProfile: options.qualityProfile,
         status: "BLOCKED_QUALITY",
-        stage: literaryRetryAttempt > 0 ? "literary-retry" : "literary-judge",
-        message: literaryRetryAttempt > 0
-          ? `Selected chapter did not clear the literary quality threshold after ${literaryRetryAttempt} literary ${literaryRetryAttempt === 1 ? "retry" : "retries"}.`
-          : "Selected chapter did not clear the literary quality threshold.",
+        stage: "literary-judge",
+        message: "Selected chapter did not clear the literary quality threshold.",
         details: {
           overallScore: selectedReviewArtifact.data.overallScore,
           blockingIssues: selectedReviewArtifact.data.blockingIssues,
-          literaryRetryAttempts: literaryRetryAttempt,
         },
       });
       return result;
@@ -515,8 +406,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
 
     // Post-selection enhancement: opening/ending tournament. Advisory and
     // fail-soft; if it throws, downstream consumes `selected` unchanged.
-    const phase1Enabled = options.qualityProfile === "max";
-    if (phase1Enabled && !startsAfterJudge(options)) {
+    if (!startsAfterJudge(options)) {
       try {
         console.error(`[ch${options.chapterNumber}] Opening/ending tournament...`);
         const tournamentResult = await runOpeningEndingTournament({
@@ -799,130 +689,6 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
       await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
 
-      const maxPostFixLiteraryRescueAttempts = config.qualityProfiles[options.qualityProfile].maxLiteraryRetryAttempts > 0
-        ? 1
-        : 0;
-      let postFixLiteraryRescueAttempt = 0;
-      let postFixRescueAuditRejections = 0;
-      while (!selectedReviewArtifact.data.passesThreshold
-        && postFixLiteraryRescueAttempt < maxPostFixLiteraryRescueAttempts) {
-        postFixLiteraryRescueAttempt += 1;
-        console.error(
-          `[ch${options.chapterNumber}] Post-fix literary rescue attempt `
-          + `${postFixLiteraryRescueAttempt}/${maxPostFixLiteraryRescueAttempts}...`,
-        );
-
-        const rescueRevisionStage = `${config.stageProfiles.revision.stageName}-post-fix-rescue`;
-        const rescueReviewStage = `${config.stageProfiles.literaryJudge.stageName}-post-fix-rescue`;
-        const rescuedDraftArtifact = await reviseDraft({
-          packetArtifact,
-          approvedSpecArtifact,
-          draftArtifact: createSelectedDraftArtifact({
-            selectedArtifact: currentSelectedArtifact,
-            artifactType: "post-fix-selected-draft",
-          }),
-          draftReviewArtifact: selectedReviewArtifact,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-          additionalSystemInstructions: [
-            "POST-FIX RESCUE MODE: the current draft already cleared factual audit after surgical continuity fixes.",
-            "Treat factual continuity, reveal discipline, route labels, and knowledge boundaries as locked constraints.",
-            "Address only the remaining literary weaknesses from the judge review without changing plot facts or introducing new continuity risk.",
-          ],
-          additionalPromptSections: [
-            "<post_fix_constraints>",
-            `Clean audit summary: ${auditRun.auditArtifact.data.summary}`,
-            "Preserve every factual repair that kept the final audit clean.",
-            "</post_fix_constraints>",
-          ],
-        });
-        collectUsage(usages, rescueRevisionStage, rescuedDraftArtifact);
-
-        const rescuedReviewArtifact = await judgeDraft({
-          candidateId: "revision",
-          packetArtifact,
-          approvedSpecArtifact,
-          draftArtifact: rescuedDraftArtifact,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        collectUsage(usages, rescueReviewStage, rescuedReviewArtifact);
-
-        if (!rescuedReviewArtifact.data.passesThreshold) {
-          continue;
-        }
-
-        const rescuedSelectedArtifact = applyLiteraryRetry({
-          selectedArtifact: currentSelectedArtifact,
-          revisedDraftArtifact: rescuedDraftArtifact,
-          revisedReviewArtifact: rescuedReviewArtifact,
-          attemptNumber: literaryRetryAttempt + postFixLiteraryRescueAttempt,
-          reviewStage: rescueReviewStage,
-        });
-
-        const preservedDeltaArtifact = currentDeltaArtifact;
-        const preservedMemoryArtifact = currentMemoryArtifact;
-        const preservedAuditRun = auditRun;
-
-        const rescuedDeltaArtifact = await extractChapterDelta({
-          packetArtifact,
-          selectedArtifact: rescuedSelectedArtifact,
-          blueprintArtifacts: compilation.artifacts,
-          previousMemory,
-          smoke: options.smoke,
-        });
-        collectUsage(
-          usages,
-          `${config.stageProfiles.chapterDelta.stageName}-post-fix-rescue`,
-          rescuedDeltaArtifact,
-        );
-
-        const rescuedMemoryArtifact = await updateMemory({
-          packetArtifact,
-          deltaArtifact: rescuedDeltaArtifact,
-          previousMemory,
-          smoke: options.smoke,
-        });
-        collectUsage(
-          usages,
-          `${config.stageProfiles.memoryUpdate.stageName}-post-fix-rescue`,
-          rescuedMemoryArtifact,
-        );
-
-        const rescuedAuditRun = await runFinalAudit({
-          packetArtifact,
-          selectedArtifact: rescuedSelectedArtifact,
-          selectedReviewArtifact: rescuedReviewArtifact,
-          deltaArtifact: rescuedDeltaArtifact,
-          memoryArtifact: rescuedMemoryArtifact,
-          previousMemory,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        collectUsage(
-          usages,
-          `${config.stageProfiles.finalAudit.stageName}-post-fix-rescue`,
-          rescuedAuditRun.auditArtifact,
-        );
-
-        if (hasBlockingAuditIssues(rescuedAuditRun.auditArtifact.data)) {
-          postFixRescueAuditRejections += 1;
-          await writeJson(chapterArtifactPath(options.chapterNumber, "delta"), preservedDeltaArtifact);
-          await writeJson(memoryArtifactPath(options.chapterNumber), preservedMemoryArtifact);
-          await writeJson(chapterArtifactPath(options.chapterNumber, "validators"), preservedAuditRun.validatorArtifact);
-          await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), preservedAuditRun.auditArtifact);
-          continue;
-        }
-
-        currentSelectedArtifact = rescuedSelectedArtifact;
-        selectedReviewArtifact = rescuedReviewArtifact;
-        currentDeltaArtifact = rescuedDeltaArtifact;
-        currentMemoryArtifact = rescuedMemoryArtifact;
-        auditRun = rescuedAuditRun;
-        await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
-        await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
-      }
-
       if (!selectedReviewArtifact.data.passesThreshold) {
         const localizedOnly = localizedAuditPatchApplied && fixAttempt === 0;
         result.status = "BLOCKED_QUALITY";
@@ -932,23 +698,13 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           blueprintVersion: compilation.parsed.metadata.blueprintVersion,
           qualityProfile: options.qualityProfile,
           status: "BLOCKED_QUALITY",
-          stage: postFixLiteraryRescueAttempt > 0
-            ? "post-fix-literary-rescue"
-            : localizedOnly
-              ? "localized-audit-patch"
-              : "continuity-fix",
-          message: postFixLiteraryRescueAttempt > 0
-            ? postFixRescueAuditRejections > 0
-              ? "Post-fix literary rescue did not produce a continuity-safe chapter that cleared the literary threshold."
-              : "Post-fix literary rescue did not raise the selected chapter above the literary quality threshold."
-            : localizedOnly
-              ? "Localized audit patch preserved continuity but nudged the selected chapter below the literary quality threshold."
+          stage: localizedOnly ? "localized-audit-patch" : "continuity-fix",
+          message: localizedOnly
+            ? "Localized audit patch preserved continuity but nudged the selected chapter below the literary quality threshold."
             : "Continuity fixes pushed the selected chapter below the literary quality threshold.",
           details: {
             overallScore: selectedReviewArtifact.data.overallScore,
             blockingIssues: selectedReviewArtifact.data.blockingIssues,
-            postFixLiteraryRescueAttempts: postFixLiteraryRescueAttempt,
-            postFixRescueAuditRejections,
           },
         });
         return result;
@@ -961,18 +717,16 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       currentSelectedArtifact.data.prose,
     );
 
-    if (phase1Enabled) {
-      try {
-        console.error(`[ch${options.chapterNumber}] Extracting voice target...`);
-        await extractAndPersistVoiceTarget({
-          publishedThroughChapter: options.chapterNumber,
-          blueprint: compilation.artifacts.compiledBlueprint.data,
-          blueprintHash: compilation.parsed.blueprintHash,
-          blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-        });
-      } catch (error) {
-        console.error(`[voice-calibration] Extraction failed (advisory), continuing: ${(error as Error).message}`);
-      }
+    try {
+      console.error(`[ch${options.chapterNumber}] Extracting voice target...`);
+      await extractAndPersistVoiceTarget({
+        publishedThroughChapter: options.chapterNumber,
+        blueprint: compilation.artifacts.compiledBlueprint.data,
+        blueprintHash: compilation.parsed.blueprintHash,
+        blueprintVersion: compilation.parsed.metadata.blueprintVersion,
+      });
+    } catch (error) {
+      console.error(`[voice-calibration] Extraction failed (advisory), continuing: ${(error as Error).message}`);
     }
 
     result.costSummaryArtifactPath = await writeCostSummaryArtifact({

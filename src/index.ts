@@ -5,9 +5,7 @@ import { config } from "./config.js";
 import { runChapter } from "./pipeline/run-chapter.js";
 import { runSmokeTest } from "./pipeline/run-smoke-test.js";
 import {
-  QUALITY_PROFILES,
   RERUN_STAGES,
-  type QualityProfile,
   type RerunStage,
   type RunChapterOptions,
 } from "./types/index.js";
@@ -22,11 +20,10 @@ Usage:
 
 Options:
   --chapter <N>            Chapter number to generate
-  --quality <profile>      ${QUALITY_PROFILES.join(", ")} (default: ${config.defaultQualityProfile})
   --packet-only            Stop after writing the chapter packet artifact
   --spec-only              Stop after writing the approved spec artifact
   --draft-only             Draft from existing packet + approved spec checkpoints
-  --judge-only             Run judge + revision + selection (+ literary retries) from an existing draft checkpoint
+  --judge-only             Run judge + revision + selection from an existing draft checkpoint
   --audit-only             Run memory + audit + fix loop from existing selected artifacts
   --rerun-from <stage>     ${RERUN_STAGES.join(", ")}
   --estimate-cost          Write a per-stage token/cost estimate without running live generation
@@ -74,15 +71,6 @@ function parseArgs(): RunChapterOptions {
       case "-c": {
         const value = expectNext(args, index, arg);
         options.chapterNumber = Number.parseInt(value, 10);
-        index += 1;
-        break;
-      }
-      case "--quality": {
-        const value = expectNext(args, index, arg).toLowerCase() as QualityProfile;
-        if (!QUALITY_PROFILES.includes(value)) {
-          throw new Error(`--quality must be one of ${QUALITY_PROFILES.join(", ")}.`);
-        }
-        options.qualityProfile = value;
         index += 1;
         break;
       }

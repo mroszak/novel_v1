@@ -1,4 +1,4 @@
-export const QUALITY_PROFILES = ["max", "standard", "rerun"] as const;
+export const QUALITY_PROFILES = ["max"] as const;
 export type QualityProfile = (typeof QUALITY_PROFILES)[number];
 
 export const RERUN_STAGES = ["packet", "spec", "draft", "judge", "memory", "audit"] as const;
@@ -376,21 +376,12 @@ export interface PairwiseSelection {
   preservedOriginal: boolean;
 }
 
-export interface LiteraryRetryRecord {
-  attemptNumber: number;
-  stage: string;
-  overallScore: number;
-  passesThreshold: boolean;
-  blockingIssues: string[];
-}
-
 export interface SelectedChapter {
   winner: "draft" | "revision";
   prose: string;
   wordCount: number;
   review: DraftReview;
   selection: PairwiseSelection;
-  literaryRetries?: LiteraryRetryRecord[];
 }
 
 export interface DeltaEntityMention {

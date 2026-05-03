@@ -131,22 +131,6 @@ export const config = {
       alwaysRunSpecCritique: true,
       skipRevisionThreshold: 93,
     },
-    standard: {
-      judgePassThreshold: 80,
-      pairwiseTolerance: 4,
-      maxFixAttempts: 1,
-      maxLiteraryRetryAttempts: 1,
-      alwaysRunSpecCritique: false,
-      skipRevisionThreshold: null,
-    },
-    rerun: {
-      judgePassThreshold: 78,
-      pairwiseTolerance: 5,
-      maxFixAttempts: 1,
-      maxLiteraryRetryAttempts: 0,
-      alwaysRunSpecCritique: false,
-      skipRevisionThreshold: null,
-    },
   },
   paths: {
     blueprint: path.resolve(rootDir, "STORY_BLUEPRINT.md"),

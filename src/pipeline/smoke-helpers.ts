@@ -20,9 +20,6 @@ import { config } from "../config.js";
 import { calculateOverallScore, derivePassesThreshold } from "./judge-draft.js";
 import { countWords } from "./stage-utils.js";
 
-const smokeNearPassRevisionLine = "The first revision improved clarity but still left the ending a beat too diffuse.";
-const smokeRetryPassLine = "The literary retry tightened the opening, hardened the diction, and cut on the strongest hook.";
-
 function sentence(text: string): string {
   return text.trim().replace(/\s+/g, " ");
 }
@@ -85,7 +82,6 @@ export function createSmokeDraft(
   packet: ChapterPacket,
   spec: ChapterSpec,
   revised = false,
-  literaryRetryAttempt = 0,
 ): ChapterDraft {
   const activeCast = packet.activeCast.map((character) => character.name).join(", ");
   const segments = [
@@ -96,7 +92,7 @@ export function createSmokeDraft(
     `First came ${packet.mandatoryBeats[0] ?? "the first required beat"}, rendered in concrete action instead of explanation.`,
     `Then ${packet.mandatoryBeats[1] ?? "the next pressure beat"} pushed the chapter into cost and consequence.`,
     revised
-      ? (literaryRetryAttempt > 0 ? smokeRetryPassLine : smokeNearPassRevisionLine)
+      ? `The revision tightened the opening, hardened the diction, and cut on the strongest hook.`
       : `The draft kept the movement clean, the reveal control disciplined, and the emotional turn legible.`,
     `The chapter closed on ${packet.endingHookTarget.toLowerCase()}, carrying forward ${packet.callbackObligations[0] ?? "the unresolved pressure"}.`,
   ];
@@ -166,12 +162,7 @@ export function createSmokeReview(
   passThreshold: number,
   weights: Record<string, number> = {},
 ): DraftReview {
-  let base = candidateId === "revision" ? 87 : 82;
-  if (candidateId === "revision" && draft.prose.includes(smokeNearPassRevisionLine)) {
-    base = 84;
-  } else if (candidateId === "revision" && draft.prose.includes(smokeRetryPassLine)) {
-    base = 89;
-  }
+  const base = candidateId === "revision" ? 89 : 82;
   const scoreBreakdown: ReviewScoreBreakdown = {
     beatCoverage: base,
     tension: base - 2,

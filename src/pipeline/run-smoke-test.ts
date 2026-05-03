@@ -19,7 +19,7 @@ version: "1.0.0"
 - Blueprint Version: 1.0.0
 - Total Chapter Count: 2
 - Default Chapter Word Count: 2200
-- Default Quality Profile: rerun
+- Default Quality Profile: max
 
 ## Story Promise and Ending Promise
 - Core Premise: A courier carrying a dangerous memory device discovers the city has been quietly rewritten around her.
@@ -207,7 +207,7 @@ export async function runSmokeTest(overrides: Partial<RunChapterOptions> = {}): 
   return runChapter({
     blueprintPath,
     chapterNumber: overrides.chapterNumber ?? config.defaults.smokeChapterNumber,
-    qualityProfile: overrides.qualityProfile ?? "rerun",
+    qualityProfile: overrides.qualityProfile ?? "max",
     packetOnly: overrides.packetOnly ?? false,
     specOnly: overrides.specOnly ?? false,
     draftOnly: overrides.draftOnly ?? false,

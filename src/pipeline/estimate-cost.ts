@@ -284,77 +284,46 @@ export async function estimateChapterCost(params: {
   });
   pushWithNote(stages, selectionEst, skipNote);
 
-  const maxLiteraryRetries = profile.maxLiteraryRetryAttempts;
-  for (let i = 1; i <= maxLiteraryRetries; i += 1) {
-    const retryNote = `Conditional: only runs if the selected chapter still fails the literary threshold${i > 1 ? ` after retry ${i - 1}` : " after selection"}.`;
-
-    const revisionRetryEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.revision,
-        estimatedInputTokens: draftFamilyInput + revisionTokens + styleRulesTokens
-          + storyPromiseTokens + reviewTokens,
-      }),
-      stage: `${config.stageProfiles.revision.stageName}-retry-${i}`,
-      notes: [retryNote],
-    };
-    stages.push(revisionRetryEst);
-
-    const judgeRetryEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.literaryJudge,
-        estimatedInputTokens: judgeInput(revisionTokens),
-      }),
-      stage: `${config.stageProfiles.literaryJudge.stageName}-retry-${i}`,
-      notes: [retryNote],
-    };
-    stages.push(judgeRetryEst);
-  }
-
-  // ── Post-selection enhancement (Phase 1, all advisory/fail-soft) ──
-  // Phase 1 stages run only on the `max` quality profile. `standard` and
-  // `rerun` keep their pre-Phase-1 behavior, so the estimate must too.
-  const phase1Enabled = params.qualityProfile === "max";
+  // ── Post-selection enhancement: tournament (advisory/fail-soft) ──
   const selectedProseTokens = estimateWordTokens(smokeSelected.wordCount);
 
-  if (phase1Enabled) {
-    const tournamentNote = "Conditional: runs only when the corresponding zone exists in the selected prose; per-zone failures are isolated.";
-    for (const stageProfile of [
-      config.stageProfiles.openingCandidate,
-      config.stageProfiles.endingCandidate,
-      config.stageProfiles.titleCandidate,
-    ]) {
-      for (let candidate = 1; candidate <= 3; candidate += 1) {
-        stages.push({
-          ...estimateStageCost({
-            stage: stageProfile,
-            estimatedInputTokens: strippedPacketTokens + styleRulesTokens + selectedProseTokens,
-          }),
-          stage: `${stageProfile.stageName}-${candidate}`,
-          notes: [tournamentNote],
-        });
-      }
+  const tournamentNote = "Conditional: runs only when the corresponding zone exists in the selected prose; per-zone failures are isolated.";
+  for (const stageProfile of [
+    config.stageProfiles.openingCandidate,
+    config.stageProfiles.endingCandidate,
+    config.stageProfiles.titleCandidate,
+  ]) {
+    for (let candidate = 1; candidate <= 3; candidate += 1) {
+      stages.push({
+        ...estimateStageCost({
+          stage: stageProfile,
+          estimatedInputTokens: strippedPacketTokens + styleRulesTokens + selectedProseTokens,
+        }),
+        stage: `${stageProfile.stageName}-${candidate}`,
+        notes: [tournamentNote],
+      });
     }
-    for (const zone of ["opening", "ending", "title"]) {
-      for (let pair = 1; pair <= 2; pair += 1) {
-        stages.push({
-          ...estimateStageCost({
-            stage: config.stageProfiles.tournamentSelection,
-            estimatedInputTokens: strippedPacketTokens + selectedProseTokens / 2,
-          }),
-          stage: `${config.stageProfiles.tournamentSelection.stageName}-${zone}-${pair}`,
-          notes: [tournamentNote],
-        });
-      }
-    }
-    stages.push({
-      ...estimateStageCost({
-        stage: config.stageProfiles.literaryJudge,
-        estimatedInputTokens: judgeInput(selectedProseTokens),
-      }),
-      stage: "tournament-rejudge",
-      notes: ["Conditional: runs only after tournament merges at least one zone; reverted if it regresses."],
-    });
   }
+  for (const zone of ["opening", "ending", "title"]) {
+    for (let pair = 1; pair <= 2; pair += 1) {
+      stages.push({
+        ...estimateStageCost({
+          stage: config.stageProfiles.tournamentSelection,
+          estimatedInputTokens: strippedPacketTokens + selectedProseTokens / 2,
+        }),
+        stage: `${config.stageProfiles.tournamentSelection.stageName}-${zone}-${pair}`,
+        notes: [tournamentNote],
+      });
+    }
+  }
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.literaryJudge,
+      estimatedInputTokens: judgeInput(selectedProseTokens),
+    }),
+    stage: "tournament-rejudge",
+    notes: ["Conditional: runs only after tournament merges at least one zone; reverted if it regresses."],
+  });
 
   // ── Post-selection: delta, memory, initial audit ──
 
@@ -452,78 +421,21 @@ export async function estimateChapterCost(params: {
   };
   stages.push(postFixJudgeEst);
 
-  if (profile.maxLiteraryRetryAttempts > 0) {
-    const postFixRescueNote = "Conditional: only runs if continuity fixes are applied and the post-fix literary judge still fails threshold.";
-    const postFixRescueRevisionEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.revision,
-        estimatedInputTokens: draftFamilyInput + revisionTokens + styleRulesTokens
-          + storyPromiseTokens + reviewTokens,
-      }),
-      stage: `${config.stageProfiles.revision.stageName}-post-fix-rescue`,
-      notes: [postFixRescueNote],
-    };
-    stages.push(postFixRescueRevisionEst);
-
-    const postFixRescueJudgeEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.literaryJudge,
-        estimatedInputTokens: judgeInput(revisionTokens),
-      }),
-      stage: `${config.stageProfiles.literaryJudge.stageName}-post-fix-rescue`,
-      notes: [postFixRescueNote],
-    };
-    stages.push(postFixRescueJudgeEst);
-
-    const postFixRescueAuditNote = "Conditional: only runs if the post-fix literary rescue clears threshold and must be re-audited before publish.";
-    const postFixRescueDeltaEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.chapterDelta,
-        estimatedInputTokens: chapterDeltaInputTokens,
-      }),
-      stage: `${config.stageProfiles.chapterDelta.stageName}-post-fix-rescue`,
-      notes: [postFixRescueAuditNote],
-    };
-    stages.push(postFixRescueDeltaEst);
-
-    const postFixRescueMemoryEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.memoryUpdate,
-        estimatedInputTokens: memoryStrippedPacketTokens + memoryTokens + deltaTokens,
-      }),
-      stage: `${config.stageProfiles.memoryUpdate.stageName}-post-fix-rescue`,
-      notes: [postFixRescueAuditNote],
-    };
-    stages.push(postFixRescueMemoryEst);
-
-    const postFixRescueAuditEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.finalAudit,
-        estimatedInputTokens: fixLoopAuditInput,
-      }),
-      stage: `${config.stageProfiles.finalAudit.stageName}-post-fix-rescue`,
-      notes: [postFixRescueAuditNote],
-    };
-    stages.push(postFixRescueAuditEst);
-  }
 
   // ── Voice calibration (post-publish; deterministic local extraction) ──
   // The voice fingerprint is computed deterministically from published prose
   // and does not call a model, but we annotate it as a near-zero stage so
-  // operators see the full Phase 1 footprint. Gated to `max` along with the
-  // rest of Phase 1.
-  if (phase1Enabled) {
-    stages.push({
-      ...estimateStageCost({
-        stage: config.stageProfiles.voiceCalibration,
-        estimatedInputTokens: 0,
-      }),
-      notes: [
-        "Deterministic local extraction after publish; no model call by default.",
-        "Reads STYLE_SAMPLE.md when present, otherwise derives from the latest 1-3 published chapters (including the chapter that just published).",
-      ],
-    });
-  }
+  // operators see the full footprint.
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.voiceCalibration,
+      estimatedInputTokens: 0,
+    }),
+    notes: [
+      "Deterministic local extraction after publish; no model call by default.",
+      "Reads STYLE_SAMPLE.md when present, otherwise derives from the latest 1-3 published chapters (including the chapter that just published).",
+    ],
+  });
 
   return writeCostEstimateArtifact({
     chapterNumber: params.chapterNumber,

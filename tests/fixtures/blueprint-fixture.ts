@@ -12,7 +12,7 @@ version: "1.0.0"
 - Blueprint Version: 1.0.0
 - Total Chapter Count: 2
 - Default Chapter Word Count: 2200
-- Default Quality Profile: rerun
+- Default Quality Profile: max
 
 ## Story Promise and Ending Promise
 - Core Premise: A courier discovers the city's official memory has been quietly rewritten.
@@ -183,7 +183,7 @@ version: "1.0.0"
 - Blueprint Version: 1.0.0
 - Total Chapter Count: 1
 - Default Chapter Word Count: 2400
-- Default Quality Profile: standard
+- Default Quality Profile: max
 
 ## Story Promise and Ending Promise
 - Core Premise: A damaged archivist must recover a stolen memory map before the city forgets the crime that built it.

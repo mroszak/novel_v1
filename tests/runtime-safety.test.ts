@@ -18,7 +18,7 @@ import {
 } from "../src/pipeline/judge-draft.js";
 import { buildSpecPacketView } from "../src/pipeline/prompt-packet-views.js";
 import { buildFinalAuditPrompt } from "../src/pipeline/final-audit.js";
-import { hasBlockingAuditIssues, shouldRetryLiterary, shouldSkipRevision } from "../src/pipeline/run-chapter.js";
+import { hasBlockingAuditIssues, shouldSkipRevision } from "../src/pipeline/run-chapter.js";
 import { resolveSelectionDecision } from "../src/pipeline/select-draft.js";
 import { createSmokeDelta, createSmokeMemory, createSmokeReview, createSmokeSelection, createSmokeValidatorReport } from "../src/pipeline/smoke-helpers.js";
 import { BlockedPipelineError, createArtifact, loadArtifact } from "../src/pipeline/stage-utils.js";
@@ -343,7 +343,7 @@ test("loadArtifact rejects reused artifacts with mismatched metadata", async (t)
     blueprintHash: "correct-hash",
     blueprintVersion: "1.0.0",
     chapterNumber: 1,
-    qualityProfile: "standard",
+    qualityProfile: "max",
     data: { ok: true },
   });
   await writeFile(artifactPath, JSON.stringify(artifact, null, 2), "utf8");
@@ -354,7 +354,7 @@ test("loadArtifact rejects reused artifacts with mismatched metadata", async (t)
       blueprintHash: "different-hash",
       blueprintVersion: "1.0.0",
       chapterNumber: 1,
-      qualityProfile: "standard",
+      qualityProfile: "max",
     }),
     /metadata mismatch/i,
   );
@@ -519,14 +519,14 @@ test("buildRollingMemory advances updatedFromChapter on existing cards touched b
 });
 
 test("shouldRunOpusCritique still runs required critique when --skip-spec-critique is set", () => {
-  const makePacketArtifact = (riskLevel: "low" | "medium" | "high", qualityProfile: "standard" | "max" | "rerun") =>
+  const makePacketArtifact = (riskLevel: "low" | "medium" | "high") =>
     createArtifact<ChapterPacket>({
       artifactType: "chapter-packet",
       blueprintHash: "h",
       blueprintVersion: "1.0.0",
       chapterNumber: 1,
-      qualityProfile,
-      data: { riskLevel, qualityProfile } as ChapterPacket,
+      qualityProfile: "max",
+      data: { riskLevel, qualityProfile: "max" } as ChapterPacket,
     });
 
   const noEscalation: SelfRedTeamReport = {
@@ -539,14 +539,11 @@ test("shouldRunOpusCritique still runs required critique when --skip-spec-critiq
   };
   const withEscalation: SelfRedTeamReport = { ...noEscalation, needsOpusEscalation: true };
 
-  const lowSkip = shouldRunOpusCritique(makePacketArtifact("low", "standard"), noEscalation, true);
-  assert.equal(lowSkip.run, false, "Low-risk + skip => no critique");
-
-  const highSkip = shouldRunOpusCritique(makePacketArtifact("high", "standard"), noEscalation, true);
+  const highSkip = shouldRunOpusCritique(makePacketArtifact("high"), noEscalation, true);
   assert.equal(highSkip.run, true, "High-risk + skip => critique still runs");
   assert.equal(highSkip.required, true);
 
-  const escalatedSkip = shouldRunOpusCritique(makePacketArtifact("low", "standard"), withEscalation, true);
+  const escalatedSkip = shouldRunOpusCritique(makePacketArtifact("low"), withEscalation, true);
   assert.equal(escalatedSkip.run, true, "Escalated + skip => critique still runs");
   assert.equal(escalatedSkip.required, true);
 });
@@ -591,22 +588,6 @@ test("createSmokeReview fails draft under max quality threshold", () => {
   const revisionReview = createSmokeReview("revision", draft, maxThreshold);
   assert.ok(revisionReview.overallScore >= maxThreshold, `Revision derived score ${revisionReview.overallScore} must clear max threshold ${maxThreshold}`);
   assert.equal(revisionReview.passesThreshold, true, "Revision must pass max threshold");
-});
-
-test("createSmokeReview passes both candidates under rerun quality threshold", () => {
-  const draft: ChapterDraft = { prose: "Smoke prose.", wordCount: 50 };
-  const rerunThreshold = config.qualityProfiles.rerun.judgePassThreshold;
-
-  assert.equal(
-    createSmokeReview("draft", draft, rerunThreshold).passesThreshold,
-    true,
-    "Draft derived score must pass rerun threshold 78",
-  );
-  assert.equal(
-    createSmokeReview("revision", draft, rerunThreshold).passesThreshold,
-    true,
-    "Revision derived score must pass rerun threshold 78",
-  );
 });
 
 test("createSmokeSelection uses real pairwise tolerance from quality profile", () => {
@@ -1416,39 +1397,6 @@ test("DUPLICATE_PARAGRAPH still flags real duplicated paragraphs", () => {
 });
 
 // --- shouldSkipRevision ---
-
-test("shouldRetryLiterary returns true when retries are allowed and attempts remain", () => {
-  assert.equal(shouldRetryLiterary({
-    allowRetries: true,
-    passesThreshold: false,
-    attemptNumber: 0,
-    maxLiteraryRetryAttempts: 2,
-  }), true);
-});
-
-test("shouldRetryLiterary returns false after the chapter passes threshold", () => {
-  assert.equal(shouldRetryLiterary({
-    allowRetries: true,
-    passesThreshold: true,
-    attemptNumber: 0,
-    maxLiteraryRetryAttempts: 2,
-  }), false);
-});
-
-test("shouldRetryLiterary returns false when retries are disabled or exhausted", () => {
-  assert.equal(shouldRetryLiterary({
-    allowRetries: false,
-    passesThreshold: false,
-    attemptNumber: 0,
-    maxLiteraryRetryAttempts: 2,
-  }), false);
-  assert.equal(shouldRetryLiterary({
-    allowRetries: true,
-    passesThreshold: false,
-    attemptNumber: 2,
-    maxLiteraryRetryAttempts: 2,
-  }), false);
-});
 
 test("shouldSkipRevision returns true when draft exceeds threshold with no blocking signals", () => {
   const review = makeReview({ overallScore: 95, passesThreshold: true });
