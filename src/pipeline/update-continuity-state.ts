@@ -3,6 +3,7 @@ import path from "node:path";
 import { config } from "../config.js";
 import type {
   ArtifactEnvelope,
+  ChapterDelta,
   ContinuityManifest,
   ContinuityRevealStatus,
   ContinuityState,
@@ -14,18 +15,6 @@ import { createArtifact } from "./stage-utils.js";
 
 function statePath(chapterNumber: number): string {
   return path.join(config.paths.blueprintArtifacts, `continuity-state-after-${chapterNumber}.json`);
-}
-
-async function loadPreviousState(chapterNumber: number): Promise<ContinuityState | null> {
-  if (chapterNumber <= 1) return null;
-  const target = statePath(chapterNumber - 1);
-  if (!(await fileExists(target))) return null;
-  try {
-    const artifact = await readJson<ArtifactEnvelope<ContinuityState>>(target);
-    return artifact.data;
-  } catch {
-    return null;
-  }
 }
 
 function initialStateFromManifest(manifest: ContinuityManifest): ContinuityState {
@@ -101,11 +90,74 @@ function bumpMotifs(
   });
 }
 
+function applyDeltaToObjects(
+  objects: PersistentObject[],
+  delta: ChapterDelta | undefined,
+  chapterNumber: number,
+): PersistentObject[] {
+  if (!delta || delta.entityMentions.length === 0) return objects;
+  const byKey = new Map(objects.map((obj) => [obj.name.toLowerCase(), obj]));
+  for (const mention of delta.entityMentions) {
+    const target = byKey.get(mention.name.toLowerCase());
+    if (!target) continue;
+    const lastChange = mention.stateChanges[mention.stateChanges.length - 1];
+    if (lastChange && lastChange.trim().length > 0) {
+      byKey.set(mention.name.toLowerCase(), {
+        ...target,
+        state: lastChange.trim(),
+        lastSeenChapter: chapterNumber,
+      });
+    }
+  }
+  return objects.map((obj) => byKey.get(obj.name.toLowerCase()) ?? obj);
+}
+
+function applyDeltaToReveals(
+  reveals: ContinuityRevealStatus[],
+  delta: ChapterDelta | undefined,
+  chapterNumber: number,
+): ContinuityRevealStatus[] {
+  if (!delta || delta.revealPayoffMovement.length === 0) return reveals;
+  const deliveredKeys = new Set(
+    delta.revealPayoffMovement
+      .filter((m) => m.movementType === "reveal" || m.movementType === "payoff")
+      .map((m) => m.thread.toLowerCase()),
+  );
+  if (deliveredKeys.size === 0) return reveals;
+  return reveals.map((reveal) => {
+    if (reveal.delivered) return reveal;
+    if (reveal.chapter <= chapterNumber && deliveredKeys.has(reveal.thread.toLowerCase())) {
+      return { ...reveal, delivered: true };
+    }
+    return reveal;
+  });
+}
+
+// Builds declared reveals from an approved spec's revealControl. `withhold`
+// is excluded by design: a withheld thread is explicitly NOT delivered this
+// chapter, so it must NOT enter the deliveredKeys set inside
+// updateContinuityState.
+export function buildDeclaredRevealsFromSpec(params: {
+  revealControl: { show?: string[]; hint?: string[]; reveal?: string[]; withhold?: string[] } | null | undefined;
+  chapterNumber: number;
+}): RevealEntry[] {
+  if (!params.revealControl) return [];
+  const out: RevealEntry[] = [];
+  for (const mode of ["show", "hint", "reveal"] as const) {
+    const threads = params.revealControl[mode] ?? [];
+    for (const thread of threads) {
+      out.push({ thread, learner: "reader", chapter: params.chapterNumber, mode });
+    }
+  }
+  return out;
+}
+
 export async function updateContinuityState(params: {
   chapterNumber: number;
   manifest: ContinuityManifest | null;
   publishedProse: string;
   declaredReveals?: RevealEntry[];
+  chapterDelta?: ChapterDelta;
   blueprintHash: string;
   blueprintVersion: string;
 }): Promise<ArtifactEnvelope<ContinuityState> | null> {
@@ -113,22 +165,42 @@ export async function updateContinuityState(params: {
     return null;
   }
 
-  const previous = (await loadPreviousState(params.chapterNumber))
-    ?? initialStateFromManifest(params.manifest);
+  // Use the same soft-validating loader as the next chapter's packet
+  // builder so an out-of-blueprint state file does not silently corrupt
+  // mid-run state. On mismatch we seed from the static manifest.
+  const previousArtifact = params.chapterNumber > 1
+    ? await loadPersistedContinuityState({
+        chapterNumber: params.chapterNumber - 1,
+        blueprintHash: params.blueprintHash,
+        blueprintVersion: params.blueprintVersion,
+      })
+    : null;
+  const previous = previousArtifact?.data ?? initialStateFromManifest(params.manifest);
 
   const deliveredKeys = new Set(
     (params.declaredReveals ?? []).map((reveal) => reveal.thread.toLowerCase()),
   );
 
+  const objectsAfterProse = bumpObjects(params.publishedProse, previous.persistentObjects, params.chapterNumber);
+  const objectsAfterDelta = applyDeltaToObjects(objectsAfterProse, params.chapterDelta, params.chapterNumber);
+
+  const revealsAfterDeclared = deliverReveals(previous.revealSchedule, params.chapterNumber, deliveredKeys);
+  const revealsAfterDelta = applyDeltaToReveals(revealsAfterDeclared, params.chapterDelta, params.chapterNumber);
+
+  const irreversibleNotes = (params.chapterDelta?.irreversibleChanges ?? [])
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => `ch${params.chapterNumber}: ${entry}`);
+
   const next: ContinuityState = {
     chapterNumber: params.chapterNumber,
-    persistentObjects: bumpObjects(params.publishedProse, previous.persistentObjects, params.chapterNumber),
+    persistentObjects: objectsAfterDelta,
     spatialRegistry: previous.spatialRegistry,
     timelineAnchors: previous.timelineAnchors,
-    revealSchedule: deliverReveals(previous.revealSchedule, params.chapterNumber, deliveredKeys),
+    revealSchedule: revealsAfterDelta,
     relationshipStates: previous.relationshipStates,
     motifStates: bumpMotifs(params.publishedProse, previous.motifStates, params.chapterNumber),
-    notes: [...previous.notes],
+    notes: [...previous.notes, ...irreversibleNotes],
   };
 
   const artifact = createArtifact<ContinuityState>({
@@ -143,11 +215,45 @@ export async function updateContinuityState(params: {
   return artifact;
 }
 
+// Soft-fail loader: returns null on metadata mismatch so the next chapter's
+// packet silently falls back to the static manifest rather than throwing.
+export async function loadPersistedContinuityState(params: {
+  chapterNumber: number;
+  blueprintHash?: string;
+  blueprintVersion?: string;
+}): Promise<ArtifactEnvelope<ContinuityState> | null> {
+  const target = statePath(params.chapterNumber);
+  if (!(await fileExists(target))) return null;
+  let artifact: ArtifactEnvelope<ContinuityState>;
+  try {
+    artifact = await readJson<ArtifactEnvelope<ContinuityState>>(target);
+  } catch {
+    return null;
+  }
+  if (artifact.schemaVersion !== config.artifactSchemaVersion) return null;
+  if (artifact.artifactType !== "continuity-state") return null;
+  if (params.blueprintHash && artifact.blueprintHash !== params.blueprintHash) return null;
+  if (params.blueprintVersion && artifact.blueprintVersion !== params.blueprintVersion) return null;
+  return artifact;
+}
+
+export function projectStateToManifest(state: ContinuityState): ContinuityManifest {
+  return {
+    persistentObjects: state.persistentObjects.map((obj) => ({ ...obj })),
+    spatialRegistry: state.spatialRegistry.map((sn) => ({ ...sn })),
+    timelineAnchors: state.timelineAnchors.map((ta) => ({ ...ta })),
+    revealSchedule: state.revealSchedule.map(({ delivered: _delivered, ...rest }) => ({ ...rest })),
+    relationshipStates: state.relationshipStates.map((rs) => ({ ...rs })),
+    motifStates: state.motifStates.map((ms) => ({ ...ms })),
+  };
+}
+
 export const _internals = {
   initialStateFromManifest,
   emptyState,
-  loadPreviousState,
   bumpObjects,
   deliverReveals,
   bumpMotifs,
+  applyDeltaToObjects,
+  applyDeltaToReveals,
 };

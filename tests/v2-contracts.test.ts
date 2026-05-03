@@ -7,10 +7,19 @@ import test from "node:test";
 import { parseBlueprint } from "../src/blueprint/parse-blueprint.js";
 import { runContinuityManifestValidators } from "../src/validators/continuity-manifest.js";
 import { applyVoiceGritPatches } from "../src/pipeline/voice-grit-pass.js";
+import {
+  _internals as continuityInternals,
+  buildDeclaredRevealsFromSpec,
+  projectStateToManifest,
+} from "../src/pipeline/update-continuity-state.js";
 import type {
+  ChapterDelta,
   ChapterPacket,
   ContinuityManifest,
+  ContinuityRevealStatus,
+  ContinuityState,
   GritPatch,
+  PersistentObject,
 } from "../src/types/index.js";
 
 const MARKET_AND_MANIFEST_BLUEPRINT = `---
@@ -388,12 +397,29 @@ test("voice-grit validator rejects ticSource that matches a taboo", () => {
 });
 
 test("voice-grit validator enforces total patch cap (6)", () => {
+  // Anchors are spread across 4 scenes (2 per scene) so the per-scene cap
+  // does NOT bite first. The 7th patch must be skipped by the total cap.
   const tokens = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf"];
+  const sceneBlocks = [
+    `She paced the deck. MID-alpha-ANCHOR. Then MID-bravo-ANCHOR. Then she stopped at the rail.`,
+    `She climbed the stairs. MID-charlie-ANCHOR. Then MID-delta-ANCHOR. Then she paused.`,
+    `She crossed the lobby. MID-echo-ANCHOR. Then MID-foxtrot-ANCHOR. Then she nodded.`,
+    `She found the alcove. MID-golf-ANCHOR. Then she breathed out slowly.`,
+  ];
   const prose = [
     "Title line",
     MID_PARAGRAPH_FILLER,
-    `She paced the deck. ${tokens.map((t) => `MID-${t}-ANCHOR.`).join(" Then ")} Then she stopped at the rail.`,
-    "More prose lines. Three sentences here. To buffer the rejudge zone.",
+    sceneBlocks[0],
+    "Trailing one. Trailing two. Trailing three.",
+    "---",
+    sceneBlocks[1],
+    "Trailing one. Trailing two. Trailing three.",
+    "---",
+    sceneBlocks[2],
+    "Trailing one. Trailing two. Trailing three.",
+    "---",
+    sceneBlocks[3],
+    "Trailing one. Trailing two. Trailing three.",
     "The closing line stays sealed against any patch.",
   ].join("\n\n");
   const patches: GritPatch[] = tokens.map((t) => ({
@@ -408,7 +434,38 @@ test("voice-grit validator enforces total patch cap (6)", () => {
     voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
   });
   assert.ok(result.applied.length <= 6, `applied <= 6, got ${result.applied.length}`);
-  assert.ok(result.skipped.some((s) => /Total patch cap/.test(s.skipReason)));
+  assert.ok(
+    result.skipped.some((s) => /Total patch cap/.test(s.skipReason)),
+    `expected at least one Total-patch-cap skip; got: ${result.skipped.map((s) => s.skipReason).join(" | ")}`,
+  );
+});
+
+test("voice-grit validator enforces per-scene patch cap (2)", () => {
+  // All 3 anchors live in scene 0. With per-scene cap=2, the 3rd must skip.
+  const prose = [
+    "Title line",
+    MID_PARAGRAPH_FILLER,
+    "She paced the deck. MID-alpha-ANCHOR. Then MID-bravo-ANCHOR. Then MID-charlie-ANCHOR. Then she stopped at the rail.",
+    "More prose lines. Three sentences here. To buffer the rejudge zone.",
+    "The closing line stays sealed against any patch.",
+  ].join("\n\n");
+  const patches: GritPatch[] = ["alpha", "bravo", "charlie"].map((t) => ({
+    texture: "specificity-swap" as const,
+    originalText: `MID-${t}-ANCHOR.`,
+    replacementText: `MID-${t}-REPLACED.`,
+    earnedJustification: "Sharper concrete detail.",
+  }));
+  const result = applyVoiceGritPatches({
+    prose,
+    patches,
+    voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
+  });
+  assert.equal(result.applied.length, 2);
+  assert.equal(result.skipped.length, 1);
+  assert.ok(
+    result.skipped.some((s) => /Per-scene cap/.test(s.skipReason)),
+    `expected Per-scene-cap skip; got: ${result.skipped.map((s) => s.skipReason).join(" | ")}`,
+  );
 });
 
 test("voice-grit validator enforces once-per-chapter texture caps", () => {
@@ -458,4 +515,167 @@ test("voice-grit validator rejects originalText not present in prose", () => {
   });
   assert.equal(result.applied.length, 0);
   assert.match(result.skipped[0]!.skipReason, /verbatim exactly once/);
+});
+
+// -----------------------------------------------------------------------------
+// continuity-state merge / projection / declared-reveals helpers
+// -----------------------------------------------------------------------------
+
+function makeReveal(overrides: Partial<ContinuityRevealStatus> = {}): ContinuityRevealStatus {
+  return {
+    thread: "the architect identity",
+    learner: "reader",
+    chapter: 2,
+    mode: "reveal",
+    delivered: false,
+    ...overrides,
+  };
+}
+
+function makeObject(overrides: Partial<PersistentObject> = {}): PersistentObject {
+  return {
+    name: "Eleanor's memo",
+    state: "sealed in case",
+    possessor: "Eleanor",
+    lastSeenChapter: 0,
+    ...overrides,
+  };
+}
+
+function makeDelta(overrides: Partial<ChapterDelta> = {}): ChapterDelta {
+  return {
+    entityMentions: [],
+    sceneLedgerDelta: [],
+    knowledgeChanges: [],
+    irreversibleChanges: [],
+    plotThreadProgression: [],
+    revealPayoffMovement: [],
+    activePressures: [],
+    unresolvedThreads: [],
+    nextChapterOpeningHandoff: "Next handoff.",
+    activeVoiceSignals: [],
+    storySpineUpdate: "Spine.",
+    characterEmotionalStates: [],
+    ...overrides,
+  };
+}
+
+test("buildDeclaredRevealsFromSpec excludes withhold threads", () => {
+  const reveals = buildDeclaredRevealsFromSpec({
+    revealControl: {
+      show: ["the room"],
+      hint: ["the device"],
+      reveal: ["the scar"],
+      withhold: ["the architect identity"],
+    },
+    chapterNumber: 3,
+  });
+  const threads = reveals.map((r) => r.thread);
+  assert.deepEqual(threads.sort(), ["the device", "the room", "the scar"]);
+  assert.ok(!threads.includes("the architect identity"));
+  assert.ok(reveals.every((r) => r.chapter === 3 && r.learner === "reader"));
+});
+
+test("buildDeclaredRevealsFromSpec returns empty for null/undefined revealControl", () => {
+  assert.deepEqual(buildDeclaredRevealsFromSpec({ revealControl: null, chapterNumber: 1 }), []);
+  assert.deepEqual(buildDeclaredRevealsFromSpec({ revealControl: undefined, chapterNumber: 1 }), []);
+});
+
+test("applyDeltaToObjects updates state from last entityMention stateChange", () => {
+  const objects = [
+    makeObject({ name: "Eleanor's memo", state: "sealed in case", lastSeenChapter: 0 }),
+    makeObject({ name: "Dock Two key", state: "dropped", lastSeenChapter: 0 }),
+  ];
+  const delta = makeDelta({
+    entityMentions: [
+      { name: "Eleanor's memo", role: "object", introducedThisChapter: false, stateChanges: ["read by Lena", "burned"] },
+    ],
+  });
+  const updated = continuityInternals.applyDeltaToObjects(objects, delta, 3);
+  const memo = updated.find((o) => o.name === "Eleanor's memo")!;
+  assert.equal(memo.state, "burned");
+  assert.equal(memo.lastSeenChapter, 3);
+  const key = updated.find((o) => o.name === "Dock Two key")!;
+  assert.equal(key.state, "dropped");
+  assert.equal(key.lastSeenChapter, 0);
+});
+
+test("applyDeltaToObjects ignores entity mentions with empty stateChanges", () => {
+  const objects = [makeObject({ state: "sealed in case", lastSeenChapter: 0 })];
+  const delta = makeDelta({
+    entityMentions: [
+      { name: "Eleanor's memo", role: "object", introducedThisChapter: false, stateChanges: [] },
+    ],
+  });
+  const updated = continuityInternals.applyDeltaToObjects(objects, delta, 3);
+  assert.equal(updated[0]!.state, "sealed in case");
+  assert.equal(updated[0]!.lastSeenChapter, 0);
+});
+
+test("applyDeltaToReveals marks reveals delivered only for reveal/payoff movements", () => {
+  const reveals = [
+    makeReveal({ thread: "the scar", chapter: 1, delivered: false }),
+    makeReveal({ thread: "the architect", chapter: 1, delivered: false }),
+    makeReveal({ thread: "the door", chapter: 1, delivered: false }),
+  ];
+  const delta = makeDelta({
+    revealPayoffMovement: [
+      { thread: "the scar", movementType: "reveal", description: "Lena sees it", status: "shown", chapterNumber: 1 },
+      { thread: "the architect", movementType: "hint", description: "indirect cue", status: "hinted", chapterNumber: 1 },
+      { thread: "the door", movementType: "payoff", description: "opened", status: "payoff", chapterNumber: 1 },
+    ],
+  });
+  const updated = continuityInternals.applyDeltaToReveals(reveals, delta, 1);
+  const byThread = Object.fromEntries(updated.map((r) => [r.thread, r.delivered]));
+  assert.equal(byThread["the scar"], true);
+  assert.equal(byThread["the architect"], false, "hint must NOT mark delivered");
+  assert.equal(byThread["the door"], true);
+});
+
+test("applyDeltaToReveals does not mark future-scheduled reveals delivered", () => {
+  const reveals = [makeReveal({ thread: "the scar", chapter: 5, delivered: false })];
+  const delta = makeDelta({
+    revealPayoffMovement: [
+      { thread: "the scar", movementType: "reveal", description: "x", status: "shown", chapterNumber: 2 },
+    ],
+  });
+  const updated = continuityInternals.applyDeltaToReveals(reveals, delta, 2);
+  assert.equal(updated[0]!.delivered, false);
+});
+
+test("deliverReveals marks delivered when chapter <= current AND thread in declared set", () => {
+  const reveals = [
+    makeReveal({ thread: "the scar", chapter: 2, delivered: false }),
+    makeReveal({ thread: "the architect", chapter: 5, delivered: false }),
+  ];
+  const declared = new Set(["the scar", "the architect"]);
+  const updated = continuityInternals.deliverReveals(reveals, 2, declared);
+  assert.equal(updated[0]!.delivered, true);
+  assert.equal(updated[1]!.delivered, false, "future-scheduled reveal must remain undelivered");
+});
+
+test("projectStateToManifest drops delivered + notes and clones entries", () => {
+  const state: ContinuityState = {
+    chapterNumber: 2,
+    persistentObjects: [makeObject({ lastSeenChapter: 2 })],
+    spatialRegistry: [{ name: "lobby", description: "main", access: "any", condition: "ok" }],
+    timelineAnchors: [{ label: "T+0", description: "start", offset: "0" }],
+    revealSchedule: [
+      makeReveal({ thread: "the scar", chapter: 1, delivered: true }),
+      makeReveal({ thread: "the architect", chapter: 6, delivered: false }),
+    ],
+    relationshipStates: [{ pair: "A x B", trust: "low", distance: "high", dependency: "low", rivalry: "med" }],
+    motifStates: [{ motif: "white seam", intensity: "low", lastChapter: 2, stage: "recurring" }],
+    notes: ["irreversible note"],
+  };
+  const projected = projectStateToManifest(state);
+  assert.ok(!("notes" in projected));
+  for (const reveal of projected.revealSchedule) {
+    assert.ok(!("delivered" in reveal), "manifest reveal entries must not carry delivered");
+  }
+  assert.equal(projected.persistentObjects[0]!.lastSeenChapter, 2);
+  assert.equal(projected.motifStates[0]!.stage, "recurring");
+  // Clones, not aliases
+  projected.persistentObjects[0]!.lastSeenChapter = 99;
+  assert.equal(state.persistentObjects[0]!.lastSeenChapter, 2);
 });

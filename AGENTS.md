@@ -14,7 +14,7 @@ TypeScript CLI for blueprint-first, chapter-by-chapter commercial-fiction genera
 - `src/pipeline/voice-grit-pass.ts` owns the post-selection voice-grit pass per `docs/voice-grit-spec.md`.
 - `src/pipeline/opening-ending-tournament.ts` owns the 1-candidate-per-zone opening + ending compare. No title generation, no rejudge stage.
 - `src/pipeline/final-audit.ts` merges deterministic validator results with the model audit. The auditor flags any visible violation of the declared reader job as an error.
-- `src/pipeline/update-continuity-state.ts` owns the deterministic post-publish state merge that writes `continuity-state-after-N.json`.
+- `src/pipeline/update-continuity-state.ts` owns the deterministic post-publish state merge that writes `continuity-state-after-N.json` (consuming declared spec reveals + extracted `ChapterDelta`) and exports `loadPersistedContinuityState` / `projectStateToManifest` so the next chapter's packet builder consumes the live state.
 - `src/blueprint/extract-voice-fingerprint.ts` deterministically extracts the voice fingerprint from published chapters (or `STYLE_SAMPLE.md`) and writes `artifacts/blueprint/voice-target.json`. Runs after publish.
 - `src/blueprint/compile-author-brief.ts` produces the cached authorial-persona statement plus 6-10 craft directives that combine genre tradition with the specific commercial promise of THIS book. One model call per blueprint, deterministic fallback when no credentials.
 - `src/blueprint/compile-market-promise.ts` and `src/blueprint/compile-continuity-manifest.ts` are deterministic compiles of the optional `## Market Promise` and `## Continuity Manifest` sections.
@@ -76,7 +76,7 @@ Voice-grit + tournament invariants:
 - In `src/pipeline/run-chapter.ts`, `skipRevisionThreshold` may short-circuit revision only when the first draft passes threshold and has no blocking review signals. The skip path must still write `selection`, `selected`, and `review`.
 - In `src/pipeline/run-chapter.ts`, final audit blocking should follow the audit contract consistently, `POST_FIX_WORD_COUNT` remains advisory-only, and `qualitySettings.maxFixAttempts` (default 1) caps the continuity fix loop.
 - Voice-grit must NOT touch reserved zones; the tournament owns opening + ending; polish-pass and reader-simulation are NOT part of v2.
-- `voice-target.json`, `market-promise.json`, `continuity-manifest.json`, `author-brief.json` are loaded with soft metadata validation (schema, artifactType, `blueprintHash`, `blueprintVersion`). Mismatches drop silently rather than throwing.
+- `voice-target.json`, `market-promise.json`, `continuity-manifest.json`, `author-brief.json`, and `continuity-state-after-N.json` are loaded with soft metadata validation (schema, artifactType, `blueprintHash`, `blueprintVersion`). Mismatches drop silently rather than throwing.
 - In `src/validators/prose-quality.ts`, knowledge-leak matching should stay boundary-aware: allow punctuated mentions like `Lena,` or `Lena's`, but reject substring matches like `annual` for `Ann`.
 - In `src/pipeline/smoke-helpers.ts`, keep smoke prose deterministic and validator-clean so calibration stays interpretable.
 

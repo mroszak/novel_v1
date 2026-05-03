@@ -85,6 +85,13 @@ function isRetryableError(error: unknown): boolean {
 
 type ThinkingEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
+// Opus 4.7+ uses an "adaptive" thinking control surface paired with an
+// `output_config.effort` enum, NOT the older `thinking.type: "enabled"` +
+// `budget_tokens` shape that earlier Claude models (Sonnet 4.5, Opus 3.5)
+// expose. The live API rejects `enabled` on opus-4-7 with a 400 and an
+// explicit message pointing at adaptive/effort. Keep this in sync if you
+// change `config.models.anthropicPrimary` to a model that requires the
+// older shape.
 function thinkingBudgetToEffort(budgetTokens: number): ThinkingEffort {
   if (budgetTokens <= 1000) return "low";
   if (budgetTokens <= 3000) return "medium";
@@ -152,9 +159,7 @@ export async function generateText(params: {
           model: params.stage.model,
           max_tokens: params.stage.maxOutputTokens,
           system: params.system,
-          thinking: {
-            type: "adaptive",
-          },
+          thinking: { type: "adaptive" },
           output_config: {
             effort: thinkingBudgetToEffort(params.stage.thinkingBudgetTokens),
           },

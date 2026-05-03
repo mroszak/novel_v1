@@ -49,51 +49,97 @@ interface VoiceCardLookup {
   taboos: Set<string>;
 }
 
+// CRLF-safe: matches one or more blank-line separators (LF or CRLF).
+const PARAGRAPH_SEP_RE = /(?:\r?\n){2,}/g;
+
 function paragraphsOf(prose: string): string[] {
-  return prose.split(/\n\n+/);
+  return prose.split(PARAGRAPH_SEP_RE);
+}
+
+function isSceneBreakParagraph(paragraph: string): boolean {
+  const trimmed = paragraph.trim();
+  return /^[-*◆=]+$/.test(trimmed) || trimmed === "---";
+}
+
+// Walks prose recording each paragraph's actual byte offset, regardless of
+// whether the separator was `\n\n`, `\r\n\r\n`, or longer. Avoids the
+// fragile `paragraphEnd + 2` accounting.
+interface ParagraphSpan {
+  start: number;
+  end: number;
+  text: string;
+}
+
+function paragraphSpans(prose: string): ParagraphSpan[] {
+  const spans: ParagraphSpan[] = [];
+  PARAGRAPH_SEP_RE.lastIndex = 0;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = PARAGRAPH_SEP_RE.exec(prose)) !== null) {
+    spans.push({ start: cursor, end: match.index, text: prose.slice(cursor, match.index) });
+    cursor = match.index + match[0].length;
+  }
+  spans.push({ start: cursor, end: prose.length, text: prose.slice(cursor) });
+  return spans;
+}
+
+// A "scene" is a contiguous run of paragraphs separated by a scene-break
+// paragraph (e.g. `---` or `* * *`). The whole chapter is scene 0 when no
+// breaks exist. Returns the 0-based scene index that contains the given
+// substring, or -1 if not found.
+function sceneIndexForSpan(prose: string, originalText: string): number {
+  if (!originalText) return -1;
+  const idx = prose.indexOf(originalText);
+  if (idx < 0) return -1;
+  const spans = paragraphSpans(prose);
+  let sceneIndex = 0;
+  for (const span of spans) {
+    if (idx >= span.start && idx < span.end) {
+      return sceneIndex;
+    }
+    if (isSceneBreakParagraph(span.text)) {
+      sceneIndex += 1;
+    }
+  }
+  return sceneIndex;
 }
 
 function isReservedSpan(prose: string, originalText: string): boolean {
   if (!originalText) return true;
-  const paragraphs = paragraphsOf(prose);
+  const spans = paragraphSpans(prose);
   const idx = prose.indexOf(originalText);
   if (idx < 0) return true;
 
-  let runningStart = 0;
   let openingWords = 0;
-  for (let i = 0; i < paragraphs.length; i += 1) {
-    const paragraph = paragraphs[i] ?? "";
+  for (let i = 0; i < spans.length; i += 1) {
+    const span = spans[i]!;
+    const paragraph = span.text;
     if (paragraph.trim().length === 0) {
-      runningStart += paragraph.length + 2;
       continue;
     }
     const paragraphWords = countWordsUtil(paragraph);
-    const paragraphStart = runningStart;
-    const paragraphEnd = paragraphStart + paragraph.length;
 
-    if (idx >= paragraphStart && idx < paragraphEnd) {
+    if (idx >= span.start && idx < span.end) {
       if (i === 0) return true;
-      if (i === paragraphs.length - 1) return true;
+      if (i === spans.length - 1) return true;
       const isShortTitleLine = paragraph.length < 80 && !/[.!?]$/.test(paragraph);
       if (isShortTitleLine) return true;
       if (openingWords + paragraphWords <= 200) return true;
       const trimmed = paragraph.replace(/\s+$/, "");
       const lastSentenceMatch = trimmed.match(/([^.!?]+[.!?])\s*$/);
       if (lastSentenceMatch) {
-        const tailStart = paragraphStart + (paragraph.length - lastSentenceMatch[0].length);
-        const tailEnd = paragraphStart + paragraph.length;
-        if (idx + originalText.length > tailStart && idx < tailEnd) return true;
+        const tailStart = span.start + (paragraph.length - lastSentenceMatch[0].length);
+        if (idx + originalText.length > tailStart && idx < span.end) return true;
       }
-      const nextParagraph = paragraphs[i + 1]?.trim() ?? "";
+      const nextParagraph = spans[i + 1]?.text.trim() ?? "";
       const isSceneBreakLeadout = /^[-*◆=]+$/.test(nextParagraph) || /^---$/.test(nextParagraph);
       if (isSceneBreakLeadout && lastSentenceMatch) {
-        const tailStart = paragraphStart + (paragraph.length - lastSentenceMatch[0].length);
+        const tailStart = span.start + (paragraph.length - lastSentenceMatch[0].length);
         if (idx + originalText.length > tailStart) return true;
       }
       return false;
     }
 
-    runningStart = paragraphEnd + 2;
     openingWords += paragraphWords;
   }
   return true;
@@ -144,6 +190,9 @@ export function applyVoiceGritPatches(params: {
 
   let onceUsed = new Set<GritTexture>();
   let total = 0;
+  // Scene boundaries are paragraph-level (e.g. `---`) and patches don't
+  // introduce new boundaries, so scene indices stay stable across applies.
+  const perSceneCount = new Map<number, number>();
 
   for (const patch of params.patches) {
     if (!VALID_TEXTURES.has(patch.texture)) {
@@ -170,6 +219,15 @@ export function applyVoiceGritPatches(params: {
       skipped.push({ ...patch, skipReason: "Patch overlaps a reserved zone (opening/ending/title/paragraph-end/scene-break leadout)." });
       continue;
     }
+    const sceneIndex = sceneIndexForSpan(working, patch.originalText);
+    if (sceneIndex < 0) {
+      skipped.push({ ...patch, skipReason: "Could not locate originalText in any scene." });
+      continue;
+    }
+    if ((perSceneCount.get(sceneIndex) ?? 0) >= PER_SCENE_CAP) {
+      skipped.push({ ...patch, skipReason: `Per-scene cap (${PER_SCENE_CAP}) reached for scene ${sceneIndex}.` });
+      continue;
+    }
     if (patch.texture === "voice-tic") {
       if (!patch.ticSource || patch.ticSource.trim().length === 0) {
         skipped.push({ ...patch, skipReason: "voice-tic requires ticSource citing a real voice-card entry." });
@@ -188,6 +246,7 @@ export function applyVoiceGritPatches(params: {
     working = working.replace(patch.originalText, patch.replacementText);
     applied.push(patch);
     if (ONCE_PER_CHAPTER_TEXTURES.has(patch.texture)) onceUsed.add(patch.texture);
+    perSceneCount.set(sceneIndex, (perSceneCount.get(sceneIndex) ?? 0) + 1);
     total += 1;
   }
 
@@ -253,15 +312,20 @@ export interface VoiceGritResult {
   usages: Array<{ stage: string; usage: StageUsage }>;
 }
 
-async function persistDiff(chapterNumber: number, diff: VoiceGritDiff): Promise<ArtifactEnvelope<VoiceGritDiff>> {
+async function persistDiff(params: {
+  chapterNumber: number;
+  blueprintHash: string;
+  blueprintVersion: string;
+  diff: VoiceGritDiff;
+}): Promise<ArtifactEnvelope<VoiceGritDiff>> {
   const artifact = createArtifact<VoiceGritDiff>({
     artifactType: "voice-grit-applied",
-    blueprintHash: "",
-    blueprintVersion: "",
-    chapterNumber,
-    data: diff,
+    blueprintHash: params.blueprintHash,
+    blueprintVersion: params.blueprintVersion,
+    chapterNumber: params.chapterNumber,
+    data: params.diff,
   });
-  await writeJson(chapterArtifactPath(chapterNumber, "voice-grit-applied"), artifact);
+  await writeJson(chapterArtifactPath(params.chapterNumber, "voice-grit-applied"), artifact);
   return artifact;
 }
 
@@ -278,6 +342,14 @@ export async function runVoiceGritPass(params: {
   const preProse = params.selectedArtifact.data.prose;
   const preReviewScore = params.selectedReviewArtifact.data.overallScore;
   const chapterNumber = params.packetArtifact.chapterNumber ?? params.packetArtifact.data.chapterNumber;
+  const blueprintHash = params.packetArtifact.blueprintHash;
+  const blueprintVersion = params.packetArtifact.blueprintVersion;
+  const writeDiff = (diff: VoiceGritDiff) => persistDiff({
+    chapterNumber: chapterNumber!,
+    blueprintHash,
+    blueprintVersion,
+    diff,
+  });
 
   const baseDiff: VoiceGritDiff = {
     status: "skipped",
@@ -292,7 +364,7 @@ export async function runVoiceGritPass(params: {
 
   if (!params.voiceTarget) {
     const diff: VoiceGritDiff = { ...baseDiff, reason: "No voice-target available; downstream uses selected unchanged." };
-    await persistDiff(chapterNumber!, diff);
+    await writeDiff(diff);
     return {
       selectedArtifact: params.selectedArtifact,
       selectedReviewArtifact: params.selectedReviewArtifact,
@@ -314,7 +386,8 @@ export async function runVoiceGritPass(params: {
           "You are the voice-grit planner for a chapter-by-chapter novel engine.",
           "Output a JSON object: { \"patches\": [...], \"notes\": [...] }. No prose, no commentary.",
           `Allowed textures: ${Array.from(VALID_TEXTURES).join(", ")}.`,
-          "Total patches: 0-6. Empty is a valid answer.",
+          `Total patches: 0-${TOTAL_PATCH_CAP}. Empty is a valid answer.`,
+          `Per-scene cap: at most ${PER_SCENE_CAP} patches per scene (scenes are separated by scene-break paragraphs like '---' or '* * *'). Spread patches across multiple scenes; the validator will silently drop the 3rd-and-later patch in any single scene.`,
           "Each originalText must appear verbatim exactly once in the chapter prose.",
           "Reserved zones BLOCKED: chapter opening (~200 words), chapter ending (last paragraph), chapter title, paragraph-end sentences, scene-break leadout sentences.",
           "voice-tic patches REQUIRE a ticSource citing a real activeTrait or dialogueHabit (NOT a tabooNote).",
@@ -355,7 +428,7 @@ export async function runVoiceGritPass(params: {
         status: "skipped",
         reason: `voice-grit-plan failed: ${(error as Error).message}`,
       };
-      await persistDiff(chapterNumber!, diff);
+      await writeDiff(diff);
       return {
         selectedArtifact: params.selectedArtifact,
         selectedReviewArtifact: params.selectedReviewArtifact,
@@ -382,7 +455,7 @@ export async function runVoiceGritPass(params: {
       status: "no-patches",
       reason: "Plan returned 0 patches; downstream uses selected unchanged.",
     };
-    await persistDiff(chapterNumber!, diff);
+    await writeDiff(diff);
     return {
       selectedArtifact: params.selectedArtifact,
       selectedReviewArtifact: params.selectedReviewArtifact,
@@ -407,7 +480,7 @@ export async function runVoiceGritPass(params: {
       appliedPatches: [],
       skippedPatches: apply.skipped,
     };
-    await persistDiff(chapterNumber!, diff);
+    await writeDiff(diff);
     return {
       selectedArtifact: params.selectedArtifact,
       selectedReviewArtifact: params.selectedReviewArtifact,
@@ -427,7 +500,7 @@ export async function runVoiceGritPass(params: {
       appliedPatches: apply.applied,
       skippedPatches: apply.skipped,
     };
-    await persistDiff(chapterNumber!, diff);
+    await writeDiff(diff);
     return {
       selectedArtifact: params.selectedArtifact,
       selectedReviewArtifact: params.selectedReviewArtifact,
@@ -478,7 +551,7 @@ export async function runVoiceGritPass(params: {
       postReviewScore,
       finalProse: preProse,
     };
-    await persistDiff(chapterNumber!, diff);
+    await writeDiff(diff);
     return {
       selectedArtifact: params.selectedArtifact,
       selectedReviewArtifact: params.selectedReviewArtifact,
@@ -512,7 +585,7 @@ export async function runVoiceGritPass(params: {
     postReviewScore,
     finalProse: apply.prose,
   };
-  await persistDiff(chapterNumber!, diff);
+  await writeDiff(diff);
 
   return {
     selectedArtifact: updatedSelected,

@@ -96,7 +96,7 @@ The structural spine. Six pipe-delimited sub-sections:
 - Relationship States: `pair | trust | distance | dependency | rivalry`
 - Motif States: `motif | intensity | last-chapter | stage`
 
-The packet carries a filtered `ContinuityActiveSlice` (active cast + mandatory beats + reveal budget, hard-capped at ~4000 tokens). After publish, `update-continuity-state.ts` writes a deterministic `continuity-state-after-N.json` baseline for the next chapter. The continuity-manifest validator catches sealed-section regressions, timeline reversals, and premature reveals.
+The packet carries a filtered `ContinuityActiveSlice` (active cast + mandatory beats + reveal budget, hard-capped at ~4000 tokens via iterative tail-trimming with floors). After publish, `update-continuity-state.ts` writes a deterministic `continuity-state-after-N.json` baseline that merges declared spec reveals with the extracted `ChapterDelta` (reveal/payoff deliveries, persistent-object state changes, irreversible-change notes). Chapter `N+1`'s packet builder loads that state (soft metadata validation, falls back to the static manifest on mismatch) so last-seen bumps, motif progression, and delivered reveals carry forward. The continuity-manifest validator catches sealed-section regressions, timeline reversals, and premature reveals.
 
 Both sections are optional. An empty/absent section means the engine works with the empty contract; behavior degrades gracefully to the pre-manifest packet shape.
 

@@ -23,6 +23,7 @@ import {
 } from "../utils/index.js";
 import { createArtifact, chapterArtifactPath } from "./stage-utils.js";
 import { loadVoiceTargetIfPresent } from "../blueprint/extract-voice-fingerprint.js";
+import { loadPersistedContinuityState, projectStateToManifest } from "./update-continuity-state.js";
 
 function resolveCharacter(activeName: string, characters: CharacterCard[]): CharacterCard {
   const target = normalizeLookupKey(activeName);
@@ -129,6 +130,7 @@ function buildContinuityActiveSlice(params: {
   activeCastNames: string[];
   mandatoryBeats: string[];
   revealBudget: { show: string[]; hint: string[]; reveal: string[]; withhold: string[] };
+  extraScopeNotes?: string[];
 }): ContinuityActiveSlice | null {
   if (!params.manifest) return null;
 
@@ -176,7 +178,7 @@ function buildContinuityActiveSlice(params: {
 
   const motifStates = params.manifest.motifStates;
 
-  const scopeNotes: string[] = [];
+  const scopeNotes: string[] = [...(params.extraScopeNotes ?? [])];
   const dropped = {
     persistentObjects: params.manifest.persistentObjects.length - persistentObjects.length,
     spatialRegistry: params.manifest.spatialRegistry.length - spatialRegistry.length,
@@ -197,21 +199,69 @@ function buildContinuityActiveSlice(params: {
     scopeNotes,
   };
 
-  let tokens = estimateTextTokens(JSON.stringify(slice));
-  if (tokens > CONTINUITY_SLICE_TOKEN_CAP) {
-    const trim = <T>(arr: T[], floor: number) => arr.slice(-Math.max(floor, Math.floor(arr.length / 2)));
-    slice = {
-      ...slice,
-      persistentObjects: trim(persistentObjects, 4),
-      spatialRegistry: trim(spatialRegistry, 4),
-      revealSchedule: trim(revealSchedule, 4),
-      relationshipStates: trim(relationshipStates, 3),
-    };
-    tokens = estimateTextTokens(JSON.stringify(slice));
-    slice.scopeNotes = [...scopeNotes, `Trimmed slice to ~${tokens} tokens (cap ${CONTINUITY_SLICE_TOKEN_CAP}).`];
+  // Hard-capped trimming. Each pass halves the largest array (with a floor)
+  // until either the slice fits under CONTINUITY_SLICE_TOKEN_CAP or every
+  // array has reached its floor and we record an over-cap warning.
+  const maxPasses = 8;
+  let trimmed = false;
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    const tokens = estimateTextTokens(JSON.stringify(slice));
+    if (tokens <= CONTINUITY_SLICE_TOKEN_CAP) {
+      if (trimmed) {
+        slice.scopeNotes = [
+          ...slice.scopeNotes,
+          `Trimmed slice to ~${tokens} tokens (cap ${CONTINUITY_SLICE_TOKEN_CAP}).`,
+        ];
+      }
+      return slice;
+    }
+    const nextSlice = trimSliceOnce(slice);
+    if (!nextSlice) break;
+    slice = nextSlice;
+    trimmed = true;
   }
 
+  const finalTokens = estimateTextTokens(JSON.stringify(slice));
+  slice.scopeNotes = [
+    ...slice.scopeNotes,
+    `Trimmed slice to ~${finalTokens} tokens (cap ${CONTINUITY_SLICE_TOKEN_CAP}; floors hit, may exceed cap).`,
+  ];
   return slice;
+}
+
+function trimSliceOnce(slice: ContinuityActiveSlice): ContinuityActiveSlice | null {
+  // Tail-prefer trimming: keep recent entries. Floors prevent total wipeout.
+  const floors = {
+    persistentObjects: 4,
+    spatialRegistry: 4,
+    timelineAnchors: 4,
+    revealSchedule: 4,
+    relationshipStates: 3,
+    motifStates: 4,
+  } as const;
+  const candidates: Array<keyof typeof floors> = [
+    "persistentObjects",
+    "spatialRegistry",
+    "timelineAnchors",
+    "revealSchedule",
+    "relationshipStates",
+    "motifStates",
+  ];
+  let bestKey: keyof typeof floors | null = null;
+  let bestLen = -1;
+  for (const key of candidates) {
+    const len = (slice[key] as readonly unknown[]).length;
+    if (len > floors[key] && len > bestLen) {
+      bestKey = key;
+      bestLen = len;
+    }
+  }
+  if (!bestKey) return null;
+  const trimmedLen = Math.max(floors[bestKey], Math.floor(bestLen / 2));
+  return {
+    ...slice,
+    [bestKey]: (slice[bestKey] as readonly unknown[]).slice(-trimmedLen),
+  } as ContinuityActiveSlice;
 }
 
 export async function compileChapterPacket(params: {
@@ -254,8 +304,29 @@ export async function compileChapterPacket(params: {
   };
   const voiceTarget = await loadVoiceTargetData(blueprintIdentity);
   const marketPromise = blueprintArtifacts.marketPromise.data;
+
+  // Prefer the most recent persisted ContinuityState (last-seen bumps,
+  // motif progression, delivered reveals, delta-applied object/notes
+  // updates) over the static manifest. Soft-fail metadata validation
+  // silently falls back to the manifest on mismatch.
+  let activeManifest: ContinuityManifest | null = blueprintArtifacts.continuityManifest.data;
+  const activeManifestNotes: string[] = [];
+  if (activeManifest && chapterNumber > 1) {
+    const persistedState = await loadPersistedContinuityState({
+      chapterNumber: chapterNumber - 1,
+      blueprintHash: blueprintArtifacts.compiledBlueprint.blueprintHash,
+      blueprintVersion: blueprintArtifacts.compiledBlueprint.blueprintVersion,
+    });
+    if (persistedState) {
+      activeManifest = projectStateToManifest(persistedState.data);
+      activeManifestNotes.push(
+        `Active slice derived from continuity-state-after-${chapterNumber - 1}.json (delivered reveals, last-seen bumps, motif progression applied).`,
+      );
+    }
+  }
+
   const continuityActiveSlice = buildContinuityActiveSlice({
-    manifest: blueprintArtifacts.continuityManifest.data,
+    manifest: activeManifest,
     chapterNumber,
     activeCastNames: chapter.activeCast,
     mandatoryBeats: chapter.mandatoryBeats,
@@ -265,6 +336,7 @@ export async function compileChapterPacket(params: {
       reveal: chapter.reveal,
       withhold: chapter.withhold,
     },
+    extraScopeNotes: activeManifestNotes,
   });
   const targetWordBand = {
     min: Math.max(1500, chapter.targetWordCount - config.defaults.chapterWordBandLeeway),

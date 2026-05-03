@@ -48,6 +48,6 @@ Single-pipeline invariants (no profile gating):
 - Tournament zone artifact must record the final `applied` state before persisting.
 - Author brief is one cached model call per blueprint, deterministic-fallback when no credentials or `--no-genre-ai`.
 - Voice-target and continuity slice are loaded with soft metadata validation (mismatches return null, never throw).
-- Continuity-state update is a deterministic post-publish merge that writes `artifacts/blueprint/continuity-state-after-N.json`. Skipped when the blueprint omits a Continuity Manifest.
+- Continuity-state update is a deterministic post-publish merge that writes `artifacts/blueprint/continuity-state-after-N.json`. It consumes declared spec reveals plus the extracted `ChapterDelta` (reveal/payoff deliveries, persistent-object state changes, irreversible-change notes). Chapter `N+1`'s packet builder reads it via `loadPersistedContinuityState` and projects it back to a manifest shape so last-seen bumps, motif progression, and delivered reveals carry forward. Skipped when the blueprint omits a Continuity Manifest.
 
 CLI/operator docs stay aligned when flags or runtime stage behavior change.

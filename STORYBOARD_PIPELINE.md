@@ -305,7 +305,6 @@ export async function runStoryboard(params: {
   chapterNumber: number;
   blueprintHash: string;
   blueprintVersion: string;
-  qualityProfile: QualityProfile;
   blueprintArtifacts: BlueprintCompilationArtifacts;
 }): Promise<StoryboardResult> {
   // 1. Load published chapter prose
