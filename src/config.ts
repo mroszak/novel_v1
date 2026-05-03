@@ -219,7 +219,7 @@ export const config = {
       stageName: "literary-judge",
       provider: "openai",
       model: openAiPrimaryModel,
-      reasoningEffort: "high",
+      reasoningEffort: "medium",
       verbosity: "low",
       inputTokenBudget: 42000,
       maxOutputTokens: 10000,

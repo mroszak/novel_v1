@@ -16,6 +16,7 @@ import type {
 } from "../types/index.js";
 import { runDeterministicValidators } from "../validators/index.js";
 import { compactJson, tailExcerpt, writeJson } from "../utils/index.js";
+import { mapChapterFunctionToReaderJob } from "./generate-spec.js";
 import { createSmokeAudit } from "./smoke-helpers.js";
 import { chapterArtifactPath, createArtifact } from "./stage-utils.js";
 import { stripMemoryPacketFields } from "./update-memory.js";
@@ -110,15 +111,41 @@ export function buildFinalAuditPrompt(params: {
   validatorReport: ValidatorReport;
   selectedProse: string;
 }): string {
+  const marketPromise = params.packet.marketPromise;
+  const continuitySlice = params.packet.continuityActiveSlice;
+  const readerJob = mapChapterFunctionToReaderJob(params.packet.chapterFunction.function, marketPromise);
+
   const sections = [
     `Genre contract: ${compactJson(params.genreContract)}`,
     `Chapter packet core: ${compactJson(stripMemoryPacketFields(params.packet))}`,
+  ];
+
+  if (marketPromise) {
+    sections.push(
+      `Market promise: ${compactJson({
+        coreCommercialHook: marketPromise.coreCommercialHook,
+        emotionalPromise: marketPromise.emotionalPromise,
+        pacingContract: marketPromise.pacingContract,
+      })}`,
+    );
+  }
+  if (readerJob) {
+    sections.push(
+      `Declared reader job for this chapter (${params.packet.chapterFunction.function}): ${readerJob}`,
+      "Flag any visible violation of this reader job as an error-severity audit issue.",
+    );
+  }
+  if (continuitySlice) {
+    sections.push(`Continuity active slice (verify the chapter respects this): ${compactJson(continuitySlice)}`);
+  }
+
+  sections.push(
     `Selected review: ${compactJson(buildAuditReviewSnapshot(params.selectedReview))}`,
     `Chapter delta: ${compactJson(params.delta)}`,
     `Rolling memory: ${compactJson(params.memory)}`,
     `Deterministic validators: ${compactJson(params.validatorReport)}`,
     `Selected chapter prose:\n${params.selectedProse}`,
-  ];
+  );
 
   if (params.packet.compactContext.previousChapterFull) {
     sections.splice(

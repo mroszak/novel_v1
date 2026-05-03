@@ -9,6 +9,7 @@ import type {
   DraftReview,
   ReviewScoreBreakdown,
 } from "../types/index.js";
+import { mapChapterFunctionToReaderJob } from "./generate-spec.js";
 import { chapterArtifactPath, createArtifact } from "./stage-utils.js";
 import { createSmokeReview } from "./smoke-helpers.js";
 import { compactJson, roundTo, tailExcerpt, writeJson } from "../utils/index.js";
@@ -211,6 +212,46 @@ export async function judgeDraft(params: {
       })
       .join("\n");
 
+    const marketPromise = packetArtifact.data.marketPromise;
+    const continuitySlice = packetArtifact.data.continuityActiveSlice;
+    const readerJob = mapChapterFunctionToReaderJob(packetArtifact.data.chapterFunction.function, marketPromise);
+
+    const promptParts: string[] = [
+      `Genre contract: ${compactJson(blueprintArtifacts.genreContract.data)}`,
+      `Chapter function profile: ${compactJson(packetArtifact.data.chapterFunction)}`,
+      `Approved spec: ${compactJson(approvedSpecArtifact.data)}`,
+    ];
+
+    if (marketPromise) {
+      promptParts.push(
+        `Market promise: ${compactJson({
+          coreCommercialHook: marketPromise.coreCommercialHook,
+          emotionalPromise: marketPromise.emotionalPromise,
+          pacingContract: marketPromise.pacingContract,
+          freshnessAngle: marketPromise.freshnessAngle,
+        })}`,
+      );
+    }
+    if (readerJob) {
+      promptParts.push(`Declared reader job for this chapter: ${readerJob}`);
+    }
+    if (continuitySlice) {
+      promptParts.push(`Continuity active slice: ${compactJson(continuitySlice)}`);
+    }
+
+    promptParts.push(
+      `Style rules:\n${storyCore.styleRules.join("\n")}`,
+      `Anti-patterns:\n${storyCore.antiPatterns.join("\n")}`,
+      `Character voice cards:\n${voiceCardSummary}`,
+      `Unresolved threads: ${compactJson(packetArtifact.data.rollingMemory?.unresolvedThreads ?? [])}`,
+      `Active pressures: ${compactJson(packetArtifact.data.rollingMemory?.activePressures ?? [])}`,
+      previousChapterTail
+        ? `Previous chapter ending (last ~800 words):\n${previousChapterTail}`
+        : "No previous chapter.",
+      `Candidate id: ${candidateId}`,
+      `Candidate prose:\n${draftArtifact.data.prose}`,
+    );
+
     const stage = params.stageOverride ?? config.stageProfiles.literaryJudge;
     const result = await generateStructuredOutput<DraftReview>({
       stage,
@@ -223,23 +264,20 @@ export async function judgeDraft(params: {
         "sensoryImmersion: physical grounding, environmental presence, body-in-space awareness, the reader feels present.",
         `Set passesThreshold true only when the overall chapter clearly clears ${passThreshold} and has no blocking literary or continuity issues.`,
         "When evaluating voice consistency, compare against the character voice cards and style rules provided.",
-        "When evaluating continuity, check that the chapter opens consistently with where the previous chapter ended.",
+        "When evaluating continuity, check that the chapter opens consistently with where the previous chapter ended and respects the continuity active slice when provided.",
+        "",
+        "ANTI-COMMITTEE PRINCIPLES.",
+        "REWARD: asymmetry, weird vivid specificity, uncomfortable character choices, scene-specific physicality, unresolved tension, strong taste, sentences that risk being wrong to feel true.",
+        'PUNISH: generic polish, explained emotion, fake profundity, cinematic vagueness, "AI thriller voice," sentences sanded to sound smart.',
+        "When two candidates score equally on craft but one risks more, the riskier one wins.",
+        "",
+        "BESTSELLER QUESTION (context signal, NOT a 16th rubric dimension):",
+        readerJob
+          ? `Treat this as a binding context signal: does this chapter make the target reader open chapter N+1 right now? The declared reader job is: ${readerJob}.`
+          : "Does this chapter make the target reader open chapter N+1 right now?",
+        "Weight this answer in the overall verdict and in revisionActions/blockingIssues, but DO NOT add a 16th score; never re-normalize the existing 15-dimension weights.",
       ].join("\n"),
-      prompt: [
-        `Genre contract: ${compactJson(blueprintArtifacts.genreContract.data)}`,
-        `Chapter function profile: ${compactJson(packetArtifact.data.chapterFunction)}`,
-        `Approved spec: ${compactJson(approvedSpecArtifact.data)}`,
-        `Style rules:\n${storyCore.styleRules.join("\n")}`,
-        `Anti-patterns:\n${storyCore.antiPatterns.join("\n")}`,
-        `Character voice cards:\n${voiceCardSummary}`,
-        `Unresolved threads: ${compactJson(packetArtifact.data.rollingMemory?.unresolvedThreads ?? [])}`,
-        `Active pressures: ${compactJson(packetArtifact.data.rollingMemory?.activePressures ?? [])}`,
-        previousChapterTail
-          ? `Previous chapter ending (last ~800 words):\n${previousChapterTail}`
-          : "No previous chapter.",
-        `Candidate id: ${candidateId}`,
-        `Candidate prose:\n${draftArtifact.data.prose}`,
-      ].join("\n\n"),
+      prompt: promptParts.join("\n\n"),
       schemaName: `draft_review_${candidateId}`,
       schema: reviewSchema,
     });
