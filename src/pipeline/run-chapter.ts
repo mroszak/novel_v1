@@ -35,6 +35,7 @@ import type {
   ChapterSpec,
   DraftReview,
   PairwiseSelection,
+  PublishCandidateSnapshot,
   RollingMemory,
   RunChapterOptions,
   RunChapterResult,
@@ -157,6 +158,21 @@ export function downgradeValidatorOnlyErrors<
     ),
     requiresFix: false,
   };
+}
+
+/**
+ * Publish-candidate ratchet: returns true when the post-fix re-judge score
+ * has dropped more than `tolerance` below the candidate score captured at the
+ * start of the final-audit phase. Reverting protects against silent
+ * downstream degradation — fix-loop rewrites that pass threshold but produce
+ * artistically weaker prose than the literary stack approved.
+ */
+export function shouldRevertToPublishCandidate(params: {
+  candidateScore: number;
+  postFixScore: number;
+  tolerance: number;
+}): boolean {
+  return params.postFixScore < params.candidateScore - params.tolerance;
 }
 
 export function shouldSkipRevision(params: {
@@ -556,6 +572,30 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
     }
     result.memoryArtifactPath = memoryArtifactPath(options.chapterNumber);
 
+    // Publish-candidate snapshot. The prose entering the final audit is the
+    // last version judged by the literary stack (pairwise + voice-grit +
+    // tournament rejudges). Anything the fix loop produces downstream must
+    // re-judge >= candidateScore - tolerance or the pipeline reverts here.
+    const publishCandidateSnapshot: PublishCandidateSnapshot = {
+      prose: selectedArtifact.data.prose,
+      wordCount: selectedArtifact.data.wordCount,
+      candidateScore: selectedReviewArtifact.data.overallScore,
+      capturedAfter: "tournament",
+      capturedAt: new Date().toISOString(),
+    };
+    const publishCandidateArtifact = createArtifact<PublishCandidateSnapshot>({
+      artifactType: "publish-candidate",
+      blueprintHash: selectedArtifact.blueprintHash,
+      blueprintVersion: selectedArtifact.blueprintVersion,
+      chapterNumber: selectedArtifact.chapterNumber,
+      data: publishCandidateSnapshot,
+    });
+    await writeJson(
+      chapterArtifactPath(options.chapterNumber, "publish-candidate"),
+      publishCandidateArtifact,
+    );
+    const publishCandidateReviewArtifact = selectedReviewArtifact;
+
     console.error(`[ch${options.chapterNumber}] Running final audit...`);
     let auditRun = await runFinalAudit({
       packetArtifact,
@@ -819,6 +859,73 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           },
         });
         return result;
+      }
+
+      // Publish-candidate immutability ratchet. The fix-loop just rewrote
+      // prose; if the rejudge regressed beyond tolerance against the prose
+      // that entered final audit, revert. Later passes are allowed to
+      // improve or repair, never to quietly degrade.
+      if (shouldRevertToPublishCandidate({
+        candidateScore: publishCandidateSnapshot.candidateScore,
+        postFixScore: selectedReviewArtifact.data.overallScore,
+        tolerance: config.qualitySettings.publishCandidateRegressionTolerance,
+      })) {
+        console.error(
+          `[ch${options.chapterNumber}] Reverting to publish-candidate: post-fix score `
+          + `${selectedReviewArtifact.data.overallScore.toFixed(2)} < candidate `
+          + `${publishCandidateSnapshot.candidateScore.toFixed(2)} - tol `
+          + `${config.qualitySettings.publishCandidateRegressionTolerance}.`,
+        );
+        currentSelectedArtifact = {
+          ...currentSelectedArtifact,
+          createdAt: new Date().toISOString(),
+          data: {
+            ...currentSelectedArtifact.data,
+            prose: publishCandidateSnapshot.prose,
+            wordCount: publishCandidateSnapshot.wordCount,
+            review: publishCandidateReviewArtifact.data,
+          },
+        };
+        selectedReviewArtifact = publishCandidateReviewArtifact;
+        await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
+        await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
+
+        currentDeltaArtifact = await extractChapterDelta({
+          packetArtifact,
+          selectedArtifact: currentSelectedArtifact,
+          blueprintArtifacts: compilation.artifacts,
+          previousMemory,
+          smoke: options.smoke,
+        });
+        collectUsage(usages, `${config.stageProfiles.chapterDelta.stageName}-publish-candidate-revert`, currentDeltaArtifact);
+        currentMemoryArtifact = await updateMemory({
+          packetArtifact,
+          deltaArtifact: currentDeltaArtifact,
+          previousMemory,
+          smoke: options.smoke,
+        });
+        collectUsage(usages, `${config.stageProfiles.memoryUpdate.stageName}-publish-candidate-revert`, currentMemoryArtifact);
+        auditRun = await runFinalAudit({
+          packetArtifact,
+          selectedArtifact: currentSelectedArtifact,
+          selectedReviewArtifact,
+          deltaArtifact: currentDeltaArtifact,
+          memoryArtifact: currentMemoryArtifact,
+          previousMemory,
+          blueprintArtifacts: compilation.artifacts,
+          smoke: options.smoke,
+        });
+        collectUsage(usages, `${config.stageProfiles.finalAudit.stageName}-publish-candidate-revert`, auditRun.auditArtifact);
+        // Trust the literary stack: any blocking errors on the restored
+        // candidate get downgraded so the chapter publishes.
+        if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
+          const downgraded = downgradeValidatorOnlyErrors({
+            ...auditRun.auditArtifact.data,
+            issues: auditRun.auditArtifact.data.issues.map((i) => ({ ...i, source: "validator" as const })),
+          });
+          auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
+          await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+        }
       }
     }
 

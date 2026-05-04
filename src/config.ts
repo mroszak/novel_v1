@@ -125,6 +125,16 @@ export const config = {
     maxLiteraryRetryAttempts: 0,
     alwaysRunSpecCritique: false,
     skipRevisionThreshold: 88,
+    /**
+     * Publish-candidate immutability tolerance. The prose entering the final
+     * audit (post-pairwise-selection, post-voice-grit, post-tournament) is the
+     * publish candidate. After any fix-loop attempt rewrites prose, the
+     * post-fix re-judge score must remain within `candidateScore - tolerance`
+     * or the pipeline reverts to the candidate. Mirrors the voice-grit rejudge
+     * tolerance so all post-judge stages are governed by the same ratchet:
+     * later passes may improve or repair, but they cannot quietly degrade.
+     */
+    publishCandidateRegressionTolerance: 1,
   },
   paths: {
     blueprint: path.resolve(rootDir, "STORY_BLUEPRINT.md"),

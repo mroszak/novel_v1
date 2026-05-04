@@ -633,6 +633,21 @@ export interface FinalAuditReport {
   issues: FinalAuditIssue[];
 }
 
+/**
+ * Snapshot of the prose entering the final audit, taken after pairwise
+ * selection + voice-grit + tournament. Used by the publish-candidate
+ * immutability ratchet: any post-fix rewrite must re-judge >= candidateScore
+ * minus `qualitySettings.publishCandidateRegressionTolerance` or the pipeline
+ * reverts to this prose.
+ */
+export interface PublishCandidateSnapshot {
+  prose: string;
+  wordCount: number;
+  candidateScore: number;
+  capturedAfter: "selection" | "voice-grit" | "tournament";
+  capturedAt: string;
+}
+
 export interface ContinuityFixResult {
   prose: string;
   appliedFixes: string[];

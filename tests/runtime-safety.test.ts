@@ -23,6 +23,7 @@ import {
   downgradeValidatorOnlyErrors,
   hasBlockingAuditIssues,
   isValidatorOnlyBlocking,
+  shouldRevertToPublishCandidate,
   shouldSkipRevision,
 } from "../src/pipeline/run-chapter.js";
 import { mergeAuditWithValidator } from "../src/pipeline/final-audit.js";
@@ -1402,6 +1403,37 @@ test("downgradeValidatorOnlyErrors flips validator errors to warnings and clears
   assert.equal(next.issues[0]?.severity, "warning", "validator error must downgrade");
   assert.equal(next.issues[1]?.severity, "error", "model error must remain an error");
   assert.equal(next.issues[2]?.severity, "warning", "existing warnings stay warnings");
+});
+
+// --- Publish-candidate immutability ratchet ---
+
+test("shouldRevertToPublishCandidate returns true when post-fix score regresses beyond tolerance", () => {
+  assert.equal(
+    shouldRevertToPublishCandidate({ candidateScore: 88, postFixScore: 86, tolerance: 1 }),
+    true,
+    "88 -> 86 with tolerance 1 must revert (delta 2 > 1)",
+  );
+});
+
+test("shouldRevertToPublishCandidate returns false when post-fix score is within tolerance", () => {
+  assert.equal(
+    shouldRevertToPublishCandidate({ candidateScore: 88, postFixScore: 87.5, tolerance: 1 }),
+    false,
+    "88 -> 87.5 with tolerance 1 stays (delta 0.5 within 1)",
+  );
+  assert.equal(
+    shouldRevertToPublishCandidate({ candidateScore: 88, postFixScore: 87, tolerance: 1 }),
+    false,
+    "88 -> 87 with tolerance 1 is exactly at the boundary; does not revert",
+  );
+});
+
+test("shouldRevertToPublishCandidate returns false when post-fix score improves", () => {
+  assert.equal(
+    shouldRevertToPublishCandidate({ candidateScore: 88, postFixScore: 90, tolerance: 1 }),
+    false,
+    "Improvement must never trigger revert",
+  );
 });
 
 // --- PARAGRAPH_DISTRIBUTION severity lock ---
