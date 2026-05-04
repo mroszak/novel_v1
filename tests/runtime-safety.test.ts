@@ -1419,6 +1419,36 @@ test("detectKnowledgeLeaks detects character names and keywords through punctuat
   );
 });
 
+test("detectKnowledgeLeaks does not anchor on trivial articles in title-form character names", () => {
+  // "The Busboy" used to split into ["the", "busboy"], and the length>=3 filter
+  // kept "the". Every "the" in the chapter then became a charPosition, turning
+  // the 100-word window into a sliding scan over the whole prose. Two of the
+  // five forbidden keywords co-occurring anywhere triggered a false positive
+  // even when "busboy" itself never appeared in the chapter.
+  const prose = [
+    "Vauclair raised the toast and the staff held still as glass.",
+    "Erik watched the long room and counted nothing he could name.",
+    "A bus girl crossed the floor with a tray of empties.",
+    "The orchestra drifted toward something soft and barely there.",
+  ].join("\n\n");
+
+  const issues = detectKnowledgeLeaks(prose, [{
+    character: "The Busboy",
+    knows: [],
+    suspects: [],
+    hides: [],
+    mustNotKnowYet: [
+      "Civilian staff. Aware of nothing structural; loyalty is to the person in front of him, not to the building.",
+    ],
+  }]);
+
+  assert.equal(
+    issues.length,
+    0,
+    "Must not anchor on 'the'; without an actual 'busboy' mention there is no leak.",
+  );
+});
+
 // --- Validator false-positive regressions ---
 
 test("PLACEHOLDER_TEXT does not flag normal prose containing 'insert'", () => {

@@ -183,9 +183,14 @@ export function detectKnowledgeLeaks(
   for (const entry of knowledgeMatrix) {
     if (entry.mustNotKnowYet.length === 0) continue;
 
+    // Drop trivial articles/pronouns ("The", "A", "Of", ...) from the
+    // character anchor. Without this filter, a character literally named
+    // "The Busboy" matches every "the" in the prose and the 100-word window
+    // becomes a sliding scan over the whole chapter, so any 2 of the 5
+    // forbidden keywords co-occurring anywhere triggers a false positive.
     const charParts = normalizeLookupKey(entry.character)
       .split(" ")
-      .filter((p) => p.length >= 3);
+      .filter((p) => p.length >= 3 && !TRIVIAL.has(p));
     if (charParts.length === 0) continue;
 
     const charPositions: number[] = [];
