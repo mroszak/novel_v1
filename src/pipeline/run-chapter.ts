@@ -161,6 +161,39 @@ export function downgradeValidatorOnlyErrors<
 }
 
 /**
+ * Downgrades every error-severity issue to warning and clears `requiresFix`,
+ * preserving the original `source` (model vs validator) so operators can still
+ * see which issues came from where. Used by the publish-candidate ratchet on
+ * revert: we trust the literary judge's approval over downstream blockers, but
+ * we must not lie about who flagged what.
+ */
+export function downgradeAllErrorsToWarnings<
+  T extends { requiresFix: boolean; issues: Array<{ severity: string; source?: "model" | "validator" }> },
+>(audit: T): T {
+  return {
+    ...audit,
+    issues: audit.issues.map((i) => (i.severity === "error" ? { ...i, severity: "warning" } : i)),
+    requiresFix: false,
+  };
+}
+
+const REVERT_SUMMARY_SUFFIX
+  = " [publish-candidate ratchet reverted to the literary-judge-approved prose; the issues above are retained as advisory warnings.]";
+
+/**
+ * Appends a single sentinel sentence to the audit summary so the published
+ * artifact is internally consistent on the revert path: `requiresFix: false`
+ * matches a summary string that explains why. Idempotent — no-op if the
+ * sentinel is already present.
+ */
+export function annotateRevertedAuditSummary<
+  T extends { summary: string },
+>(audit: T): T {
+  if (audit.summary.includes(REVERT_SUMMARY_SUFFIX.trim())) return audit;
+  return { ...audit, summary: `${audit.summary}${REVERT_SUMMARY_SUFFIX}` };
+}
+
+/**
  * Publish-candidate ratchet: returns true when the post-fix re-judge score
  * has dropped more than `tolerance` below the candidate score captured at the
  * start of the final-audit phase. Reverting protects against silent
@@ -917,12 +950,14 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         });
         collectUsage(usages, `${config.stageProfiles.finalAudit.stageName}-publish-candidate-revert`, auditRun.auditArtifact);
         // Trust the literary stack: any blocking errors on the restored
-        // candidate get downgraded so the chapter publishes.
+        // candidate get downgraded so the chapter publishes. Preserve each
+        // issue's `source` (model vs validator) so operator review still has
+        // the truth, and annotate the summary so requiresFix:false reads as
+        // intentional rather than contradicting the original blocking text.
         if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
-          const downgraded = downgradeValidatorOnlyErrors({
-            ...auditRun.auditArtifact.data,
-            issues: auditRun.auditArtifact.data.issues.map((i) => ({ ...i, source: "validator" as const })),
-          });
+          const downgraded = annotateRevertedAuditSummary(
+            downgradeAllErrorsToWarnings(auditRun.auditArtifact.data),
+          );
           auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
           await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
         }

@@ -42,8 +42,13 @@ export function detectRepetition(prose: string): ValidatorIssue[] {
   for (const p of paragraphs) {
     const trimmed = p.trim();
     // Skip scene-break markers, structural glyphs, and very short paragraphs.
+    // Threshold raised from 3 to 6 because legitimate short dialogue exchanges
+    // ("Yes, Miss V.", "Two minutes.", "Allegro on a leash.") are 2-5 words
+    // and recur naturally; flagging them as DUPLICATE_PARAGRAPH errors
+    // produced false positives that historically triggered wholesale fix-loop
+    // rewrites of clean prose.
     if (isSceneBreakParagraph(trimmed)) continue;
-    if (countWords(trimmed) < 3) continue;
+    if (countWords(trimmed) < 6) continue;
     const key = trimmed.toLowerCase();
     if (seen.has(key) && !reported.has(key)) {
       reported.add(key);

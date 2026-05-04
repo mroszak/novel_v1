@@ -19,6 +19,8 @@ import {
 import { buildSpecPacketView } from "../src/pipeline/prompt-packet-views.js";
 import { buildFinalAuditPrompt } from "../src/pipeline/final-audit.js";
 import {
+  annotateRevertedAuditSummary,
+  downgradeAllErrorsToWarnings,
   downgradePostFixWordBandError,
   downgradeValidatorOnlyErrors,
   hasBlockingAuditIssues,
@@ -1405,6 +1407,34 @@ test("downgradeValidatorOnlyErrors flips validator errors to warnings and clears
   assert.equal(next.issues[2]?.severity, "warning", "existing warnings stay warnings");
 });
 
+// --- Revert-path downgrade preserves source provenance ---
+
+test("downgradeAllErrorsToWarnings flips errors to warnings without rewriting source", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", source: "model" as const, title: "POV overreach" },
+      { severity: "error", source: "validator" as const, title: "WORD_BAND" },
+      { severity: "warning", source: "validator" as const, title: "REPETITION" },
+    ],
+  };
+  const next = downgradeAllErrorsToWarnings(audit);
+  assert.equal(next.requiresFix, false);
+  assert.equal(next.issues[0]?.severity, "warning", "model error must downgrade");
+  assert.equal(next.issues[0]?.source, "model", "model issue must STILL be tagged model");
+  assert.equal(next.issues[1]?.severity, "warning", "validator error must downgrade");
+  assert.equal(next.issues[1]?.source, "validator", "validator issue must STILL be tagged validator");
+  assert.equal(next.issues[2]?.severity, "warning", "existing warnings unchanged");
+});
+
+test("annotateRevertedAuditSummary appends sentinel and is idempotent", () => {
+  const audit = { summary: "Story continuity, reveal discipline, and the opening reader job are largely satisfied." };
+  const once = annotateRevertedAuditSummary(audit);
+  assert.match(once.summary, /publish-candidate ratchet reverted/);
+  const twice = annotateRevertedAuditSummary(once);
+  assert.equal(twice.summary, once.summary, "second call must not append the sentinel a second time");
+});
+
 // --- Publish-candidate immutability ratchet ---
 
 test("shouldRevertToPublishCandidate returns true when post-fix score regresses beyond tolerance", () => {
@@ -1626,6 +1656,27 @@ test("DUPLICATE_PARAGRAPH ignores scene-break glyphs", () => {
   assert.ok(
     !issues.some((i) => i.code === "DUPLICATE_PARAGRAPH"),
     "Scene-break glyphs like ◆ and *** must not trigger DUPLICATE_PARAGRAPH",
+  );
+});
+
+test("DUPLICATE_PARAGRAPH ignores short repeated dialogue beats", () => {
+  // Real ch1 failure mode: "Yes, Miss V." repeats naturally in service-corridor
+  // exchanges and used to trip the validator (3 words, just past the old < 3
+  // skip). Threshold is now < 6 so 5-word and shorter dialogue beats stay safe.
+  const prose = [
+    "She looked at him.",
+    "\"Yes, Miss V.\"",
+    "Daniel went through the door.",
+    "\"Yes, Miss V.\"",
+    "She wrote the time on the clipboard.",
+    "\"Two minutes.\"",
+    "He nodded once and was gone.",
+    "\"Two minutes.\"",
+  ].join("\n\n");
+  const issues = detectRepetition(prose);
+  assert.ok(
+    !issues.some((i) => i.code === "DUPLICATE_PARAGRAPH"),
+    "Short dialogue beats under 6 words must not register as duplicate prose",
   );
 });
 
