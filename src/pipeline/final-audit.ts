@@ -55,21 +55,28 @@ function validatorIssuesToAuditIssues(validator: ValidatorReport): FinalAuditIss
     fixInstruction: issue.evidence.length > 0
       ? `Resolve the issue using this evidence: ${issue.evidence.join(" | ")}`
       : "Resolve the deterministic validator failure without changing correct chapter facts.",
+    source: "validator" as const,
   }));
 }
 
-function mergeAuditWithValidator(
+function tagModelIssues(issues: FinalAuditIssue[]): FinalAuditIssue[] {
+  return issues.map((issue) => ({ ...issue, source: issue.source ?? "model" }));
+}
+
+export function mergeAuditWithValidator(
   audit: FinalAuditReport,
   validator: ValidatorReport,
 ): FinalAuditReport {
+  const taggedModelIssues = tagModelIssues(audit.issues);
   const normalizedAudit: FinalAuditReport = {
     ...audit,
     status: audit.status === "issues_found"
       || audit.requiresFix
-      || audit.issues.some((issue) => issue.severity === "error")
+      || taggedModelIssues.some((issue) => issue.severity === "error")
       ? "issues_found"
       : "clean",
-    requiresFix: audit.requiresFix || audit.issues.some((issue) => issue.severity === "error"),
+    requiresFix: audit.requiresFix || taggedModelIssues.some((issue) => issue.severity === "error"),
+    issues: taggedModelIssues,
   };
 
   if (validator.errorCount === 0 && validator.warningCount === 0) {

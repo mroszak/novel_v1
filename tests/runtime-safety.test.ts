@@ -18,7 +18,14 @@ import {
 } from "../src/pipeline/judge-draft.js";
 import { buildSpecPacketView } from "../src/pipeline/prompt-packet-views.js";
 import { buildFinalAuditPrompt } from "../src/pipeline/final-audit.js";
-import { downgradePostFixWordBandError, hasBlockingAuditIssues, shouldSkipRevision } from "../src/pipeline/run-chapter.js";
+import {
+  downgradePostFixWordBandError,
+  downgradeValidatorOnlyErrors,
+  hasBlockingAuditIssues,
+  isValidatorOnlyBlocking,
+  shouldSkipRevision,
+} from "../src/pipeline/run-chapter.js";
+import { mergeAuditWithValidator } from "../src/pipeline/final-audit.js";
 import { resolveSelectionDecision } from "../src/pipeline/select-draft.js";
 import { createSmokeDelta, createSmokeMemory, createSmokeReview, createSmokeSelection, createSmokeValidatorReport } from "../src/pipeline/smoke-helpers.js";
 import { BlockedPipelineError, createArtifact, loadArtifact } from "../src/pipeline/stage-utils.js";
@@ -1324,6 +1331,95 @@ test("downgradePostFixWordBandError is a no-op when there are no errors", () => 
   assert.deepEqual(next, audit, "No-op when no errors are present");
 });
 
+// --- Validator-only blocking gate ---
+
+test("mergeAuditWithValidator tags model issues as 'model' and validator issues as 'validator'", () => {
+  const merged = mergeAuditWithValidator(
+    {
+      status: "issues_found",
+      summary: "Model audit detail.",
+      factualConfidence: 0.9,
+      requiresFix: true,
+      issues: [
+        { severity: "error", title: "Timeline contradiction", description: "x", fixInstruction: "y" },
+      ],
+    },
+    {
+      passed: false,
+      errorCount: 1,
+      warningCount: 0,
+      issues: [{ severity: "error", code: "KNOWLEDGE_LEAK_PROSE", message: "leak", evidence: ["a", "b"] }],
+    },
+  );
+
+  const modelIssue = merged.issues.find((i) => i.title === "Timeline contradiction");
+  const validatorIssue = merged.issues.find((i) => i.title === "KNOWLEDGE_LEAK_PROSE");
+  assert.equal(modelIssue?.source, "model");
+  assert.equal(validatorIssue?.source, "validator");
+});
+
+test("isValidatorOnlyBlocking returns true when all error issues are validator-sourced", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", source: "validator" as const },
+      { severity: "warning", source: "model" as const },
+    ],
+  };
+  assert.equal(isValidatorOnlyBlocking(audit), true);
+});
+
+test("isValidatorOnlyBlocking returns false when any error issue is model-sourced", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", source: "validator" as const },
+      { severity: "error", source: "model" as const },
+    ],
+  };
+  assert.equal(isValidatorOnlyBlocking(audit), false);
+});
+
+test("isValidatorOnlyBlocking returns false when there are no errors at all", () => {
+  const audit = {
+    requiresFix: false,
+    issues: [{ severity: "warning", source: "validator" as const }],
+  };
+  assert.equal(isValidatorOnlyBlocking(audit), false);
+});
+
+test("downgradeValidatorOnlyErrors flips validator errors to warnings and clears requiresFix", () => {
+  const audit = {
+    requiresFix: true,
+    issues: [
+      { severity: "error", source: "validator" as const },
+      { severity: "error", source: "model" as const },
+      { severity: "warning", source: "validator" as const },
+    ],
+  };
+  const next = downgradeValidatorOnlyErrors(audit);
+  assert.equal(next.requiresFix, false);
+  assert.equal(next.issues[0]?.severity, "warning", "validator error must downgrade");
+  assert.equal(next.issues[1]?.severity, "error", "model error must remain an error");
+  assert.equal(next.issues[2]?.severity, "warning", "existing warnings stay warnings");
+});
+
+// --- PARAGRAPH_DISTRIBUTION severity lock ---
+
+test("checkParagraphDistribution always emits warning, never error", () => {
+  const longProse = ("Word ".repeat(220).trim() + ".\n\n").repeat(5);
+  const consecutiveSingles = Array.from({ length: 7 }, (_, i) => `Sentence ${i}.`).join("\n\n");
+  const longIssues = checkParagraphDistribution(longProse);
+  const singleIssues = checkParagraphDistribution(consecutiveSingles);
+  for (const issue of [...longIssues, ...singleIssues]) {
+    assert.equal(
+      issue.severity,
+      "warning",
+      `PARAGRAPH_DISTRIBUTION must stay warning-only (got ${issue.severity} for "${issue.message}")`,
+    );
+  }
+});
+
 // --- mustNotKnowYet convergence strictness ---
 
 test("mergeKnowledgeMatrix does NOT clear mustNotKnowYet when knows only shares some tokens", () => {
@@ -1498,6 +1594,26 @@ test("DUPLICATE_PARAGRAPH ignores scene-break glyphs", () => {
   assert.ok(
     !issues.some((i) => i.code === "DUPLICATE_PARAGRAPH"),
     "Scene-break glyphs like ◆ and *** must not trigger DUPLICATE_PARAGRAPH",
+  );
+});
+
+test("DUPLICATE_PARAGRAPH ignores spaced section dividers (* * *, ~ ~ ~, # # #)", () => {
+  const prose = [
+    "She set the cup down without drinking.",
+    "* * *",
+    "Hours later, the room was the same room.",
+    "~ ~ ~",
+    "Nothing about it had agreed to change.",
+    "* * *",
+    "She rose and crossed to the window.",
+    "# # #",
+    "Snow came down with the seriousness of weather.",
+    "* * *",
+  ].join("\n\n");
+  const issues = detectRepetition(prose);
+  assert.ok(
+    !issues.some((i) => i.code === "DUPLICATE_PARAGRAPH"),
+    "Spaced dividers like '* * *' and '# # #' must not register as duplicate prose",
   );
 });
 

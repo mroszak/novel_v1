@@ -615,6 +615,14 @@ export interface FinalAuditIssue {
   title: string;
   description: string;
   fixInstruction: string;
+  /**
+   * Where this issue came from. The fix loop uses this to avoid wholesale
+   * chapter rewrites when only deterministic validators flagged errors —
+   * those are frequently false positives and should not be allowed to damage
+   * prose the literary judge already accepted. Optional for backward
+   * compatibility with older persisted artifacts.
+   */
+  source?: "model" | "validator";
 }
 
 export interface FinalAuditReport {

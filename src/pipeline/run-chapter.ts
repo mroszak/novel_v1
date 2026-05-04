@@ -121,6 +121,44 @@ export function downgradePostFixWordBandError<
   };
 }
 
+/**
+ * True when the audit is currently blocking (requiresFix or any error) AND
+ * every error-severity issue came from the deterministic validators rather
+ * than the model auditor.
+ *
+ * Validator errors are sometimes false positives (anchoring, scope, off-by-one
+ * regex) and the wholesale fixContinuity pass rewrites the entire chapter,
+ * which damages prose the literary judge already accepted. Keeping this
+ * scenario out of the wholesale fix loop preserves the working draft and lets
+ * us simply downgrade the validator noise to warnings on the published audit.
+ */
+export function isValidatorOnlyBlocking(audit: {
+  requiresFix: boolean;
+  issues: Array<{ severity: string; source?: "model" | "validator" }>;
+}): boolean {
+  const errorIssues = audit.issues.filter((i) => i.severity === "error");
+  if (errorIssues.length === 0 && !audit.requiresFix) return false;
+  if (errorIssues.length === 0 && audit.requiresFix) return false;
+  return errorIssues.every((i) => i.source === "validator");
+}
+
+/**
+ * Downgrades all validator-sourced error issues to warnings and clears
+ * `requiresFix`. Used when `isValidatorOnlyBlocking` is true so we can
+ * publish the literary-judge-approved prose without rewriting it.
+ */
+export function downgradeValidatorOnlyErrors<
+  T extends { requiresFix: boolean; issues: Array<{ severity: string; source?: "model" | "validator" }> },
+>(audit: T): T {
+  return {
+    ...audit,
+    issues: audit.issues.map((i) =>
+      i.severity === "error" && i.source === "validator" ? { ...i, severity: "warning" } : i,
+    ),
+    requiresFix: false,
+  };
+}
+
 export function shouldSkipRevision(params: {
   skipRevisionThreshold: number | null;
   overallScore: number;
@@ -428,22 +466,26 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
     // runs before the opening/ending tournament so the tournament still owns
     // its reserved zones (opening, ending, paragraph-end, scene-break leadout).
     if (!startsAfterJudge(options)) {
-      try {
-        console.error(`[ch${options.chapterNumber}] Voice-grit pass...`);
-        const gritResult = await runVoiceGritPass({
-          packetArtifact,
-          approvedSpecArtifact,
-          selectedArtifact,
-          selectedReviewArtifact,
-          voiceTarget: packetArtifact.data.voiceTarget,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        selectedArtifact = gritResult.selectedArtifact;
-        selectedReviewArtifact = gritResult.selectedReviewArtifact;
-        for (const u of gritResult.usages) usages.push(u);
-      } catch (error) {
-        console.error(`[voice-grit] Outer failure, keeping selected as-is: ${(error as Error).message}`);
+      if (!packetArtifact.data.voiceTarget) {
+        console.error(`[ch${options.chapterNumber}] Voice-grit skipped: no voice-target available.`);
+      } else {
+        try {
+          console.error(`[ch${options.chapterNumber}] Voice-grit pass...`);
+          const gritResult = await runVoiceGritPass({
+            packetArtifact,
+            approvedSpecArtifact,
+            selectedArtifact,
+            selectedReviewArtifact,
+            voiceTarget: packetArtifact.data.voiceTarget,
+            blueprintArtifacts: compilation.artifacts,
+            smoke: options.smoke,
+          });
+          selectedArtifact = gritResult.selectedArtifact;
+          selectedReviewArtifact = gritResult.selectedReviewArtifact;
+          for (const u of gritResult.usages) usages.push(u);
+        } catch (error) {
+          console.error(`[voice-grit] Outer failure, keeping selected as-is: ${(error as Error).message}`);
+        }
       }
 
       try {
@@ -579,6 +621,19 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         localizedPatchStale = true;
       }
 
+      // Validator-only blocking is a known false-positive surface. Refuse to
+      // wholesale-rewrite a literary-judge-approved chapter for it; downgrade
+      // the noise to warnings, persist the cleaned audit, and exit the loop.
+      if (isValidatorOnlyBlocking(auditRun.auditArtifact.data)) {
+        const downgraded = downgradeValidatorOnlyErrors(auditRun.auditArtifact.data);
+        auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
+        await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+        console.error(
+          `[ch${options.chapterNumber}] Skipping wholesale continuity fix: only deterministic-validator errors remain. Downgraded to warnings.`,
+        );
+        break;
+      }
+
       fixAttempt += 1;
       localizedPatchStale = false;
       console.error(`[ch${options.chapterNumber}] Continuity fix attempt ${fixAttempt}/${maxFixAttempts}...`);
@@ -683,6 +738,20 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         },
       };
       await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+    }
+
+    if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
+      // One final downgrade gate before failing the chapter: if everything
+      // still blocking is validator-only, we trust the literary judge's
+      // approval over the deterministic noise and publish anyway.
+      if (isValidatorOnlyBlocking(auditRun.auditArtifact.data)) {
+        const downgraded = downgradeValidatorOnlyErrors(auditRun.auditArtifact.data);
+        auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
+        await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+        console.error(
+          `[ch${options.chapterNumber}] Publishing despite validator-only blocking issues; downgraded to warnings.`,
+        );
+      }
     }
 
     if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {

@@ -13,4 +13,7 @@ alwaysApply: false
 - Any synthesized voice card should carry a valid `updatedFromChapter`.
 - In final-audit flow, blocking decisions should follow the audit contract consistently, not ad hoc status/string heuristics.
 - `POST_FIX_WORD_COUNT` is advisory-only and must not flip audit blocking by itself.
+- `mergeAuditWithValidator` must tag every issue with `source: "model" | "validator"` so the fix-loop can distinguish them.
+- Validator-only blocking (every error-severity issue has `source: "validator"`) must downgrade to warnings via `downgradeValidatorOnlyErrors` rather than trigger the wholesale `fixContinuity` rewrite. The deterministic validators are too false-positive-prone to overrule a literary-judge-approved chapter.
+- `PARAGRAPH_DISTRIBUTION` is warning-only forever. Do not promote it to error severity.
 - If you touch these areas, add or update a focused regression test in `tests/runtime-safety.test.ts`.

@@ -20,6 +20,17 @@ const DIALOGUE_VERB_RE = /\b(?:said|asked|whispered|muttered|replied|answered|ca
 
 const SAID_ADVERB_RE = /\b(?:said|asked)\s+\w+ly\b/gi;
 
+// Section-break / scene-divider paragraphs that should never count as
+// duplicate prose. Covers both compact (`***`, `---`, `===`, `~~~`, `# # #`)
+// and spaced (`* * *`, `# # #`, `~ ~ ~`, `◆ ◆ ◆`) forms, plus the literal
+// markdown-style `---`. Anything composed entirely of these glyphs and
+// whitespace is treated as a divider, not prose.
+const SCENE_BREAK_RE = /^[\s\-*=~◆#_•·]+$/;
+
+function isSceneBreakParagraph(trimmed: string): boolean {
+  return trimmed.length === 0 || SCENE_BREAK_RE.test(trimmed);
+}
+
 export function detectRepetition(prose: string): ValidatorIssue[] {
   const issues: ValidatorIssue[] = [];
   const paragraphs = prose.split(/\n\n+/).filter(Boolean);
@@ -30,7 +41,8 @@ export function detectRepetition(prose: string): ValidatorIssue[] {
   const reported = new Set<string>();
   for (const p of paragraphs) {
     const trimmed = p.trim();
-    // Skip scene-break markers and very short structural glyphs
+    // Skip scene-break markers, structural glyphs, and very short paragraphs.
+    if (isSceneBreakParagraph(trimmed)) continue;
     if (countWords(trimmed) < 3) continue;
     const key = trimmed.toLowerCase();
     if (seen.has(key) && !reported.has(key)) {
