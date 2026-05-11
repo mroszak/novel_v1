@@ -166,12 +166,66 @@ function parseAnthropicJson<T>(raw: string): T {
   }
 }
 
-function beatCovered(packetBeat: string, spec: ChapterSpec): boolean {
-  const target = normalizeLookupKey(packetBeat);
+const BEAT_COVERAGE_STOPWORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is",
+  "of", "on", "or", "the", "to", "with",
+]);
+
+const NUMBER_WORDS: Record<string, string> = {
+  zero: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+  ten: "10",
+};
+
+function normalizeBeatCoverageToken(token: string): string {
+  const normalized = NUMBER_WORDS[token] ?? token;
+  if (/^\d+$/.test(normalized)) return normalized;
+  if (normalized.endsWith("ies") && normalized.length > 4) {
+    return `${normalized.slice(0, -3)}y`;
+  }
+  if (normalized.endsWith("s") && normalized.length > 3) {
+    return normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+function beatCoverageTokens(value: string): string[] {
+  return normalizeLookupKey(value)
+    .split(" ")
+    .map(normalizeBeatCoverageToken)
+    .filter((token) => token && !BEAT_COVERAGE_STOPWORDS.has(token));
+}
+
+function tokenSequenceIncludes(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || haystack.length < needle.length) return false;
+  return haystack.some((_, index) => (
+    needle.every((token, offset) => haystack[index + offset] === token)
+  ));
+}
+
+function tokenSetCovers(haystack: string[], needle: string[]): boolean {
+  const haystackSet = new Set(haystack);
+  return needle.length > 0 && [...new Set(needle)].every((token) => haystackSet.has(token));
+}
+
+export function beatCovered(packetBeat: string, spec: ChapterSpec): boolean {
+  const target = beatCoverageTokens(packetBeat);
   return spec.mandatoryBeatCoverage.some((item) => {
-    const beatText = normalizeLookupKey(item.beat);
-    const planText = normalizeLookupKey(item.deliveryPlan);
-    return beatText.includes(target) || target.includes(beatText) || planText.includes(target);
+    const beatText = beatCoverageTokens(item.beat);
+    const planText = beatCoverageTokens(item.deliveryPlan);
+    const combinedText = [...beatText, ...planText];
+    return tokenSequenceIncludes(beatText, target)
+      || tokenSequenceIncludes(target, beatText)
+      || tokenSequenceIncludes(planText, target)
+      || tokenSetCovers(combinedText, target);
   });
 }
 

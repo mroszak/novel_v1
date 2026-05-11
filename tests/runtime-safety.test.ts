@@ -7,7 +7,7 @@ import test from "node:test";
 import { buildHandoff } from "../src/pipeline/build-handoff.js";
 import { buildRollingMemory, normalizeRollingMemory } from "../src/pipeline/build-rolling-memory.js";
 import { buildChapterDeltaRequest } from "../src/pipeline/extract-chapter-delta.js";
-import { buildSpecGenerationRequest, shouldRunOpusCritique } from "../src/pipeline/generate-spec.js";
+import { beatCovered, buildSpecGenerationRequest, shouldRunOpusCritique } from "../src/pipeline/generate-spec.js";
 import {
   buildLocalizedAuditPatchResult,
 } from "../src/pipeline/localized-audit-patch.js";
@@ -50,6 +50,7 @@ import type {
   ChapterDelta,
   ChapterDraft,
   ChapterPacket,
+  ChapterSpec,
   CompiledStoryBlueprint,
   DraftReview,
   FinalAuditReport,
@@ -669,6 +670,36 @@ test("mandatory beat coverage failure produces BlockedPipelineError with exit-2 
   assert.equal(error.code, "BLOCKED_QUALITY");
   assert.equal(error.stage, "spec-revision");
   assert.deepEqual(error.details, { missingBeats: ["test beat"] });
+});
+
+test("beatCovered tolerates number-word drift without substring false positives", () => {
+  const spec: ChapterSpec = {
+    title: "Pressure",
+    purpose: "Test coverage.",
+    openingImage: "Dark water.",
+    scenePlan: [],
+    mandatoryBeatCoverage: [
+      {
+        beat: "Soviet sub fires first; Charlotte is hit; Bulkhead Four floods.",
+        deliveryPlan: "Land it as the chapter's irreversible action beat.",
+      },
+      {
+        beat: "A scarlet warning lamp flashes.",
+        deliveryPlan: "Atmosphere only.",
+      },
+    ],
+    callbackPlan: [],
+    revealControl: { show: [], hint: [], reveal: [], withhold: [] },
+    continuityWatchouts: [],
+    proseGuidance: [],
+    endingBeat: "End under pressure.",
+  };
+
+  assert.equal(
+    beatCovered("Soviet sub fires first; Charlotte is hit; bulkhead 4 floods.", spec),
+    true,
+  );
+  assert.equal(beatCovered("scar", spec), false);
 });
 
 test("buildHandoff uses proposal characterStates as authoritative, not delta emotionalRegister", () => {
