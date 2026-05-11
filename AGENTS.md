@@ -9,7 +9,7 @@ TypeScript CLI for blueprint-first, chapter-by-chapter commercial-fiction genera
 - `artifacts/` contains checkpointed runtime state. Treat it as runtime output, not source code.
 - `src/index.ts` is the CLI entrypoint.
 - `src/pipeline/run-chapter.ts` is the main orchestrator.
-- `src/pipeline/generate-spec.ts` owns the spec loop: spec generation, self-red-team, optional/required Opus critique, and approved-spec revision.
+- `src/pipeline/generate-spec.ts` owns the spec loop: spec generation, self-red-team, default-on/required Opus critique, and approved-spec revision.
 - `src/pipeline/judge-draft.ts` owns the 15-dimension literary rubric, anti-committee principles, the bestseller question, pass-threshold logic, and blocking-review signal handling.
 - `src/pipeline/voice-grit-pass.ts` owns the post-selection voice-grit pass per `docs/voice-grit-spec.md`.
 - `src/pipeline/opening-ending-tournament.ts` owns the 1-candidate-per-zone opening + ending compare. No title generation, no rejudge stage.

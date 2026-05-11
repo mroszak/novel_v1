@@ -19,7 +19,7 @@ compile blueprint
 
 per chapter:
   packet
-  → spec → self-red-team → (optional/required Opus critique) → spec-revision
+  → spec → self-red-team → (default-on/required Opus critique) → spec-revision
   → draft (Opus, prepended with author brief + chapter-function reader job)
   → judge (medium reasoning; anti-committee principles + bestseller question)
   → IF score >= skipRevisionThreshold AND no blocking signals:
@@ -67,7 +67,7 @@ npm run smoke
 | `--compile-blueprint` | compile and cache blueprint artifacts only |
 | `--smoke` | run the full pipeline against the built-in smoke fixture |
 | `--blueprint <path>` | alternate blueprint path |
-| `--skip-spec-critique` | skip the optional Opus critique (required critique still runs for high-risk/escalated chapters) |
+| `--skip-spec-critique` | skip the default-on Opus spec critique (required critique still runs for high-risk/escalated chapters) |
 | `--no-genre-ai` | skip GPT genre + author-brief refinement, use deterministic fallback |
 
 ## Authoring contracts

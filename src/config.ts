@@ -123,7 +123,7 @@ export const config = {
     pairwiseTolerance: 3,
     maxFixAttempts: 2,
     maxLiteraryRetryAttempts: 0,
-    alwaysRunSpecCritique: false,
+    alwaysRunSpecCritique: true,
     skipRevisionThreshold: 88,
     /**
      * Publish-candidate immutability tolerance. The prose entering the final
@@ -214,7 +214,7 @@ export const config = {
       inputTokenBudget: 26000,
       maxOutputTokens: 6000,
       contextWindowTokens: 50000,
-      thinkingBudgetTokens: 2000,
+      thinkingBudgetTokens: 5000,
     } satisfies AnthropicStageProfile,
     drafting: {
       stageName: "drafting",

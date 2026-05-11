@@ -555,6 +555,40 @@ test("shouldRunOpusCritique still runs required critique when --skip-spec-critiq
   assert.equal(escalatedSkip.required, true);
 });
 
+test("shouldRunOpusCritique runs preferred (non-required) critique by default and honors --skip-spec-critique", () => {
+  const makePacketArtifact = (riskLevel: "low" | "medium" | "high") =>
+    createArtifact<ChapterPacket>({
+      artifactType: "chapter-packet",
+      blueprintHash: "h",
+      blueprintVersion: "1.0.0",
+      chapterNumber: 1,
+      data: { riskLevel } as ChapterPacket,
+    });
+
+  const noEscalation: SelfRedTeamReport = {
+    criticalIssues: [],
+    weaknesses: [],
+    missingBeats: [],
+    confidenceScore: 0.9,
+    needsOpusEscalation: false,
+    revisionActions: [],
+  };
+
+  assert.equal(
+    config.qualitySettings.alwaysRunSpecCritique,
+    true,
+    "Default must run spec critique on every chapter; flip is the cheapest quality lever and downstream tests assume it.",
+  );
+
+  const mediumDefault = shouldRunOpusCritique(makePacketArtifact("medium"), noEscalation, false);
+  assert.equal(mediumDefault.run, true, "Medium-risk + no escalation + alwaysRunSpecCritique=true => critique runs");
+  assert.equal(mediumDefault.required, false, "Medium-risk preferred critique is not required");
+
+  const mediumSkip = shouldRunOpusCritique(makePacketArtifact("medium"), noEscalation, true);
+  assert.equal(mediumSkip.run, false, "--skip-spec-critique still suppresses preferred-only critique");
+  assert.equal(mediumSkip.required, false);
+});
+
 test("hasBlockingAuditIssues blocks on requiresFix even without error-severity issues", () => {
   assert.equal(
     hasBlockingAuditIssues({
