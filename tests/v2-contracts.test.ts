@@ -272,6 +272,7 @@ function makePacket(overrides: Partial<ChapterPacket> = {}): ChapterPacket {
     previousChapterExcerpt: null,
     activeCast: [],
     mandatoryBeats: [],
+    secondaryCameoBeats: [],
     revealBudget: { show: [], hint: [], reveal: [], withhold: [] },
     callbackObligations: [],
     targetWordBand: { min: 1, target: 100, max: 1000 },

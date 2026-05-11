@@ -376,6 +376,7 @@ export async function compileChapterPacket(params: {
       : null,
     activeCast: chapter.activeCast.map((name) => resolveCharacter(name, compiledBlueprint.characters)),
     mandatoryBeats: chapter.mandatoryBeats,
+    secondaryCameoBeats: chapter.secondaryCameoBeats,
     revealBudget: {
       show: chapter.show,
       hint: chapter.hint,

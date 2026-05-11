@@ -426,6 +426,7 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
     previousChapterExcerpt: null,
     activeCast: characters,
     mandatoryBeats: ["Establish tension."],
+    secondaryCameoBeats: [],
     revealBudget: { show: ["the room"], hint: ["the device"], reveal: [], withhold: ["the architect"] },
     callbackObligations: ["The scar"],
     targetWordBand: { min: 1500, target: 2000, max: 2500 },

@@ -3,7 +3,7 @@ import test from "node:test";
 import path from "node:path";
 
 import { cleanupTempRoot, createTempRoot, readJson, runChapterCli, writeRootBlueprint } from "./helpers.js";
-import { INVALID_BLUEPRINT } from "./fixtures/blueprint-fixture.js";
+import { FIXTURE_BLUEPRINT, INVALID_BLUEPRINT } from "./fixtures/blueprint-fixture.js";
 
 test("smoke pipeline writes delta and rolling memory artifacts", async (t) => {
   const rootDir = await createTempRoot();
@@ -86,6 +86,29 @@ test("cost estimate with --skip-spec-critique suppresses critique for non-high-r
   const costEstimate2 = await readJson<any>(path.join(rootDir, "artifacts", "chapters", "chapter-1-cost-estimate.json"));
   const stageNames2: string[] = costEstimate2.data.stages.map((s: any) => s.stage);
   assert.ok(stageNames2.includes("spec-critique"), "skip flag must NOT suppress critique on high-risk chapter");
+});
+
+test("compileChapterPacket forwards Secondary Cameo Beats from blueprint onto chapter packet artifact", async (t) => {
+  const rootDir = await createTempRoot();
+  t.after(async () => {
+    await cleanupTempRoot(rootDir);
+  });
+
+  await writeRootBlueprint(rootDir, FIXTURE_BLUEPRINT);
+  const result = runChapterCli(
+    ["--packet-only", "--chapter", "1", "--no-genre-ai"],
+    rootDir,
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const packet = await readJson<{ data: { secondaryCameoBeats: string[]; mandatoryBeats: string[] } }>(
+    path.join(rootDir, "artifacts", "chapters", "chapter-1-packet.json"),
+  );
+  assert.deepEqual(packet.data.secondaryCameoBeats, [
+    "One human detail for a background courier in passing through Mira's POV.",
+    "Rowan briefly registers an analyst he respects without naming her.",
+  ]);
+  assert.ok(packet.data.mandatoryBeats.length > 0, "Sanity: packet still carries mandatoryBeats");
 });
 
 test("real blueprint compile blocks on under-specified template", async (t) => {

@@ -101,6 +101,7 @@ export interface ChapterOutline {
   endingHook: string;
   activeCast: string[];
   mandatoryBeats: string[];
+  secondaryCameoBeats: string[];
   callbackObligations: string[];
   show: string[];
   hint: string[];
@@ -387,6 +388,7 @@ export interface ChapterPacket {
   previousChapterExcerpt: string | null;
   activeCast: CharacterCard[];
   mandatoryBeats: string[];
+  secondaryCameoBeats: string[];
   revealBudget: {
     show: string[];
     hint: string[];

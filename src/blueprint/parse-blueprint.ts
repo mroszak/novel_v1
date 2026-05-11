@@ -250,6 +250,7 @@ function parseChapterOutline(section: string, defaultWordCount: number): Chapter
       endingHook: asString(fields["Ending Hook"]),
       activeCast: asList(fields["Active Cast"]),
       mandatoryBeats: asList(fields["Mandatory Beats"]),
+      secondaryCameoBeats: asList(fields["Secondary Cameo Beats"]),
       callbackObligations: asList(fields["Callback Obligations"]),
       show: asList(fields.Show),
       hint: asList(fields.Hint),

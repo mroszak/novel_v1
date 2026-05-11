@@ -1805,6 +1805,7 @@ function makeHeavyPacket(): ChapterPacket {
       },
     ],
     mandatoryBeats: ["Beat A", "Beat B"],
+    secondaryCameoBeats: [],
     revealBudget: { show: ["X"], hint: ["Y"], reveal: [], withhold: ["Z"] },
     callbackObligations: ["Callback 1"],
     targetWordBand: { min: 3500, target: 4200, max: 5000 },

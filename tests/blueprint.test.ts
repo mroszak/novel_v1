@@ -93,6 +93,39 @@ test("validation rejects unknown active cast references", async (t) => {
   assert.throws(() => validateBlueprint(parsed), /Active Cast references unknown character/i);
 });
 
+test("Secondary Cameo Beats parse from blueprint and flow through compileStoryCore; absent sections default to []", async (t) => {
+  const blueprintPath = await writeBlueprint(FIXTURE_BLUEPRINT);
+  t.after(async () => {
+    await rm(path.dirname(blueprintPath), { recursive: true, force: true });
+  });
+
+  const parsed = await parseBlueprint(blueprintPath);
+  validateBlueprint(parsed);
+
+  const chapter1 = parsed.chapterOutline[0];
+  const chapter2 = parsed.chapterOutline[1];
+  assert.ok(chapter1, "Chapter 1 should be present in fixture.");
+  assert.ok(chapter2, "Chapter 2 should be present in fixture.");
+
+  assert.deepEqual(chapter1.secondaryCameoBeats, [
+    "One human detail for a background courier in passing through Mira's POV.",
+    "Rowan briefly registers an analyst he respects without naming her.",
+  ]);
+  assert.deepEqual(
+    chapter2.secondaryCameoBeats,
+    [],
+    "Absent Secondary Cameo Beats section must default to an empty array, not undefined.",
+  );
+
+  const storyCore = compileStoryCore(parsed);
+  assert.deepEqual(
+    storyCore.chapterOutline[0]?.secondaryCameoBeats,
+    chapter1.secondaryCameoBeats,
+    "compileStoryCore must forward secondaryCameoBeats unchanged so downstream packet builders see them.",
+  );
+  assert.deepEqual(storyCore.chapterOutline[1]?.secondaryCameoBeats, []);
+});
+
 test("genre compilation applies deterministic presets and overrides", async (t) => {
   const blueprintPath = await writeBlueprint(VALID_BLUEPRINT, "fixture-blueprint.md");
   t.after(async () => {

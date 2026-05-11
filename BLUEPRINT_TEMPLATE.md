@@ -210,6 +210,8 @@ For each motif from the Motif/Symbol Bank: current intensity, last appearance ch
   - Replace with the opening beat that establishes pressure.
   - Replace with the beat that demonstrates the genre promise.
   - Replace with the beat that launches the chapter-ending hook.
+- Secondary Cameo Beats:
+  Optional and soft. Cameo obligations the chapter may weave in passing through the named POVs — for example, one human detail for a non-active-cast character or a brief background beat. Visible to the spec/draft only; not enforced by the judge or continuity validators. Absence is not a blocker. Delete this section entirely if the chapter has no soft cameo obligations; otherwise replace this paragraph with bullets like `  - One human detail for the waiter who matters at chapter 7.`. (This explanatory paragraph is intentionally not a bulleted line so it is ignored by the blueprint parser.)
 - Callback Obligations:
   - Replace with any planted setup or emotional callback this chapter must honor.
 - Show:
@@ -240,6 +242,8 @@ For each motif from the Motif/Symbol Bank: current intensity, last appearance ch
   - Replace with the escalation beat.
   - Replace with the beat that complicates the protagonist's belief.
   - Replace with the beat that sharpens the next-chapter problem.
+- Secondary Cameo Beats:
+  Optional and soft. See Chapter 1 above for the full contract. Delete this section if not used. (This explanatory paragraph is intentionally not a bulleted line so it is ignored by the blueprint parser.)
 - Callback Obligations:
   - Replace with the callback or thread this chapter must advance.
 - Show:
@@ -271,6 +275,8 @@ For each motif from the Motif/Symbol Bank: current intensity, last appearance ch
   - Replace with the beat that cashes in early setup.
   - Replace with the beat that reveals new information.
   - Replace with the beat that leaves the world in a changed state.
+- Secondary Cameo Beats:
+  Optional and soft. See Chapter 1 above for the full contract. Delete this section if not used. (This explanatory paragraph is intentionally not a bulleted line so it is ignored by the blueprint parser.)
 - Callback Obligations:
   - Replace with the payoff, callback, or ghost thread this chapter must move.
 - Show:

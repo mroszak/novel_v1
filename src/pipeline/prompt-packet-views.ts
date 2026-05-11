@@ -41,6 +41,7 @@ export interface SpecPacketView {
   openingHandoff: string;
   activeCast: PromptCharacterView[];
   mandatoryBeats: string[];
+  secondaryCameoBeats: string[];
   revealBudget: ChapterPacket["revealBudget"];
   callbackObligations: string[];
   targetWordBand: ChapterPacket["targetWordBand"];
@@ -148,6 +149,7 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
     openingHandoff: packet.openingHandoff,
     activeCast: packet.activeCast.map(buildPromptCharacterView),
     mandatoryBeats: packet.mandatoryBeats,
+    secondaryCameoBeats: packet.secondaryCameoBeats,
     revealBudget: packet.revealBudget,
     callbackObligations: packet.callbackObligations,
     targetWordBand: packet.targetWordBand,

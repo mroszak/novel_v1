@@ -124,6 +124,9 @@ Plant the scar on Mira's wrist as a trace of prior rewrites. Plant Rowan's habit
   - Mira detects a physical inconsistency on her route.
   - The package becomes visibly dangerous to keep.
   - Rowan proves he knows more than he should.
+- Secondary Cameo Beats:
+  - One human detail for a background courier in passing through Mira's POV.
+  - Rowan briefly registers an analyst he respects without naming her.
 - Callback Obligations:
   - Mira's wrist scar should quietly matter.
 - Show:
