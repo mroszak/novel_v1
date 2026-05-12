@@ -119,6 +119,7 @@ export function buildDraftSystemPrompt(params: {
       "- A four-word span from the prompt context (voice notes, motif descriptions, mandatory beats) must NEVER appear verbatim in your prose. The prompt is scaffolding; the prose is craft.",
       "- A motif image (e.g., a hidden object pressing against ribs) may appear at most TWICE in a chapter, and the second occurrence must vary the wording and the sensory frame from the first. Repeating a motif sentence verbatim is a craft failure even if the motif itself is required.",
       "- When `namedCharacterCap` is set on the packet, keep the count of distinct named blueprint characters at or below the cap. Render any additional human detail through unnamed walk-ons (`the waiter`, `the senator's aide`, `a girl in service black`); they don't count against the cap. Compressing the named cast is a craft choice, not a contract violation.",
+      "- When the chapter packet provides a `locations` table, use each entry's `name` (or one of its `aliases`) as the canonical name for that recurring space. Do not invent variant names for the same place across the chapter.",
     ].join("\n"),
   );
 

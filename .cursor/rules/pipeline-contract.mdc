@@ -11,8 +11,8 @@ When changing stages, reruns, flags, or artifacts, review all affected contract 
 - `src/config.ts` for stage profiles, `qualitySettings`, defaults, and paths
 - `src/types/index.ts` for options, artifact data, statuses, and telemetry
 - `src/index.ts` for CLI flags and help text
-- `src/blueprint/parse-blueprint.ts` for the Market Promise + Continuity Manifest sections
-- `src/blueprint/compile-author-brief.ts`, `compile-market-promise.ts`, `compile-continuity-manifest.ts`
+- `src/blueprint/parse-blueprint.ts` for the Market Promise + Continuity Manifest + Locations sections
+- `src/blueprint/compile-author-brief.ts`, `compile-market-promise.ts`, `compile-continuity-manifest.ts`, `compile-locations.ts`
 - `src/pipeline/compile-blueprint.ts` for blueprint-level cached artifacts
 - `src/pipeline/compile-chapter-packet.ts` for the per-chapter packet contract
 - `src/pipeline/generate-spec.ts` for spec-loop sequencing and critique gating

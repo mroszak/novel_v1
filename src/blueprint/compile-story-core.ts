@@ -25,6 +25,7 @@ export function compileStoryCore(blueprint: ParsedStoryBlueprint): CompiledStory
     marketPromise: blueprint.marketPromise,
     genre: blueprint.genre,
     continuityManifest: blueprint.continuityManifest,
+    locations: blueprint.locations,
     canonLaw: blueprint.canonLaw,
     antiPatterns: blueprint.antiPatterns,
     styleRules: blueprint.styleRules,

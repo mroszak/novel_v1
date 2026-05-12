@@ -349,6 +349,7 @@ export function buildSpecGenerationRequest(params: {
       "When `namedCharacterCap` is set, the chapter must keep distinct named blueprint characters at or below the cap. Use unnamed walk-ons (`the waiter`, `the senator's aide`, `a girl in service black`) for any human detail beyond the cap; they do not count.",
       "When a Market Promise is provided, target its commercial hook and emotional promise. When a reader job is provided for this chapter function, the spec must serve it explicitly.",
       "When a continuity active slice is provided, declare your continuity intentions per scene and do not contradict it.",
+      "When a `locations` table is provided in the chapter packet, treat its `name` field as the canonical name for each recurring space. Use that exact name (or one of its `aliases`) when planning scene locations; do not invent variant names.",
       "Keep the plan genre-adaptive and specific enough for a full-chapter Opus draft.",
       "For each scene in scenePlan, include emotionalArc (the POV character's emotional trajectory through the scene), sensoryAnchor (the dominant sensory environment), and dialogueStrategy (how dialogue serves the scene).",
       "In proseGuidance, include 2-4 concrete prose targets: dominant sensory channel for the chapter, a signature metaphor or image family, and the primary dialogue tactic for the POV character.",

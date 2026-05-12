@@ -49,6 +49,7 @@ export interface SpecPacketView {
   continuityNotes: string[];
   chapterNotes: string[];
   storyState: SpecStoryStateView;
+  locations: ChapterPacket["locations"];
   namedCharacterCap?: number;
 }
 
@@ -67,6 +68,7 @@ export interface DeltaPacketView {
   endingHookTarget: string;
   continuityNotes: string[];
   chapterNotes: string[];
+  locations: ChapterPacket["locations"];
 }
 
 function compactRecentList(items: string[], maxTokens: number): string[] {
@@ -158,6 +160,7 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
     continuityNotes: packet.continuityNotes,
     chapterNotes: packet.chapterNotes,
     storyState: buildSpecStoryStateView(packet),
+    locations: packet.locations,
     ...(packet.namedCharacterCap !== undefined
       ? { namedCharacterCap: packet.namedCharacterCap }
       : {}),
@@ -180,5 +183,6 @@ export function buildDeltaPacketView(packet: ChapterPacket): DeltaPacketView {
     endingHookTarget: packet.endingHookTarget,
     continuityNotes: packet.continuityNotes,
     chapterNotes: packet.chapterNotes,
+    locations: packet.locations,
   };
 }

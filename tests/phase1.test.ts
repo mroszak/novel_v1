@@ -100,6 +100,7 @@ function makeBlueprint(): CompiledStoryBlueprint {
       runtimeOverrides: {},
     },
     continuityManifest: null,
+    locations: null,
     canonLaw: [],
     antiPatterns: [],
     styleRules: ["Lean on close third.", "Let setting carry mood."],
@@ -446,6 +447,7 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
     voiceTarget: null,
     marketPromise: null,
     continuityActiveSlice: null,
+    locations: null,
     authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
   };
 }
@@ -480,6 +482,7 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
       runtimeOverrides: {},
     },
     continuityManifest: null,
+    locations: null,
     canonLaw: [],
     antiPatterns: [],
     styleRules: ["Lean on close third."],
@@ -555,6 +558,12 @@ function makeMinimalPhase1BlueprintArtifacts(): BlueprintCompilationArtifacts {
     }),
     continuityManifest: createArtifact({
       artifactType: "continuity-manifest",
+      blueprintHash: "test-hash",
+      blueprintVersion: "1.0.0",
+      data: null,
+    }),
+    locations: createArtifact({
+      artifactType: "locations",
       blueprintHash: "test-hash",
       blueprintVersion: "1.0.0",
       data: null,

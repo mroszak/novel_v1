@@ -304,6 +304,7 @@ export async function compileChapterPacket(params: {
   };
   const voiceTarget = await loadVoiceTargetData(blueprintIdentity);
   const marketPromise = blueprintArtifacts.marketPromise.data;
+  const locations = blueprintArtifacts.locations.data;
 
   // Prefer the most recent persisted ContinuityState (last-seen bumps,
   // motif progression, delivered reveals, delta-applied object/notes
@@ -415,6 +416,7 @@ export async function compileChapterPacket(params: {
     voiceTarget,
     marketPromise,
     continuityActiveSlice,
+    locations,
     authorBrief: blueprintArtifacts.authorBrief.data,
     ...(chapter.namedCharacterCap !== undefined
       ? { namedCharacterCap: chapter.namedCharacterCap }

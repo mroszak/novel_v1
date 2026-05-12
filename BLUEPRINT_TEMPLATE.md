@@ -175,6 +175,14 @@ For each motif from the Motif/Symbol Bank: current intensity, last appearance ch
 - Motif 1 | low | 0 | introduced
 - Motif 2 | low | 0 | introduced
 
+## Locations
+Optional. Canonical names for recurring spaces, vehicles, districts, routes, and other places the prose will revisit. Distinct from the Continuity Manifest's Spatial Registry: this section is static naming canon (what is this place called), not dynamic state (who can be there and what condition is it in). The spec and drafter see the full table on every chapter and are instructed to use the canonical `name` (or one of its `aliases`) rather than invent variant names.
+
+Each entry: name, type, description, optional comma-separated aliases. `type` is freeform — use whatever tag is useful (interior, exterior, landmark, route, vehicle, district, etc.). Format: `name | type | description | aliases`.
+- Grand Atrium | interior | three-story glass-domed lobby with helical staircase | atrium, the atrium, lobby
+- Southwest Observation Gallery | interior | curved acrylic gallery facing the dropoff | southwest gallery, the gallery
+- Submersible Daphne | vehicle | primary submersible taxi docked at Airlock A | Daphne
+
 ## Style Bible and Prose Rules
 - Rules:
   - Replace with the prose rule about sentence rhythm.

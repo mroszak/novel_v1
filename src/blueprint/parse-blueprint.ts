@@ -4,6 +4,8 @@ import type {
   ChapterRetentionFunction,
   CharacterCard,
   ContinuityManifest,
+  LocationEntry,
+  Locations,
   MarketPromise,
   MotifStage,
   MotifState,
@@ -239,6 +241,29 @@ function parseContinuityManifest(section: string): ContinuityManifest | null {
   return hasContent ? manifest : null;
 }
 
+function parseLocations(section: string): Locations | null {
+  if (!section.trim()) return null;
+
+  const entries: LocationEntry[] = extractBullets(section)
+    .map((line) => {
+      const parts = pipeFields(line);
+      if (parts.length < 3) return null;
+      const name = parts[0] ?? "";
+      const type = parts[1] ?? "";
+      const description = parts[2] ?? "";
+      const aliasField = parts[3] ?? "";
+      const aliases = aliasField
+        .split(",")
+        .map((alias) => alias.trim())
+        .filter(Boolean);
+      if (!name) return null;
+      return { name, type, description, aliases };
+    })
+    .filter((entry): entry is LocationEntry => entry !== null);
+
+  return entries.length > 0 ? { entries } : null;
+}
+
 function parseOptionalPositiveInteger(raw: string): number | undefined {
   const text = raw.trim();
   if (!text) return undefined;
@@ -334,6 +359,7 @@ export async function parseBlueprint(blueprintPath: string): Promise<ParsedStory
       runtimeOverrides: parseKeyValueList(asList(genreFields["Runtime Overrides"])),
     },
     continuityManifest: parseContinuityManifest(getSection(sections, "Continuity Manifest")),
+    locations: parseLocations(getSection(sections, "Locations")),
     canonLaw: extractBullets(getSection(sections, "Canon Law and World Rules")),
     antiPatterns: (() => {
       const structured = asList(antiPatternFields["Banned Moves"]);

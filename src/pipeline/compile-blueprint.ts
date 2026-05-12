@@ -6,6 +6,7 @@ import { compileAuthorBrief } from "../blueprint/compile-author-brief.js";
 import { compileChapterFunctions } from "../blueprint/compile-chapter-functions.js";
 import { compileContinuityManifest } from "../blueprint/compile-continuity-manifest.js";
 import { compileGenreContract } from "../blueprint/compile-genre-contract.js";
+import { compileLocations } from "../blueprint/compile-locations.js";
 import { compileMarketPromise } from "../blueprint/compile-market-promise.js";
 import { compileStoryCore } from "../blueprint/compile-story-core.js";
 import { parseBlueprint } from "../blueprint/parse-blueprint.js";
@@ -18,6 +19,7 @@ import type {
   CompiledStoryBlueprint,
   ContinuityManifest,
   GenreContract,
+  Locations,
   MarketPromise,
   ParsedStoryBlueprint,
 } from "../types/index.js";
@@ -29,6 +31,7 @@ type BlueprintArtifactType =
   | "chapter-functions"
   | "market-promise"
   | "continuity-manifest"
+  | "locations"
   | "author-brief";
 
 function createArtifact<T>(
@@ -53,6 +56,7 @@ async function writeCanonicalArtifacts(artifacts: BlueprintCompilationArtifacts)
     chapterFunctions: path.join(config.paths.blueprintArtifacts, "chapter-functions.json"),
     marketPromise: path.join(config.paths.blueprintArtifacts, "market-promise.json"),
     continuityManifest: path.join(config.paths.blueprintArtifacts, "continuity-manifest.json"),
+    locations: path.join(config.paths.blueprintArtifacts, "locations.json"),
     authorBrief: path.join(config.paths.blueprintArtifacts, "author-brief.json"),
   };
 
@@ -61,6 +65,7 @@ async function writeCanonicalArtifacts(artifacts: BlueprintCompilationArtifacts)
   await writeJson(canonicalTargets.chapterFunctions, artifacts.chapterFunctions);
   await writeJson(canonicalTargets.marketPromise, artifacts.marketPromise);
   await writeJson(canonicalTargets.continuityManifest, artifacts.continuityManifest);
+  await writeJson(canonicalTargets.locations, artifacts.locations);
   await writeJson(canonicalTargets.authorBrief, artifacts.authorBrief);
 }
 
@@ -73,6 +78,7 @@ async function writeCachedArtifacts(
   await writeJson(path.join(cacheDir, "chapter-functions.json"), artifacts.chapterFunctions);
   await writeJson(path.join(cacheDir, "market-promise.json"), artifacts.marketPromise);
   await writeJson(path.join(cacheDir, "continuity-manifest.json"), artifacts.continuityManifest);
+  await writeJson(path.join(cacheDir, "locations.json"), artifacts.locations);
   await writeJson(path.join(cacheDir, "author-brief.json"), artifacts.authorBrief);
 }
 
@@ -120,6 +126,7 @@ async function loadCachedArtifacts(
   const chapterFunctionsPath = path.join(cacheDir, "chapter-functions.json");
   const marketPromisePath = path.join(cacheDir, "market-promise.json");
   const continuityManifestPath = path.join(cacheDir, "continuity-manifest.json");
+  const locationsPath = path.join(cacheDir, "locations.json");
   const authorBriefPath = path.join(cacheDir, "author-brief.json");
 
   const allExist = await Promise.all([
@@ -128,6 +135,7 @@ async function loadCachedArtifacts(
     fileExists(chapterFunctionsPath),
     fileExists(marketPromisePath),
     fileExists(continuityManifestPath),
+    fileExists(locationsPath),
     fileExists(authorBriefPath),
   ]);
 
@@ -141,6 +149,7 @@ async function loadCachedArtifacts(
     chapterFunctions: await readJson<ArtifactEnvelope<ChapterFunctionMap>>(chapterFunctionsPath),
     marketPromise: await readJson<ArtifactEnvelope<MarketPromise | null>>(marketPromisePath),
     continuityManifest: await readJson<ArtifactEnvelope<ContinuityManifest | null>>(continuityManifestPath),
+    locations: await readJson<ArtifactEnvelope<Locations | null>>(locationsPath),
     authorBrief: await readJson<ArtifactEnvelope<AuthorBrief>>(authorBriefPath),
   };
 
@@ -149,6 +158,7 @@ async function loadCachedArtifacts(
     && matchesCachedArtifact(artifacts.chapterFunctions, "chapter-functions", blueprint)
     && matchesCachedArtifact(artifacts.marketPromise, "market-promise", blueprint)
     && matchesCachedArtifact(artifacts.continuityManifest, "continuity-manifest", blueprint)
+    && matchesCachedArtifact(artifacts.locations, "locations", blueprint)
     && matchesCachedArtifact(artifacts.authorBrief, "author-brief", blueprint)
     ? artifacts
     : null;
@@ -199,6 +209,11 @@ export async function compileBlueprintRuntime(options: {
     parsed,
     compileContinuityManifest(parsed),
   );
+  const locations = createArtifact(
+    "locations",
+    parsed,
+    compileLocations(parsed),
+  );
   const authorBrief = createArtifact(
     "author-brief",
     parsed,
@@ -211,6 +226,7 @@ export async function compileBlueprintRuntime(options: {
     chapterFunctions,
     marketPromise,
     continuityManifest,
+    locations,
     authorBrief,
   };
 

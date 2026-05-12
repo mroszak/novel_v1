@@ -15,6 +15,7 @@ compile blueprint
   → chapter-functions
   → market-promise        (deterministic, optional Market Promise section)
   → continuity-manifest   (deterministic, optional Continuity Manifest section)
+  → locations             (deterministic, optional Locations section)
   → author-brief          (one cached model call per blueprint)
 
 per chapter:
@@ -98,7 +99,15 @@ The structural spine. Six pipe-delimited sub-sections:
 
 The packet carries a filtered `ContinuityActiveSlice` (active cast + mandatory beats + reveal budget, hard-capped at ~4000 tokens via iterative tail-trimming with floors). After publish, `update-continuity-state.ts` writes a deterministic `continuity-state-after-N.json` baseline that merges declared spec reveals with the extracted `ChapterDelta` (reveal/payoff deliveries, persistent-object state changes, irreversible-change notes). Chapter `N+1`'s packet builder loads that state (soft metadata validation, falls back to the static manifest on mismatch) so last-seen bumps, motif progression, and delivered reveals carry forward. The continuity-manifest validator catches sealed-section regressions, timeline reversals, and premature reveals.
 
-Both sections are optional. An empty/absent section means the engine works with the empty contract; behavior degrades gracefully to the pre-manifest packet shape.
+### Locations
+
+Static naming canon for recurring spaces, vehicles, districts, routes, etc. Distinct from the Continuity Manifest's Spatial Registry: Locations declares the canonical `name` + `aliases` for a place, the Spatial Registry tracks its dynamic `access` + `condition`. One pipe-delimited table:
+
+- Locations: `name | type | description | aliases`
+
+`type` is freeform (`interior`, `exterior`, `landmark`, `route`, `vehicle`, `district`, etc.). `aliases` is a comma-separated list. The full Locations table is carried in the chapter packet and surfaced to spec + drafter prompts on every chapter, with an instruction to use the canonical `name` (or one of its `aliases`) rather than invent variant names. No deterministic validator yet — drift is caught by prompt-side visibility for now.
+
+All three sections (Market Promise, Continuity Manifest, Locations) are optional. An empty/absent section means the engine works with the empty contract; behavior degrades gracefully to the pre-section packet shape.
 
 ### Per-chapter constraints (optional)
 
@@ -121,7 +130,7 @@ Character cards also accept an optional `Surname Alias: true` flag so the valida
 | audit | GPT-5.5 high | ~$0.30 |
 | **typical chapter total** | | **~$5.05** |
 | author-brief (one-time per blueprint) | GPT-5.5 medium | ~$0.05 amortized |
-| continuity-state-update / continuity-manifest / market-promise compiles | deterministic | $0.00 |
+| continuity-state-update / continuity-manifest / market-promise / locations compiles | deterministic | $0.00 |
 
 With one revision pass: ~$7.35. With revision + up to 2 fix attempts: ~$10–13. Twelve chapters: $70–160. Wall-time: ~10–20 min/chapter typical.
 
@@ -135,7 +144,7 @@ Real numbers come from `--estimate-cost` and from actual provider invoices after
 - `src/pipeline/opening-ending-tournament.ts` — 1-candidate-per-zone opening + ending compare
 - `src/pipeline/judge-draft.ts` — literary judge with anti-committee principles + bestseller question
 - `src/pipeline/update-continuity-state.ts` — deterministic post-publish state merge
-- `src/blueprint/parse-blueprint.ts` — Market Promise + Continuity Manifest parsers
+- `src/blueprint/parse-blueprint.ts` — Market Promise + Continuity Manifest + Locations parsers
 - `src/blueprint/compile-author-brief.ts` — cached authorial-persona compile
 - `src/validators/continuity-manifest.ts` — sealed-regression, timeline, reveal, motif validators
 - `src/config.ts` — model defaults, stage budgets, `qualitySettings`, paths

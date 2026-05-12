@@ -203,6 +203,17 @@ export interface ContinuityManifest {
   motifStates: MotifState[];
 }
 
+export interface LocationEntry {
+  name: string;
+  type: string;
+  description: string;
+  aliases: string[];
+}
+
+export interface Locations {
+  entries: LocationEntry[];
+}
+
 export interface ContinuityActiveSlice {
   persistentObjects: PersistentObject[];
   spatialRegistry: SpatialNode[];
@@ -277,6 +288,7 @@ export interface ParsedStoryBlueprint {
   marketPromise: MarketPromise | null;
   genre: GenreBlueprintSection;
   continuityManifest: ContinuityManifest | null;
+  locations: Locations | null;
   canonLaw: string[];
   antiPatterns: string[];
   styleRules: string[];
@@ -293,6 +305,7 @@ export interface CompiledStoryBlueprint {
   marketPromise: MarketPromise | null;
   genre: GenreBlueprintSection;
   continuityManifest: ContinuityManifest | null;
+  locations: Locations | null;
   canonLaw: string[];
   antiPatterns: string[];
   styleRules: string[];
@@ -430,6 +443,7 @@ export interface ChapterPacket {
   voiceTarget: VoiceTarget | null;
   marketPromise: MarketPromise | null;
   continuityActiveSlice: ContinuityActiveSlice | null;
+  locations: Locations | null;
   authorBrief: AuthorBrief;
   /**
    * Optional soft cap on the number of distinct named blueprint characters
@@ -810,6 +824,7 @@ export interface BlueprintCompilationArtifacts {
   chapterFunctions: ArtifactEnvelope<ChapterFunctionMap>;
   marketPromise: ArtifactEnvelope<MarketPromise | null>;
   continuityManifest: ArtifactEnvelope<ContinuityManifest | null>;
+  locations: ArtifactEnvelope<Locations | null>;
   authorBrief: ArtifactEnvelope<AuthorBrief>;
 }
 

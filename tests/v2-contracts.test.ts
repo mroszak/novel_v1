@@ -135,6 +135,11 @@ Setups and payoffs.
 ### Motif States
 - white seam | low | 0 | introduced
 
+## Locations
+- Promenade | interior | main concourse | the promenade, main concourse
+- Dock Two | exterior | service intake area | dock two, service dock
+- Submersible Daphne | vehicle | primary submersible taxi
+
 ## Style Bible and Prose Rules
 - Lean on close third.
 
@@ -238,14 +243,36 @@ test("parser reads Continuity Manifest pipe-delimited fields", async () => {
   });
 });
 
-test("parser returns null Market Promise / Continuity Manifest when sections absent", async () => {
+test("parser returns null Market Promise / Continuity Manifest / Locations when sections absent", async () => {
   const minimal = MARKET_AND_MANIFEST_BLUEPRINT
     .replace(/\n## Market Promise[\s\S]*?(?=\n## Genre Contract)/, "\n")
-    .replace(/\n## Continuity Manifest[\s\S]*?(?=\n## Style Bible)/, "\n");
+    .replace(/\n## Continuity Manifest[\s\S]*?(?=\n## Locations)/, "\n")
+    .replace(/\n## Locations[\s\S]*?(?=\n## Style Bible)/, "\n");
   await withTempBlueprint(minimal, async (p) => {
     const parsed = await parseBlueprint(p);
     assert.equal(parsed.marketPromise, null);
     assert.equal(parsed.continuityManifest, null);
+    assert.equal(parsed.locations, null);
+  });
+});
+
+test("parser reads Locations table with type, description, and aliases", async () => {
+  await withTempBlueprint(MARKET_AND_MANIFEST_BLUEPRINT, async (p) => {
+    const parsed = await parseBlueprint(p);
+    const locations = parsed.locations;
+    assert.ok(locations, "locations must be parsed");
+    assert.equal(locations!.entries.length, 3);
+
+    const promenade = locations!.entries[0]!;
+    assert.equal(promenade.name, "Promenade");
+    assert.equal(promenade.type, "interior");
+    assert.equal(promenade.description, "main concourse");
+    assert.deepEqual(promenade.aliases, ["the promenade", "main concourse"]);
+
+    const daphne = locations!.entries[2]!;
+    assert.equal(daphne.name, "Submersible Daphne");
+    assert.equal(daphne.type, "vehicle");
+    assert.deepEqual(daphne.aliases, []);
   });
 });
 
@@ -287,6 +314,7 @@ function makePacket(overrides: Partial<ChapterPacket> = {}): ChapterPacket {
     voiceTarget: null,
     marketPromise: null,
     continuityActiveSlice: null,
+    locations: null,
     authorBrief: { authorialPersona: "x", craftDirectives: ["x"], source: "deterministic" },
     ...overrides,
   };

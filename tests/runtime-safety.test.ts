@@ -2381,6 +2381,7 @@ function makeHeavyPacket(): ChapterPacket {
     voiceTarget: null,
     marketPromise: null,
     continuityActiveSlice: null,
+    locations: null,
     authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
   };
 }
@@ -2415,6 +2416,7 @@ function makeBudgetTestStoryCore(): CompiledStoryBlueprint {
       runtimeOverrides: {},
     },
     continuityManifest: null,
+    locations: null,
     canonLaw: ["The ocean always wins any delay."],
     antiPatterns: ["No miracle fixes.", "No cartoon villains."],
     styleRules: ["Keep POV tight.", "Let action carry emotion."],
