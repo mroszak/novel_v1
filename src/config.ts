@@ -122,7 +122,6 @@ export const config = {
     judgePassThreshold: 86,
     pairwiseTolerance: 3,
     maxFixAttempts: 2,
-    maxLiteraryRetryAttempts: 0,
     alwaysRunSpecCritique: true,
     skipRevisionThreshold: 88,
     /**
