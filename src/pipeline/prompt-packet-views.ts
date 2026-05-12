@@ -49,6 +49,7 @@ export interface SpecPacketView {
   continuityNotes: string[];
   chapterNotes: string[];
   storyState: SpecStoryStateView;
+  namedCharacterCap?: number;
 }
 
 export interface DeltaPacketView {
@@ -157,6 +158,9 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
     continuityNotes: packet.continuityNotes,
     chapterNotes: packet.chapterNotes,
     storyState: buildSpecStoryStateView(packet),
+    ...(packet.namedCharacterCap !== undefined
+      ? { namedCharacterCap: packet.namedCharacterCap }
+      : {}),
   };
 }
 

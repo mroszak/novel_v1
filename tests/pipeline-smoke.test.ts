@@ -111,6 +111,54 @@ test("compileChapterPacket forwards Secondary Cameo Beats from blueprint onto ch
   assert.ok(packet.data.mandatoryBeats.length > 0, "Sanity: packet still carries mandatoryBeats");
 });
 
+test("Named Character Cap + Surname Alias propagate from blueprint markdown into the chapter packet artifact", async (t) => {
+  const rootDir = await createTempRoot();
+  t.after(async () => {
+    await cleanupTempRoot(rootDir);
+  });
+
+  const customBlueprint = FIXTURE_BLUEPRINT
+    .replace(
+      "- Knowledge Boundary: She must not know the architect in chapter 1.",
+      "- Knowledge Boundary: She must not know the architect in chapter 1.\n- Surname Alias: true",
+    )
+    .replace(
+      "- Target Word Count: 2200\n- Ending Hook: Rowan arrives knowing the package contents before Mira tells him what she is carrying.",
+      "- Target Word Count: 2200\n- Named Character Cap: 5\n- Ending Hook: Rowan arrives knowing the package contents before Mira tells him what she is carrying.",
+    );
+
+  await writeRootBlueprint(rootDir, customBlueprint);
+  const result = runChapterCli(
+    ["--packet-only", "--chapter", "1", "--no-genre-ai"],
+    rootDir,
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const packet = await readJson<{
+    data: {
+      namedCharacterCap?: number;
+      activeCast: Array<{ name: string; surnameAlias?: boolean }>;
+    };
+  }>(path.join(rootDir, "artifacts", "chapters", "chapter-1-packet.json"));
+
+  assert.equal(
+    packet.data.namedCharacterCap,
+    5,
+    "namedCharacterCap from chapter outline must reach the chapter packet artifact",
+  );
+
+  const mira = packet.data.activeCast.find((c) => c.name === "Mira Sol");
+  const rowan = packet.data.activeCast.find((c) => c.name === "Rowan Hale");
+  assert.ok(mira, "Mira Sol must be in activeCast");
+  assert.ok(rowan, "Rowan Hale must be in activeCast");
+  assert.equal(mira.surnameAlias, true, "Mira's Surname Alias: true must propagate through activeCast");
+  assert.equal(
+    rowan.surnameAlias,
+    undefined,
+    "Characters without the flag must NOT have surnameAlias set on the card",
+  );
+});
+
 test("real blueprint compile blocks on under-specified template", async (t) => {
   const rootDir = await createTempRoot();
   t.after(async () => {

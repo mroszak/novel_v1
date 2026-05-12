@@ -100,6 +100,14 @@ The packet carries a filtered `ContinuityActiveSlice` (active cast + mandatory b
 
 Both sections are optional. An empty/absent section means the engine works with the empty contract; behavior degrades gracefully to the pre-manifest packet shape.
 
+### Per-chapter constraints (optional)
+
+Optional fields on each chapter outline propagate from blueprint → packet → spec/drafter prompts → validator.
+
+- **Named Character Cap**: positive integer soft cap on the number of distinct named blueprint characters that may appear in this chapter's prose. The spec generator and drafter see it as a constraint; the validator emits a `CHARACTER_CAP` warning when prose exceeds it. Unnamed walk-ons (`the waiter`, `the senator's aide`, `a girl in service black`) never count because they aren't in the blueprint cast. Off by default.
+
+Character cards also accept an optional `Surname Alias: true` flag so the validator counts surname-only prose references (e.g. `Crane` for Felix Crane) case-sensitively. Off by default — surnames that are also common nouns (`Park`, `Crane`) would otherwise generate false matches.
+
 ## Cost / time targets (typical happy path; not guarantees)
 
 | Stage | Provider | Est. cost |

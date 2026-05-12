@@ -38,11 +38,18 @@ function getSection(sections: Map<string, string>, title: string): string {
   return sections.get(title)?.trim() ?? "";
 }
 
+function parseSurnameAlias(raw: string): boolean | undefined {
+  const value = raw.trim().toLowerCase();
+  if (value === "true" || value === "yes") return true;
+  return undefined;
+}
+
 function parseCharacters(section: string): CharacterCard[] {
   const subsections = splitSections(section, 3);
 
   return Array.from(subsections.entries()).map(([heading, body]) => {
     const fields = parseStructuredFields(body);
+    const surnameAlias = parseSurnameAlias(asString(fields["Surname Alias"]));
     return {
       name: asString(fields.Name, heading),
       role: asString(fields.Role),
@@ -53,6 +60,7 @@ function parseCharacters(section: string): CharacterCard[] {
       privateTruth: asString(fields["Private Truth"]),
       voiceNotes: asList(fields["Voice Notes"]),
       knowledgeBoundary: asString(fields["Knowledge Boundary"]),
+      ...(surnameAlias ? { surnameAlias } : {}),
       rawBody: body.trim(),
     };
   });
@@ -231,6 +239,13 @@ function parseContinuityManifest(section: string): ContinuityManifest | null {
   return hasContent ? manifest : null;
 }
 
+function parseOptionalPositiveInteger(raw: string): number | undefined {
+  const text = raw.trim();
+  if (!text) return undefined;
+  const parsed = Number.parseInt(text, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 function parseChapterOutline(section: string, defaultWordCount: number): ChapterOutline[] {
   const subsections = splitSections(section, 3);
 
@@ -238,6 +253,7 @@ function parseChapterOutline(section: string, defaultWordCount: number): Chapter
     const chapterMatch = heading.match(/chapter\s+(\d+)/i);
     const fields = parseStructuredFields(body);
     const chapterNumber = Number.parseInt(chapterMatch?.[1] ?? "", 10);
+    const namedCharacterCap = parseOptionalPositiveInteger(asString(fields["Named Character Cap"]));
 
     return {
       chapterNumber,
@@ -258,6 +274,7 @@ function parseChapterOutline(section: string, defaultWordCount: number): Chapter
       withhold: asList(fields.Withhold),
       riskFlags: asList(fields["Risk Flags"]),
       notes: asList(fields.Notes),
+      ...(namedCharacterCap !== undefined ? { namedCharacterCap } : {}),
     };
   });
 }

@@ -98,6 +98,7 @@ Write the tonal contract in prose. Cover how close the narration sits to the poi
   - Replace with diction and rhythm notes.
   - Replace with what this character notices first.
 - Knowledge Boundary: Replace with what this character must not know too early.
+- Surname Alias: Optional. Set to `true` only when prose routinely refers to this character by surname alone (e.g. `Crane`, `Halvorsen`). When omitted or `false`, the named-character-cap validator counts first-name and full-name references only; surname-only matches are skipped. Helpful when surnames are also common nouns (e.g. `Park`, `Crane`).
 
 ### Antagonist
 - Name: Antagonist Name
@@ -202,6 +203,7 @@ For each motif from the Motif/Symbol Bank: current intensity, last appearance ch
 - Summary: Replace with what concretely happens in the chapter.
 - Chapter Goal: Replace with what this chapter must accomplish beyond plot summary.
 - Target Word Count: 4000
+- Named Character Cap: Optional. Positive integer soft cap on the number of distinct named blueprint characters that may appear in this chapter's prose. The spec and drafter see it as a constraint; the validator emits a `CHARACTER_CAP` warning when prose exceeds it. Omit (or delete this line) for no cap. Use to control character-load in early chapters; unnamed walk-ons (e.g. `the waiter`, `the senator's aide`) do not count.
 - Ending Hook: Replace with the exact turn that should force the next chapter.
 - Active Cast:
   - Protagonist Name

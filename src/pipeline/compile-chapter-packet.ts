@@ -416,6 +416,9 @@ export async function compileChapterPacket(params: {
     marketPromise,
     continuityActiveSlice,
     authorBrief: blueprintArtifacts.authorBrief.data,
+    ...(chapter.namedCharacterCap !== undefined
+      ? { namedCharacterCap: chapter.namedCharacterCap }
+      : {}),
   };
 
   const artifact = createArtifact<ChapterPacket>({

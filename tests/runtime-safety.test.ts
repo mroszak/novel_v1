@@ -41,6 +41,7 @@ import {
   detectFilterWords,
   detectKnowledgeLeaks,
   detectLexicalRepetition,
+  detectNamedCharacterCapExceeded,
   detectRepetition,
   detectSentenceShapeRepetition,
 } from "../src/validators/prose-quality.js";
@@ -55,6 +56,7 @@ import type {
   ChapterDraft,
   ChapterPacket,
   ChapterSpec,
+  CharacterCard,
   CompiledStoryBlueprint,
   DraftReview,
   FinalAuditReport,
@@ -1228,6 +1230,143 @@ test("detectLexicalRepetition normalizes straight-apostrophe possessives against
     issues.filter((i) => i.evidence[0] === "erik").length,
     0,
     "'erik's' must be normalized to 'erik' and suppressed by the Erik allowedTerm",
+  );
+});
+
+// --- CHARACTER_CAP: per-chapter named-character cap ---
+
+function buildCharacterCard(name: string, opts: Partial<CharacterCard> = {}): CharacterCard {
+  return {
+    name,
+    role: "supporting",
+    desire: "",
+    fear: "",
+    contradiction: "",
+    publicFace: "",
+    privateTruth: "",
+    voiceNotes: [],
+    knowledgeBoundary: "",
+    rawBody: "",
+    ...opts,
+  };
+}
+
+test("detectNamedCharacterCapExceeded returns no warnings when cap is undefined", () => {
+  const prose = "Erik Halvorsen, Roland Vauclair, Adriana, Felix Crane, and Tomás Reyes filled the atrium.";
+  const characters = [
+    buildCharacterCard("Erik Halvorsen"),
+    buildCharacterCard("Roland Vauclair"),
+    buildCharacterCard("Adriana Vauclair"),
+    buildCharacterCard("Felix Crane"),
+    buildCharacterCard("Tomás Reyes"),
+  ];
+  assert.equal(
+    detectNamedCharacterCapExceeded(prose, characters, undefined).length,
+    0,
+    "Absent cap must produce zero warnings regardless of character density",
+  );
+});
+
+test("detectNamedCharacterCapExceeded counts first-name and full-name references as one entity", () => {
+  const prose = [
+    "Erik Halvorsen walked the gallery slowly.",
+    "Erik counted the lamps.",
+    "Later, Halvorsen returned for the toast.",
+  ].join("\n\n");
+  const characters = [buildCharacterCard("Erik Halvorsen")];
+
+  assert.equal(
+    detectNamedCharacterCapExceeded(prose, characters, 5).length,
+    0,
+    "Three references to the same character must count as one entity under the cap",
+  );
+});
+
+test("detectNamedCharacterCapExceeded does not match surnames without surnameAlias opt-in", () => {
+  const prose = "Daniel walked the floor. The park nearby stayed empty.";
+  const characters = [buildCharacterCard("Daniel Park")];
+
+  const issues = detectNamedCharacterCapExceeded(prose, characters, 0);
+  assert.equal(issues.length, 1, "Cap of 0 with a present character should warn");
+  assert.ok(issues[0]?.message.includes("Daniel Park"), "Daniel-only reference still counts via first-name match");
+
+  const surnameOnlyProse = "The park nearby stayed empty.";
+  assert.equal(
+    detectNamedCharacterCapExceeded(surnameOnlyProse, characters, 0).length,
+    0,
+    "Bare 'park' in a sentence must NOT count as Daniel Park when surnameAlias is off",
+  );
+});
+
+test("detectNamedCharacterCapExceeded matches surname-only references when surnameAlias is true", () => {
+  const prose = "Crane catalogued the room. He set the recorder aside.";
+  const characters = [buildCharacterCard("Felix Crane", { surnameAlias: true })];
+
+  const issues = detectNamedCharacterCapExceeded(prose, characters, 0);
+  assert.equal(issues.length, 1, "Surname-only reference must count when surnameAlias is true");
+  assert.ok(issues[0]?.message.includes("Felix Crane"));
+});
+
+test("detectNamedCharacterCapExceeded surname-only matching is case-sensitive", () => {
+  const lowercaseProse = "The crane lifted the steel into place.";
+  const characters = [buildCharacterCard("Felix Crane", { surnameAlias: true })];
+
+  assert.equal(
+    detectNamedCharacterCapExceeded(lowercaseProse, characters, 0).length,
+    0,
+    "Lowercase 'crane' (common noun) must NOT match the proper-noun 'Crane'",
+  );
+});
+
+test("detectNamedCharacterCapExceeded warns when distinct character count exceeds cap", () => {
+  const prose = [
+    "Erik Halvorsen walked the gallery.",
+    "Roland Vauclair raised his glass.",
+    "Adriana watched from the staircase.",
+    "Crane catalogued the room.",
+    "Tomás Reyes leaned over the manifold.",
+  ].join("\n\n");
+  const characters = [
+    buildCharacterCard("Erik Halvorsen"),
+    buildCharacterCard("Roland Vauclair"),
+    buildCharacterCard("Adriana Vauclair"),
+    buildCharacterCard("Felix Crane", { surnameAlias: true }),
+    buildCharacterCard("Tomás Reyes"),
+  ];
+
+  const issues = detectNamedCharacterCapExceeded(prose, characters, 3);
+  assert.equal(issues.length, 1, "Cap of 3 must surface exactly one CHARACTER_CAP warning when 5 are present");
+  const issue = issues[0]!;
+  assert.equal(issue.code, "CHARACTER_CAP");
+  assert.equal(issue.severity, "warning");
+  assert.equal(issue.evidence[0], "3", "Evidence[0] must record the declared cap");
+  assert.equal(issue.evidence[1], "5", "Evidence[1] must record the actual count");
+});
+
+test("detectNamedCharacterCapExceeded stays quiet when prose stays at or below the cap", () => {
+  const prose = "Erik counted the lamps while Roland Vauclair gave the toast.";
+  const characters = [
+    buildCharacterCard("Erik Halvorsen"),
+    buildCharacterCard("Roland Vauclair"),
+    buildCharacterCard("Adriana Vauclair"),
+    buildCharacterCard("Felix Crane", { surnameAlias: true }),
+  ];
+
+  assert.equal(
+    detectNamedCharacterCapExceeded(prose, characters, 2).length,
+    0,
+    "Exactly 2 characters present must NOT warn when cap is 2",
+  );
+});
+
+test("detectNamedCharacterCapExceeded does not count walk-ons absent from the blueprint cast", () => {
+  const prose = "Erik watched. The waiter brought the tray. The senator's aide stepped aside.";
+  const characters = [buildCharacterCard("Erik Halvorsen")];
+
+  assert.equal(
+    detectNamedCharacterCapExceeded(prose, characters, 1).length,
+    0,
+    "Unnamed walk-ons must not contribute to the count",
   );
 });
 

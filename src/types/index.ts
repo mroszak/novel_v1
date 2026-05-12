@@ -87,6 +87,13 @@ export interface CharacterCard {
   privateTruth: string;
   voiceNotes: string[];
   knowledgeBoundary: string;
+  /**
+   * Optional opt-in. When `true`, the named-character-cap validator treats
+   * the last token of `name` as a standalone surname reference (case-sensitive
+   * prose match required). Off by default so common-noun surnames like "Park"
+   * or "Crane" don't generate false matches against the prose.
+   */
+  surnameAlias?: boolean;
   rawBody: string;
 }
 
@@ -109,6 +116,12 @@ export interface ChapterOutline {
   withhold: string[];
   riskFlags: string[];
   notes: string[];
+  /**
+   * Optional per-chapter soft cap on the number of distinct named blueprint
+   * characters that may appear in the published prose. Warning-only.
+   * Absent = no cap.
+   */
+  namedCharacterCap?: number;
 }
 
 export type ChapterRetentionFunction =
@@ -418,6 +431,13 @@ export interface ChapterPacket {
   marketPromise: MarketPromise | null;
   continuityActiveSlice: ContinuityActiveSlice | null;
   authorBrief: AuthorBrief;
+  /**
+   * Optional soft cap on the number of distinct named blueprint characters
+   * that may appear in the published prose for this chapter. Propagated from
+   * the chapter outline. Surfaced to spec + drafter prompts as a constraint;
+   * enforced as a warning by the deterministic validator.
+   */
+  namedCharacterCap?: number;
 }
 
 export interface ChapterSpec {

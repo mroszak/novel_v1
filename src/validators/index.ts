@@ -15,6 +15,7 @@ import {
   checkParagraphDistribution,
   detectFilterWords,
   detectKnowledgeLeaks,
+  detectNamedCharacterCapExceeded,
   detectRepetition,
 } from "./prose-quality.js";
 
@@ -186,6 +187,11 @@ export function runDeterministicValidators(params: {
     ...checkParagraphDistribution(prose),
     ...checkDialogueTags(prose),
     ...detectKnowledgeLeaks(prose, knowledgeMatrix),
+    ...detectNamedCharacterCapExceeded(
+      prose,
+      blueprintArtifacts.compiledBlueprint.data.characters,
+      packet.namedCharacterCap,
+    ),
     ...runContinuityManifestValidators({
       manifest: blueprintArtifacts.continuityManifest.data,
       packet,

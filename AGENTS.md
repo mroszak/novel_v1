@@ -81,6 +81,7 @@ Voice-grit + tournament invariants:
 - Voice-grit must NOT touch reserved zones; the tournament owns opening + ending; polish-pass and reader-simulation are NOT part of v2.
 - `voice-target.json`, `market-promise.json`, `continuity-manifest.json`, `author-brief.json`, and `continuity-state-after-N.json` are loaded with soft metadata validation (schema, artifactType, `blueprintHash`, `blueprintVersion`). Mismatches drop silently rather than throwing.
 - In `src/validators/prose-quality.ts`, knowledge-leak matching should stay boundary-aware: allow punctuated mentions like `Lena,` or `Lena's`, but reject substring matches like `annual` for `Ann`.
+- In `src/validators/prose-quality.ts`, `detectNamedCharacterCapExceeded` is warning-only and runs from the blueprint character cast. First-name and full-name matches are case-insensitive; surname-only matching is opt-in via `CharacterCard.surnameAlias` and case-sensitive (so common-noun surnames like `Park` or `Crane` don't tip on prose like `the crane lifted`). `ChapterPacket.namedCharacterCap` is optional; absent = no cap.
 - In `src/pipeline/smoke-helpers.ts`, keep smoke prose deterministic and validator-clean so calibration stays interpretable.
 
 ## Testing Patterns

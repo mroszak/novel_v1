@@ -1,4 +1,4 @@
-import type { KnowledgeMatrixEntry, ValidatorIssue } from "../types/index.js";
+import type { CharacterCard, KnowledgeMatrixEntry, ValidatorIssue } from "../types/index.js";
 import { countWords, normalizeLookupKey } from "../utils/index.js";
 
 const TRIVIAL = new Set([
@@ -471,4 +471,60 @@ export function detectKnowledgeLeaks(
   }
 
   return issues;
+}
+
+/**
+ * Per-chapter named-character cap. Counts distinct blueprint characters whose
+ * aliases (first name + full name case-insensitive; opt-in surname-only
+ * case-sensitive) appear in the prose, and warns when the count exceeds
+ * `cap`. Warning-only; unnamed walk-ons (`the waiter`, `the senator's aide`)
+ * never count because they aren't in the blueprint cast.
+ */
+export function detectNamedCharacterCapExceeded(
+  prose: string,
+  characters: ReadonlyArray<CharacterCard>,
+  cap: number | undefined,
+): ValidatorIssue[] {
+  if (cap === undefined || cap < 0) return [];
+
+  const present: string[] = [];
+  for (const character of characters) {
+    const name = character.name.trim();
+    if (!name) continue;
+    const tokens = name.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) continue;
+
+    const firstName = tokens[0]!;
+    const lastName = tokens.length > 1 ? tokens[tokens.length - 1]! : null;
+
+    const checks: RegExp[] = [];
+    if (firstName.length >= 3) {
+      checks.push(new RegExp(`\\b${escapeRegex(firstName)}\\b`, "i"));
+    }
+    if (tokens.length > 1) {
+      const fullPattern = tokens.map(escapeRegex).join("\\s+");
+      checks.push(new RegExp(`\\b${fullPattern}\\b`, "i"));
+    }
+    // Surname-only matching is opt-in and case-sensitive so common-noun
+    // surnames (`Park`, `Crane`) don't trip on prose like `the crane lifted`.
+    if (character.surnameAlias && lastName && lastName.length >= 3) {
+      checks.push(new RegExp(`\\b${escapeRegex(lastName)}\\b`));
+    }
+
+    if (checks.length === 0) continue;
+    if (checks.some((re) => re.test(prose))) {
+      present.push(name);
+    }
+  }
+
+  if (present.length <= cap) return [];
+
+  return [
+    {
+      severity: "warning",
+      code: "CHARACTER_CAP",
+      message: `Named character cap of ${cap} exceeded: prose references ${present.length} blueprint characters (${present.join(", ")}).`,
+      evidence: [String(cap), String(present.length), ...present],
+    },
+  ];
 }
