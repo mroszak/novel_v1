@@ -316,6 +316,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         blueprintArtifacts: compilation.artifacts,
         packet: packetArtifact.data,
         skipSpecCritique: options.skipSpecCritique,
+        noGenreAi: options.noGenreAi || options.smoke,
       });
       return result;
     }

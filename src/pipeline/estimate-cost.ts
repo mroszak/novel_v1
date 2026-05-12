@@ -75,9 +75,11 @@ export async function estimateChapterCost(params: {
   blueprintArtifacts: BlueprintCompilationArtifacts;
   packet: ChapterPacket;
   skipSpecCritique: boolean;
+  noGenreAi: boolean;
 }): Promise<string> {
   const profile = config.qualitySettings;
   const storyCore = params.blueprintArtifacts.compiledBlueprint.data;
+  const genreAiDisabled = params.noGenreAi;
 
   // Build smoke fixtures to size every token pool from representative data
   const smokeSpec = createSmokeSpec(params.packet);
@@ -200,25 +202,55 @@ export async function estimateChapterCost(params: {
   });
 
   // ── Genre compilation (one model call per blueprint on cold cache) ──
-  stages.push({
-    ...estimateStageCost({
-      stage: config.stageProfiles.genreCompilation,
-      estimatedInputTokens: storyPromiseTokens + genreContractTokens,
-    }),
-    notes: ["Conditional: only runs on cold blueprint cache; cached on blueprintHash."],
-  });
+  if (genreAiDisabled) {
+    stages.push({
+      stage: "genre-compilation",
+      provider: config.stageProfiles.genreCompilation.provider,
+      model: config.stageProfiles.genreCompilation.model,
+      estimatedInputTokens: 0,
+      maxOutputTokens: 0,
+      contextWindowTokens: 0,
+      withinBudget: true,
+      estimatedCostUsd: 0,
+      pricingConfigured: true,
+      notes: ["Disabled by --no-genre-ai (or --smoke); deterministic preset compile only."],
+    });
+  } else {
+    stages.push({
+      ...estimateStageCost({
+        stage: config.stageProfiles.genreCompilation,
+        estimatedInputTokens: storyPromiseTokens + genreContractTokens,
+      }),
+      notes: ["Conditional: only runs on cold blueprint cache; cached on blueprintHash."],
+    });
+  }
 
   // ── Author brief (one model call per blueprint, amortized) ──
-  stages.push({
-    ...estimateStageCost({
-      stage: config.stageProfiles.authorBrief,
-      estimatedInputTokens: storyPromiseTokens + genreContractTokens + styleRulesTokens
-        + motifsTokens + (params.packet.marketPromise
-          ? estimateTextTokens(JSON.stringify(params.packet.marketPromise))
-          : 0),
-    }),
-    notes: ["One-time per blueprint; cached on blueprintHash. Amortizes over the full chapter run."],
-  });
+  if (genreAiDisabled) {
+    stages.push({
+      stage: "author-brief",
+      provider: config.stageProfiles.authorBrief.provider,
+      model: config.stageProfiles.authorBrief.model,
+      estimatedInputTokens: 0,
+      maxOutputTokens: 0,
+      contextWindowTokens: 0,
+      withinBudget: true,
+      estimatedCostUsd: 0,
+      pricingConfigured: true,
+      notes: ["Disabled by --no-genre-ai (or --smoke); deterministic fallback brief only."],
+    });
+  } else {
+    stages.push({
+      ...estimateStageCost({
+        stage: config.stageProfiles.authorBrief,
+        estimatedInputTokens: storyPromiseTokens + genreContractTokens + styleRulesTokens
+          + motifsTokens + (params.packet.marketPromise
+            ? estimateTextTokens(JSON.stringify(params.packet.marketPromise))
+            : 0),
+      }),
+      notes: ["One-time per blueprint; cached on blueprintHash. Amortizes over the full chapter run."],
+    });
+  }
 
   const specGenerationInputTokens = estimateOpenAiStageRequest({
     stage: config.stageProfiles.specGeneration,
@@ -328,7 +360,11 @@ export async function estimateChapterCost(params: {
     estimatedInputTokens: genreContractTokens + functionTokens
       + draftTokens + revisionTokens + 2 * reviewTokens,
   });
-  pushWithNote(stages, selectionEst, skipNote);
+  if (skipNote) selectionEst.notes.push(skipNote);
+  selectionEst.notes.push(
+    "Also skipped when deterministic gates decide the winner (pass-mismatch, blocker-mismatch, or within-tolerance) without a model call.",
+  );
+  stages.push(selectionEst);
 
   // ── Post-selection enhancement: voice-grit (advisory/fail-soft) ──
   const selectedProseTokens = estimateWordTokens(smokeSelected.wordCount);

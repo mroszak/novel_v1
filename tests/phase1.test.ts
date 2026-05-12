@@ -378,7 +378,9 @@ test("estimate-cost includes voice-calibration and tournament stage entries", as
   const costEstimate = await readJson<any>(
     path.join(rootDir, "artifacts", "chapters", "chapter-1-cost-estimate.json"),
   );
-  const stageNames: string[] = costEstimate.data.stages.map((s: any) => s.stage);
+  const stages: any[] = costEstimate.data.stages;
+  const stageNames: string[] = stages.map((s: any) => s.stage);
+  const byName = new Map<string, any>(stages.map((s: any) => [s.stage, s]));
 
   assert.ok(stageNames.includes("voice-calibration"), "estimate must include voice-calibration");
   for (const zonePrefix of ["opening-candidate", "ending-candidate"]) {
@@ -405,6 +407,52 @@ test("estimate-cost includes voice-calibration and tournament stage entries", as
     "opening-candidate-3",
   ]) {
     assert.ok(!stageNames.includes(removed), `estimate must NOT include ${removed}`);
+  }
+
+  // genre-compilation must be present and zero-cost under --smoke (forces noGenreAi).
+  assert.ok(stageNames.includes("genre-compilation"), "estimate must include genre-compilation");
+  const genreCompilation = byName.get("genre-compilation");
+  assert.equal(genreCompilation.estimatedInputTokens, 0, "smoke must zero-cost genre-compilation");
+  assert.equal(genreCompilation.estimatedCostUsd, 0, "smoke must zero-cost genre-compilation");
+  assert.match(
+    genreCompilation.notes.join(" "),
+    /Disabled by --no-genre-ai/i,
+    "genre-compilation must carry the disabled-by-flag note under smoke",
+  );
+
+  // author-brief must be zero-cost under --smoke (deterministic fallback brief).
+  const authorBrief = byName.get("author-brief");
+  assert.ok(authorBrief, "estimate must include author-brief");
+  assert.equal(authorBrief.estimatedInputTokens, 0, "smoke must zero-cost author-brief");
+  assert.equal(authorBrief.estimatedCostUsd, 0, "smoke must zero-cost author-brief");
+  assert.match(
+    authorBrief.notes.join(" "),
+    /Disabled by --no-genre-ai/i,
+    "author-brief must carry the disabled-by-flag note under smoke",
+  );
+
+  // voice-calibration is a deterministic post-publish step; it must stay zero-cost.
+  const voiceCal = byName.get("voice-calibration");
+  assert.ok(voiceCal, "estimate must include voice-calibration");
+  assert.equal(voiceCal.estimatedInputTokens, 0, "voice-calibration must be zero-token");
+  assert.equal(voiceCal.estimatedCostUsd, 0, "voice-calibration must be zero-cost");
+
+  // Gate-specific notes for the post-selection / fail-soft stages.
+  const expectedNotes: Array<[string, RegExp]> = [
+    ["revision", /Skipped when draft scores >= skipRevisionThreshold and has no blocking signals\./],
+    ["literary-judge-revision", /Skipped when draft scores >= skipRevisionThreshold and has no blocking signals\./],
+    ["pairwise-selection", /deterministic gates decide the winner/i],
+    ["voice-grit-plan", /runs only when a voice-target is available/i],
+    ["voice-grit-rejudge", /voice-grit-plan returned applied patches that passed validators/i],
+    ["opening-candidate-1", /zone is locatable in the selected prose/i],
+    ["ending-candidate-1", /zone is locatable in the selected prose/i],
+    ["tournament-selection-opening-1", /candidate generation succeeded for that zone/i],
+    ["tournament-selection-ending-1", /candidate generation succeeded for that zone/i],
+  ];
+  for (const [name, pattern] of expectedNotes) {
+    const stage = byName.get(name);
+    assert.ok(stage, `estimate must include ${name}`);
+    assert.match(stage.notes.join(" | "), pattern, `${name} must carry note matching ${pattern}`);
   }
 });
 
