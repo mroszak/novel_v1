@@ -5,9 +5,12 @@ import test from "node:test";
 import { promises as fs } from "node:fs";
 
 import {
+  applyZoneToProse,
+  composeTournamentMergedProse,
   locateEndingSlice,
   locateOpeningSlice,
 } from "../src/pipeline/opening-ending-tournament.js";
+import type { TournamentResult } from "../src/types/index.js";
 import {
   buildVoiceFingerprint,
   buildGuidanceLines,
@@ -68,6 +71,79 @@ test("locateEndingSlice returns the final non-empty paragraph", () => {
   const slice = locateEndingSlice(SAMPLE_PROSE);
   assert.ok(slice);
   assert.ok(slice!.text.includes("rain finally committed"));
+});
+
+test("composeTournamentMergedProse splices opening then ending against preProse", () => {
+  const opening = locateOpeningSlice(SAMPLE_PROSE)!;
+  const ending = locateEndingSlice(SAMPLE_PROSE)!;
+
+  const openingWinnerText = "She cracked the door open and listened. Nothing answered. Nothing ever did.\n\nShe stepped inside anyway, counting the small refusals it cost her.";
+  const endingWinnerText = "Outside, the rain stopped pretending and committed to the windshield like it had wanted to all night.";
+
+  const openingResult: TournamentResult = {
+    zone: "opening",
+    candidates: [
+      { id: "opening-original", text: opening.text, rationale: "original" },
+      { id: "opening-1", text: openingWinnerText, rationale: "candidate" },
+    ],
+    rounds: [{ pair: ["opening-original", "opening-1"], winner: "opening-1", rationale: "tighter" }],
+    winnerId: "opening-1",
+    winnerText: openingWinnerText,
+    applied: true,
+    skipReason: null,
+  };
+  const endingResult: TournamentResult = {
+    zone: "ending",
+    candidates: [
+      { id: "ending-original", text: ending.text, rationale: "original" },
+      { id: "ending-1", text: endingWinnerText, rationale: "candidate" },
+    ],
+    rounds: [{ pair: ["ending-original", "ending-1"], winner: "ending-1", rationale: "stronger out-beat" }],
+    winnerId: "ending-1",
+    winnerText: endingWinnerText,
+    applied: true,
+    skipReason: null,
+  };
+
+  const composed = composeTournamentMergedProse({
+    preProse: SAMPLE_PROSE,
+    openingResult,
+    endingResult,
+  });
+
+  // Reference: apply opening, then ending (which re-locates against the post-opening prose).
+  const afterOpening = applyZoneToProse({ prose: SAMPLE_PROSE, zone: "opening", zoneResult: openingResult });
+  const expected = applyZoneToProse({ prose: afterOpening, zone: "ending", zoneResult: endingResult });
+
+  assert.equal(composed.mergedProse, expected);
+  assert.notEqual(composed.mergedProse, SAMPLE_PROSE);
+  assert.ok(composed.mergedProse.includes(openingWinnerText));
+  assert.ok(composed.mergedProse.endsWith(endingWinnerText));
+  assert.equal(composed.openingResult!.applied, true);
+  assert.equal(composed.endingResult!.applied, true);
+});
+
+test("composeTournamentMergedProse marks zone applied=false when its splice is a no-op", () => {
+  const opening = locateOpeningSlice(SAMPLE_PROSE)!;
+  const openingResult: TournamentResult = {
+    zone: "opening",
+    candidates: [],
+    rounds: [],
+    winnerId: "opening-1",
+    winnerText: opening.text,
+    applied: true,
+    skipReason: null,
+  };
+
+  const composed = composeTournamentMergedProse({
+    preProse: SAMPLE_PROSE,
+    openingResult,
+    endingResult: null,
+  });
+
+  assert.equal(composed.mergedProse, SAMPLE_PROSE);
+  assert.equal(composed.openingResult!.applied, false);
+  assert.match(composed.openingResult!.skipReason ?? "", /splice did not change prose/i);
 });
 
 function makeBlueprint(): CompiledStoryBlueprint {

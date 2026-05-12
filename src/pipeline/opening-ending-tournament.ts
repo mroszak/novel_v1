@@ -232,7 +232,7 @@ async function pickWinner(params: {
   };
 }
 
-function applyZoneToProse(params: {
+export function applyZoneToProse(params: {
   prose: string;
   zone: TournamentZone;
   zoneResult: TournamentResult;
@@ -249,6 +249,42 @@ function applyZoneToProse(params: {
     return spliceParagraph(params.prose, slice.paragraphIndex, params.zoneResult.winnerText);
   }
   return params.prose;
+}
+
+const SPLICE_NOOP_REASON = "Merge skipped: zone splice did not change prose.";
+
+export function composeTournamentMergedProse(params: {
+  preProse: string;
+  openingResult: TournamentResult | null;
+  endingResult: TournamentResult | null;
+}): {
+  mergedProse: string;
+  openingResult: TournamentResult | null;
+  endingResult: TournamentResult | null;
+} {
+  let mergedProse = params.preProse;
+
+  let openingResult = params.openingResult;
+  if (openingResult && openingResult.applied) {
+    const next = applyZoneToProse({ prose: mergedProse, zone: "opening", zoneResult: openingResult });
+    if (next !== mergedProse) {
+      mergedProse = next;
+    } else {
+      openingResult = { ...openingResult, applied: false, skipReason: SPLICE_NOOP_REASON };
+    }
+  }
+
+  let endingResult = params.endingResult;
+  if (endingResult && endingResult.applied) {
+    const next = applyZoneToProse({ prose: mergedProse, zone: "ending", zoneResult: endingResult });
+    if (next !== mergedProse) {
+      mergedProse = next;
+    } else {
+      endingResult = { ...endingResult, applied: false, skipReason: SPLICE_NOOP_REASON };
+    }
+  }
+
+  return { mergedProse, openingResult, endingResult };
 }
 
 function runProseValidators(packet: ChapterPacket, prose: string): ValidatorIssue[] {
@@ -388,64 +424,94 @@ export async function runOpeningEndingTournament(params: {
   const opening = locateOpeningSlice(preProse);
   const ending = locateEndingSlice(preProse);
 
-  let mergedProse = preProse;
+  type ZoneOutcome =
+    | { kind: "ran"; result: TournamentResult; usages: Array<{ stage: string; usage: StageUsage }> }
+    | { kind: "fallback"; result: TournamentResult };
 
-  const tryZone = async (zone: TournamentZone, currentText: string | null) => {
+  const runOrFallback = async (zone: TournamentZone, currentText: string | null): Promise<ZoneOutcome> => {
     if (currentText === null) {
-      finalZones[zone] = {
-        zone,
-        candidates: [],
-        rounds: [],
-        winnerId: "",
-        winnerText: "",
-        applied: false,
-        skipReason: `${zone} zone not located in prose; skipped.`,
+      return {
+        kind: "fallback",
+        result: {
+          zone,
+          candidates: [],
+          rounds: [],
+          winnerId: "",
+          winnerText: "",
+          applied: false,
+          skipReason: `${zone} zone not located in prose; skipped.`,
+        },
       };
-      return;
     }
     try {
       const zoneRun = await runZone({ zone, currentZoneText: currentText, context, smoke: params.smoke });
-      usages.push(...zoneRun.usages);
-      finalZones[zone] = zoneRun.result;
-
-      if (zoneRun.result.applied) {
-        const next = applyZoneToProse({ prose: mergedProse, zone, zoneResult: zoneRun.result });
-        if (next !== mergedProse) {
-          mergedProse = next;
-        } else {
-          zoneRun.result.applied = false;
-          zoneRun.result.skipReason = "Merge skipped: zone splice did not change prose.";
-        }
-      }
-
-      const zoneArtifact = createArtifact<TournamentResult>({
-        artifactType: `tournament-${zone}`,
-        blueprintHash: params.packetArtifact.blueprintHash,
-        blueprintVersion: params.packetArtifact.blueprintVersion,
-        chapterNumber: params.packetArtifact.chapterNumber,
-        data: zoneRun.result,
-      });
-      await writeJson(
-        chapterArtifactPath(params.packetArtifact.data.chapterNumber, `tournament-${zone}`),
-        zoneArtifact,
-      );
-      zoneArtifacts[zone] = zoneArtifact;
+      return { kind: "ran", result: zoneRun.result, usages: zoneRun.usages };
     } catch (error) {
       console.error(`[tournament] ${zone} failed: ${(error as Error).message}`);
-      finalZones[zone] = {
-        zone,
-        candidates: [],
-        rounds: [],
-        winnerId: "",
-        winnerText: "",
-        applied: false,
-        skipReason: `Failed: ${(error as Error).message}`,
+      return {
+        kind: "fallback",
+        result: {
+          zone,
+          candidates: [],
+          rounds: [],
+          winnerId: "",
+          winnerText: "",
+          applied: false,
+          skipReason: `Failed: ${(error as Error).message}`,
+        },
       };
     }
   };
 
-  await tryZone("opening", opening?.text ?? null);
-  await tryZone("ending", ending?.text ?? null);
+  const [openingOutcome, endingOutcome] = await Promise.all([
+    runOrFallback("opening", opening?.text ?? null),
+    runOrFallback("ending", ending?.text ?? null),
+  ]);
+
+  if (openingOutcome.kind === "ran") usages.push(...openingOutcome.usages);
+  if (endingOutcome.kind === "ran") usages.push(...endingOutcome.usages);
+
+  const composed = composeTournamentMergedProse({
+    preProse,
+    openingResult: openingOutcome.result,
+    endingResult: endingOutcome.result,
+  });
+  const mergedProse = composed.mergedProse;
+  const composedOpening = composed.openingResult!;
+  const composedEnding = composed.endingResult!;
+
+  finalZones.opening = composedOpening;
+  finalZones.ending = composedEnding;
+
+  if (openingOutcome.kind === "ran") {
+    const zoneArtifact = createArtifact<TournamentResult>({
+      artifactType: "tournament-opening",
+      blueprintHash: params.packetArtifact.blueprintHash,
+      blueprintVersion: params.packetArtifact.blueprintVersion,
+      chapterNumber: params.packetArtifact.chapterNumber,
+      data: composedOpening,
+    });
+    await writeJson(
+      chapterArtifactPath(params.packetArtifact.data.chapterNumber, "tournament-opening"),
+      zoneArtifact,
+    );
+    zoneArtifacts.opening = zoneArtifact;
+  }
+
+  if (endingOutcome.kind === "ran") {
+    const zoneArtifact = createArtifact<TournamentResult>({
+      artifactType: "tournament-ending",
+      blueprintHash: params.packetArtifact.blueprintHash,
+      blueprintVersion: params.packetArtifact.blueprintVersion,
+      chapterNumber: params.packetArtifact.chapterNumber,
+      data: composedEnding,
+    });
+    await writeJson(
+      chapterArtifactPath(params.packetArtifact.data.chapterNumber, "tournament-ending"),
+      zoneArtifact,
+    );
+    zoneArtifacts.ending = zoneArtifact;
+  }
 
   const anyApplied = Object.values(finalZones).some((z) => z?.applied);
   if (!anyApplied) {
