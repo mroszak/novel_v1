@@ -17,6 +17,7 @@ import type {
   VoiceTarget,
 } from "../types/index.js";
 import {
+  buildAllowedTermsFromPacket,
   checkDialogueTags,
   checkParagraphDistribution,
   detectFilterWords,
@@ -262,8 +263,9 @@ function runProseValidators(packet: ChapterPacket, prose: string): ValidatorIssu
     });
   }
   const knowledgeMatrix = packet.rollingMemory?.knowledgeMatrix ?? [];
+  const allowedTerms = buildAllowedTermsFromPacket(packet);
   issues.push(
-    ...detectRepetition(prose),
+    ...detectRepetition(prose, { allowedTerms }),
     ...detectFilterWords(prose),
     ...checkParagraphDistribution(prose),
     ...checkDialogueTags(prose),

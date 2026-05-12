@@ -14,6 +14,73 @@ const TRIVIAL = new Set([
   "came", "went", "made", "told", "does", "such", "same", "many", "once",
 ]);
 
+// Function-words and pronoun-like tokens that should NOT count as distinctive
+// content for single-word lexical-repetition detection. Intentionally narrower
+// than TRIVIAL — distinctive verbs (came, told, stood, turned, moved, looked)
+// and adjectives (small, beautiful) stay countable because their repetition is
+// exactly the tic this detector exists to surface. "way" is excluded because
+// the sentence-shape detector handles "the way" as a phrase.
+const LEXICAL_STOPWORDS = new Set([
+  "the", "an",
+  "he", "she", "it", "they", "we", "you",
+  "his", "her", "its", "their", "our", "your", "my",
+  "him", "them", "us", "me",
+  "himself", "herself", "itself", "themselves", "ourselves", "yourself", "myself",
+  "this", "that", "these", "those",
+  "who", "what", "when", "where", "why", "how", "which", "whose",
+  "is", "are", "was", "were", "be", "been", "being", "am",
+  "do", "does", "did", "doing", "done",
+  "have", "has", "had", "having",
+  "will", "would", "could", "should", "may", "might", "must", "can", "shall",
+  "of", "to", "in", "for", "on", "at", "by", "with", "from",
+  "into", "onto", "upon", "out", "off", "down", "over", "under",
+  "through", "across", "against", "before", "after", "between",
+  "among", "around", "near", "behind", "beyond", "beside",
+  "above", "below", "about", "within", "without", "during", "until",
+  "and", "or", "but", "nor", "if", "as", "while",
+  "because", "although", "though", "unless", "than", "yet",
+  "not", "no", "yes",
+  "very", "too", "also", "just", "even", "only", "more", "most", "much", "many",
+  "some", "any", "all", "each", "every", "both", "either", "neither", "such",
+  "still", "again", "then", "now", "here", "there", "back",
+  "way",
+  "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "first", "second", "third", "fourth", "fifth",
+  "thing", "things", "something", "someone", "anyone", "everyone",
+  "anything", "everything", "nothing", "another",
+]);
+
+// Literary sentence-shape tic phrases. Recurring constructions that read as
+// authorial fingerprints when overused. Curated watchlist (v1) rather than
+// statistical inference; extend as new tics appear in published chapters.
+const SENTENCE_SHAPE_PHRASES: readonly string[] = [
+  "the way",
+  "as though",
+  "as if",
+  "not quite",
+  "half second",
+  "half a second",
+  "for a moment",
+];
+
+// v1 calibration. count ≥ 8 with rate ≥ 2.0 / 1000 surfaces distinctive-word
+// tics (e.g. "acrylic" 10x at ~4200 words → 2.37/1000) without firing on
+// proper-noun-density inside the chapter's own setting.
+const LEXICAL_MIN_COUNT = 8;
+const LEXICAL_MIN_RATE_PER_1000 = 2.0;
+const SENTENCE_SHAPE_MIN_COUNT = 5;
+
+export interface RepetitionContext {
+  /**
+   * Tokens that should be exempt from single-word lexical-repetition counting.
+   * Keep narrow: character first/last names, proper nouns, and mandatory-beat
+   * keywords that are genuinely required. Do NOT add general high-frequency
+   * setting words ("room", "glass") — they need to remain visible to the
+   * detector even when they appear in beats.
+   */
+  allowedTerms?: readonly string[];
+}
+
 const FILTER_RE = /\b(?:felt|noticed|realized|saw|heard|seemed|thought|watched|looked|knew|wondered|observed|perceived|considered|decided|remembered|recognized)\b/gi;
 
 const DIALOGUE_VERB_RE = /\b(?:said|asked|whispered|muttered|replied|answered|called|shouted|declared|exclaimed|murmured|stated)\b/gi;
@@ -31,7 +98,10 @@ function isSceneBreakParagraph(trimmed: string): boolean {
   return trimmed.length === 0 || SCENE_BREAK_RE.test(trimmed);
 }
 
-export function detectRepetition(prose: string): ValidatorIssue[] {
+export function detectRepetition(
+  prose: string,
+  context: RepetitionContext = {},
+): ValidatorIssue[] {
   const issues: ValidatorIssue[] = [];
   const paragraphs = prose.split(/\n\n+/).filter(Boolean);
 
@@ -102,7 +172,138 @@ export function detectRepetition(prose: string): ValidatorIssue[] {
     }
   }
 
+  issues.push(...detectLexicalRepetition(prose, context));
+  issues.push(...detectSentenceShapeRepetition(prose));
+
   return issues;
+}
+
+function normalizeAllowedSet(allowedTerms: readonly string[] | undefined): Set<string> {
+  const out = new Set<string>();
+  if (!allowedTerms) return out;
+  for (const term of allowedTerms) {
+    if (!term) continue;
+    const tokens = term.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    for (const token of tokens) {
+      if (token.length >= 3) out.add(token);
+    }
+  }
+  return out;
+}
+
+/**
+ * Single-word lexical-repetition detector. Surfaces distinctive content words
+ * (nouns, verbs, adjectives) that recur often enough to read as authorial
+ * fingerprints. Warning-only; revision and voice-grit consume the evidence.
+ */
+export function detectLexicalRepetition(
+  prose: string,
+  context: RepetitionContext = {},
+): ValidatorIssue[] {
+  const allowed = normalizeAllowedSet(context.allowedTerms);
+  const words = prose
+    .toLowerCase()
+    .replace(/[^\w\s']/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < 200) return [];
+
+  const counts = new Map<string, number>();
+  for (const raw of words) {
+    // Strip straight-apostrophe possessives so "erik's" matches the allowed
+    // "erik" exemption (and a single repeated noun isn't double-counted as
+    // its bare and possessive forms).
+    const word = raw.replace(/'s?$/, "");
+    if (word.length < 4) continue;
+    if (LEXICAL_STOPWORDS.has(word)) continue;
+    if (allowed.has(word)) continue;
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+
+  const issues: ValidatorIssue[] = [];
+  const totalWords = words.length;
+  for (const [word, count] of counts) {
+    if (count < LEXICAL_MIN_COUNT) continue;
+    const rate = (count / totalWords) * 1000;
+    if (rate < LEXICAL_MIN_RATE_PER_1000) continue;
+    issues.push({
+      severity: "warning",
+      code: "LEXICAL_REPETITION",
+      message: `Word "${word}" appears ${count} times (${rate.toFixed(1)} per 1000 words).`,
+      evidence: [word, String(count), rate.toFixed(1)],
+    });
+  }
+  return issues;
+}
+
+function escapeRegex(raw: string): string {
+  return raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildPhraseRegex(phrase: string): RegExp {
+  const tokens = phrase.split(/\s+/).map(escapeRegex);
+  return new RegExp(`\\b${tokens.join("\\s+")}\\b`, "gi");
+}
+
+/**
+ * Sentence-shape repetition detector. Counts curated literary tic phrases
+ * (e.g. "the way", "as though") that signal authorial-fingerprint rhythm
+ * when overused. Warning-only; extend SENTENCE_SHAPE_PHRASES as new tics
+ * appear in published chapters.
+ */
+export function detectSentenceShapeRepetition(prose: string): ValidatorIssue[] {
+  const issues: ValidatorIssue[] = [];
+  for (const phrase of SENTENCE_SHAPE_PHRASES) {
+    const matches = prose.match(buildPhraseRegex(phrase)) ?? [];
+    if (matches.length < SENTENCE_SHAPE_MIN_COUNT) continue;
+    issues.push({
+      severity: "warning",
+      code: "SENTENCE_SHAPE_REPETITION",
+      message: `Sentence-shape phrase "${phrase}" appears ${matches.length} times.`,
+      evidence: [phrase, String(matches.length)],
+    });
+  }
+  return issues;
+}
+
+/**
+ * Build the `allowedTerms` set the way every caller should: character first
+ * and last names from `activeCast`, plus proper nouns (capitalized tokens)
+ * appearing in mandatory beats. Common nouns in beats are intentionally NOT
+ * exempted — they're exactly the kind of repeated setting word the detector
+ * exists to surface. Centralizing the rule keeps the three repetition
+ * call-sites consistent.
+ */
+export function buildAllowedTermsFromPacket(packet: {
+  activeCast?: ReadonlyArray<{ name: string }> | null;
+  mandatoryBeats?: readonly string[] | null;
+}): string[] {
+  const out = new Set<string>();
+  for (const member of packet.activeCast ?? []) {
+    const tokens = member.name.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    for (const token of tokens) {
+      if (token.length >= 3) out.add(token);
+    }
+  }
+  for (const beat of packet.mandatoryBeats ?? []) {
+    // Split into sentences and strip the first word of each. Sentence-initial
+    // capitalization is grammatical, not a proper-noun signal — without this
+    // step a beat like "Acrylic cracks…" would exempt the very tic the
+    // detector exists to surface.
+    const sentences = beat.split(/(?<=[.!?])\s+/);
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      if (!trimmed) continue;
+      const afterFirstWord = trimmed.replace(/^\S+\s*/, "");
+      const properNouns = afterFirstWord.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? [];
+      for (const match of properNouns) {
+        const lower = match.toLowerCase();
+        if (LEXICAL_STOPWORDS.has(lower)) continue;
+        out.add(lower);
+      }
+    }
+  }
+  return [...out];
 }
 
 export function detectFilterWords(prose: string): ValidatorIssue[] {

@@ -35,11 +35,14 @@ import { createSmokeDelta, createSmokeMemory, createSmokeReview, createSmokeSele
 import { BlockedPipelineError, createArtifact, loadArtifact } from "../src/pipeline/stage-utils.js";
 import { runDeterministicValidators } from "../src/validators/index.js";
 import {
+  buildAllowedTermsFromPacket,
   checkDialogueTags,
   checkParagraphDistribution,
   detectFilterWords,
   detectKnowledgeLeaks,
+  detectLexicalRepetition,
   detectRepetition,
+  detectSentenceShapeRepetition,
 } from "../src/validators/prose-quality.js";
 import { config } from "../src/config.js";
 import { estimateOpenAiPromptTokens, estimateTextTokens } from "../src/metrics/token-budget.js";
@@ -1010,6 +1013,222 @@ test("detectRepetition surfaces duplicate paragraphs as DUPLICATE_PARAGRAPH then
   );
   const ngramErrors = issues.filter((i) => i.code === "REPETITION" && i.severity === "error");
   assert.equal(ngramErrors.length, 0, "N-gram analysis must operate on deduped text");
+});
+
+// --- LEXICAL_REPETITION: single-word distinctive-content repetition ---
+
+function buildProseWithRepeatedWord(target: string, count: number, filler: string): string {
+  const padding = (filler + " ").repeat(60);
+  const sentences = Array.from({ length: count }, (_, i) =>
+    `On day ${i + 1}, the ${target} sat exactly where she had left it that morning.`,
+  );
+  return [padding, sentences.join(" "), padding].join("\n\n");
+}
+
+test("detectLexicalRepetition warns on a distinctive word at ~2.4 per 1000 (acrylic-class tic)", () => {
+  const prose = buildProseWithRepeatedWord(
+    "acrylic",
+    10,
+    "She watched the harbor lamps drift while the orchestra rehearsed under the dome.",
+  );
+
+  const issues = detectLexicalRepetition(prose);
+  const lex = issues.find((i) => i.code === "LEXICAL_REPETITION" && i.evidence[0] === "acrylic");
+  assert.ok(lex, "Word at count >=8 and rate >=2.0/1000 must surface LEXICAL_REPETITION");
+  assert.equal(lex.severity, "warning", "LEXICAL_REPETITION is warning-only in v1");
+});
+
+test("detectLexicalRepetition suppresses words listed in allowedTerms", () => {
+  const prose = buildProseWithRepeatedWord(
+    "halvorsen",
+    12,
+    "She watched the harbor lamps drift while the orchestra rehearsed under the dome.",
+  );
+
+  const issues = detectLexicalRepetition(prose, { allowedTerms: ["Erik Halvorsen"] });
+  assert.equal(
+    issues.filter((i) => i.evidence[0] === "halvorsen").length,
+    0,
+    "Character-name tokens in allowedTerms must be exempt from lexical counting",
+  );
+});
+
+test("detectLexicalRepetition does not warn below the count floor", () => {
+  const prose = buildProseWithRepeatedWord(
+    "ledger",
+    7,
+    "She watched the harbor lamps drift while the orchestra rehearsed under the dome.",
+  );
+
+  const issues = detectLexicalRepetition(prose);
+  assert.equal(
+    issues.filter((i) => i.evidence[0] === "ledger").length,
+    0,
+    "Counts below LEXICAL_MIN_COUNT must not warn even if rate is high",
+  );
+});
+
+test("detectLexicalRepetition does not warn when rate falls below 2.0/1000 in long prose", () => {
+  const sentence = "She watched the harbor lamps drift while the orchestra rehearsed under the dome and her partner waited patiently. ";
+  const padding = sentence.repeat(400);
+  const target = " On day X, the lantern sat exactly where she had left it that morning.";
+  const prose = padding + target.repeat(8);
+
+  const issues = detectLexicalRepetition(prose);
+  assert.equal(
+    issues.filter((i) => i.evidence[0] === "lantern").length,
+    0,
+    "Words with count >=8 but rate below 2.0/1000 must not warn",
+  );
+});
+
+test("detectLexicalRepetition skips short prose entirely", () => {
+  const prose = "Acrylic. ".repeat(12);
+  const issues = detectLexicalRepetition(prose);
+  assert.equal(issues.length, 0, "Short prose (<200 words) must be skipped");
+});
+
+// --- SENTENCE_SHAPE_REPETITION: literary tic phrases ---
+
+test("detectSentenceShapeRepetition warns on 'the way' at 5+ occurrences", () => {
+  const prose = [
+    "He moved the way one moves when the room is cold.",
+    "She watched the way a stage manager watches a curtain.",
+    "The orchestra recovered the way orchestras always recover.",
+    "He counted the way a man counts when he cannot stop.",
+    "She left the way a guest leaves when the host is busy.",
+  ].join("\n\n");
+
+  const issues = detectSentenceShapeRepetition(prose);
+  const hit = issues.find((i) => i.code === "SENTENCE_SHAPE_REPETITION" && i.evidence[0] === "the way");
+  assert.ok(hit, "'the way' at 5 occurrences must warn");
+  assert.equal(hit.severity, "warning");
+});
+
+test("detectSentenceShapeRepetition stays quiet at 4 occurrences", () => {
+  const prose = [
+    "He moved the way one moves when the room is cold.",
+    "She watched the way a stage manager watches a curtain.",
+    "The orchestra recovered the way orchestras always recover.",
+    "He counted the way a man counts when he cannot stop.",
+  ].join("\n\n");
+
+  const issues = detectSentenceShapeRepetition(prose);
+  assert.equal(
+    issues.filter((i) => i.evidence[0] === "the way").length,
+    0,
+    "Below SENTENCE_SHAPE_MIN_COUNT (5) must not warn",
+  );
+});
+
+test("detectRepetition surfaces both lexical and sentence-shape evidence in one pass", () => {
+  const sentenceShape = [
+    "He stepped the way a man steps when the floor is wet.",
+    "She watched the way a stage manager watches a curtain.",
+    "The orchestra recovered the way orchestras always recover.",
+    "He counted the way a man counts when he cannot stop.",
+    "She left the way a guest leaves when the host is busy.",
+  ].join("\n\n");
+  const lexical = buildProseWithRepeatedWord(
+    "acrylic",
+    10,
+    "She watched the harbor lamps drift while the dome held its breath.",
+  );
+
+  const issues = detectRepetition(`${lexical}\n\n${sentenceShape}`);
+  assert.ok(
+    issues.some((i) => i.code === "LEXICAL_REPETITION" && i.evidence[0] === "acrylic"),
+    "Combined surface must include lexical evidence",
+  );
+  assert.ok(
+    issues.some((i) => i.code === "SENTENCE_SHAPE_REPETITION" && i.evidence[0] === "the way"),
+    "Combined surface must include sentence-shape evidence",
+  );
+});
+
+test("buildAllowedTermsFromPacket exempts character tokens + beat proper nouns, never common nouns", () => {
+  const terms = buildAllowedTermsFromPacket({
+    activeCast: [
+      { name: "Erik Halvorsen" },
+      { name: "Roland Vauclair" },
+      { name: "Adriana Vauclair" },
+    ],
+    mandatoryBeats: [
+      "Erik notices the inspection tick crack in the southwest gallery acrylic.",
+      "Vauclair delivers the Aurelia toast; the Daphne sits moored at Cradle 2.",
+    ],
+  });
+
+  const setOf = new Set(terms);
+  assert.ok(setOf.has("erik"), "Character first names must appear");
+  assert.ok(setOf.has("halvorsen"), "Character last names must appear");
+  assert.ok(setOf.has("vauclair"), "Shared surnames are added once via the Set");
+  assert.ok(setOf.has("aurelia"), "Capitalized beat proper nouns must appear");
+  assert.ok(setOf.has("daphne"), "Vessel/location proper nouns must appear");
+  assert.ok(!setOf.has("acrylic"), "Common-noun setting words in beats must NOT be exempted");
+  assert.ok(!setOf.has("inspection"), "Common nouns in beats must NOT be exempted");
+  assert.ok(!setOf.has("gallery"), "Common nouns in beats must NOT be exempted");
+  assert.ok(!setOf.has("the"), "Short stopwords must not appear in allowedTerms");
+});
+
+test("detectLexicalRepetition does NOT exempt 'acrylic' just because it appears in a beat", () => {
+  const prose = buildProseWithRepeatedWord(
+    "acrylic",
+    10,
+    "She watched the harbor lamps drift while the orchestra rehearsed under the dome.",
+  );
+
+  const allowedTerms = buildAllowedTermsFromPacket({
+    activeCast: [{ name: "Erik Halvorsen" }],
+    mandatoryBeats: ["Erik notices the inspection tick crack in the southwest gallery acrylic."],
+  });
+
+  const issues = detectLexicalRepetition(prose, { allowedTerms });
+  assert.ok(
+    issues.some((i) => i.code === "LEXICAL_REPETITION" && i.evidence[0] === "acrylic"),
+    "Common nouns appearing in beats must remain countable — the detector exists to surface them",
+  );
+});
+
+test("buildAllowedTermsFromPacket ignores sentence-initial capitalization in beats", () => {
+  const terms = buildAllowedTermsFromPacket({
+    activeCast: [],
+    mandatoryBeats: [
+      "Acrylic cracks in the southwest gallery.",
+      "Glass holds against the pressure.",
+      "Small lies pile up.",
+    ],
+  });
+
+  const setOf = new Set(terms);
+  assert.ok(!setOf.has("acrylic"), "Beat-initial capitalization is grammatical, not a proper-noun signal");
+  assert.ok(!setOf.has("glass"), "Beat-initial 'Glass' must not become an exemption");
+  assert.ok(!setOf.has("small"), "Beat-initial 'Small' must not become an exemption");
+});
+
+test("buildAllowedTermsFromPacket still exempts mid-sentence proper nouns after the first word", () => {
+  const terms = buildAllowedTermsFromPacket({
+    activeCast: [],
+    mandatoryBeats: ["The Aurelia descends past the moored Daphne and the dark Triton."],
+  });
+
+  const setOf = new Set(terms);
+  assert.ok(setOf.has("aurelia"), "Mid-sentence proper nouns must still be exempted");
+  assert.ok(setOf.has("daphne"), "Mid-sentence proper nouns must still be exempted");
+  assert.ok(setOf.has("triton"), "Mid-sentence proper nouns must still be exempted");
+});
+
+test("detectLexicalRepetition normalizes straight-apostrophe possessives against allowedTerms", () => {
+  const sentence = "Erik's mood shifted again as the room moved on without him.";
+  const filler = "Lamps swayed in the dome while the orchestra rehearsed under salt-misted glass. ".repeat(60);
+  const prose = [filler, sentence.repeat(12), filler].join("\n\n");
+
+  const issues = detectLexicalRepetition(prose, { allowedTerms: ["Erik"] });
+  assert.equal(
+    issues.filter((i) => i.evidence[0] === "erik").length,
+    0,
+    "'erik's' must be normalized to 'erik' and suppressed by the Erik allowedTerm",
+  );
 });
 
 test("detectFilterWords flags high density of filter words", () => {

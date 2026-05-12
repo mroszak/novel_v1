@@ -10,6 +10,7 @@ import type {
 import { normalizeLookupKey } from "../utils/index.js";
 import { runContinuityManifestValidators } from "./continuity-manifest.js";
 import {
+  buildAllowedTermsFromPacket,
   checkDialogueTags,
   checkParagraphDistribution,
   detectFilterWords,
@@ -178,8 +179,9 @@ export function runDeterministicValidators(params: {
   }
 
   const knowledgeMatrix = memory.knowledgeMatrix;
+  const allowedTerms = buildAllowedTermsFromPacket(packet);
   issues.push(
-    ...detectRepetition(prose),
+    ...detectRepetition(prose, { allowedTerms }),
     ...detectFilterWords(prose),
     ...checkParagraphDistribution(prose),
     ...checkDialogueTags(prose),

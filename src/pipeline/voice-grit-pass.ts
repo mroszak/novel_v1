@@ -17,6 +17,7 @@ import type {
   VoiceTarget,
 } from "../types/index.js";
 import {
+  buildAllowedTermsFromPacket,
   checkDialogueTags,
   checkParagraphDistribution,
   detectFilterWords,
@@ -294,8 +295,9 @@ function tryParseGritPlanText(raw: string): GritPlan | null {
 
 function runProseValidators(packet: ChapterPacket, prose: string): ValidatorIssue[] {
   const knowledgeMatrix = packet.rollingMemory?.knowledgeMatrix ?? [];
+  const allowedTerms = buildAllowedTermsFromPacket(packet);
   return [
-    ...detectRepetition(prose),
+    ...detectRepetition(prose, { allowedTerms }),
     ...detectFilterWords(prose),
     ...checkParagraphDistribution(prose),
     ...checkDialogueTags(prose),
