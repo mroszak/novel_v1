@@ -7,8 +7,16 @@ alwaysApply: true
 
 - The user has **two GitHub accounts** (personal and work). This project belongs to the **personal** account.
 - Personal GitHub username: **mroszak** (email: mroszak@gmail.com)
-- v2 has no GitHub remote configured yet. When the user adds one, it must use **SSH** (the personal account), never HTTPS.
+- Remote: `origin = git@github.com:mroszak/novel_v1.git` (SSH only).
 - SSH key at `~/.ssh/id_ed25519` is tied to the personal account.
 - **Never push via HTTPS** for this repo — HTTPS credentials resolve to the work account.
-- When the remote is configured, use `git push origin main` (SSH only).
+- Use `git push origin main` (SSH only).
 - **Never push to or interact with the work GitHub account** from this project.
+
+## Auto-push policy (lone-dev backup)
+
+- This is a solo project. The user wants every commit backed up on GitHub immediately.
+- After **any** commit on `main` in this repo, push it in the same step with `git push origin main`. Do not wait for the user to ask.
+- Treat "commit" and "commit and push" as the same instruction in this repo.
+- The only exceptions are: (a) the user explicitly says "commit only" / "don't push", or (b) the push would be destructive (force push, rewriting shared history) — in those cases stop and confirm.
+- Never `git push --force` or `--force-with-lease` to `main` without explicit user request.
