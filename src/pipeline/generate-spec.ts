@@ -229,6 +229,53 @@ export function beatCovered(packetBeat: string, spec: ChapterSpec): boolean {
   });
 }
 
+/**
+ * Snap each `mandatoryBeatCoverage[].beat` field to its matching packet
+ * mandatoryBeat by Jaccard-like token overlap. The `beat` field is a label
+ * referencing which packet beat the entry covers — `deliveryPlan` is what
+ * the drafter consumes — so models that paraphrase the label should not
+ * trip the deterministic coverage check.
+ *
+ * Snap only when an entry's combined beat+plan tokens cover at least 30%
+ * of a packet beat's distinct content tokens, so genuinely-orphaned spec
+ * entries are left alone and packet beats with no entry still fall
+ * through to assertMandatoryBeatCoverage as a real coverage failure.
+ */
+export function alignMandatoryBeatCoverage(
+  packetBeats: string[],
+  spec: ChapterSpec,
+): ChapterSpec {
+  const packetTokenSets = packetBeats.map((beat) => ({
+    beat,
+    tokens: new Set(beatCoverageTokens(beat)),
+  }));
+
+  const aligned = spec.mandatoryBeatCoverage.map((entry) => {
+    const entryTokens = new Set([
+      ...beatCoverageTokens(entry.beat),
+      ...beatCoverageTokens(entry.deliveryPlan),
+    ]);
+    let bestScore = 0;
+    let bestBeat: string | null = null;
+    for (const { beat, tokens } of packetTokenSets) {
+      if (tokens.size === 0) continue;
+      let overlap = 0;
+      for (const token of tokens) if (entryTokens.has(token)) overlap += 1;
+      const score = overlap / tokens.size;
+      if (score > bestScore) {
+        bestScore = score;
+        bestBeat = beat;
+      }
+    }
+    if (bestBeat && bestScore >= 0.3 && bestBeat !== entry.beat) {
+      return { ...entry, beat: bestBeat };
+    }
+    return entry;
+  });
+
+  return { ...spec, mandatoryBeatCoverage: aligned };
+}
+
 function assertMandatoryBeatCoverage(packet: ChapterPacket, spec: ChapterSpec): void {
   const missing = packet.mandatoryBeats.filter((beat) => !beatCovered(beat, spec));
   if (missing.length > 0) {
@@ -683,7 +730,7 @@ export async function runSpecLoop(params: {
       blueprintHash: packetArtifact.blueprintHash,
       blueprintVersion: packetArtifact.blueprintVersion,
       chapterNumber: packetArtifact.chapterNumber,
-      data: result.value,
+      data: alignMandatoryBeatCoverage(packetArtifact.data.mandatoryBeats, result.value),
       usage: result.usage,
     });
   }

@@ -7,7 +7,12 @@ import test from "node:test";
 import { buildHandoff } from "../src/pipeline/build-handoff.js";
 import { buildRollingMemory, normalizeRollingMemory } from "../src/pipeline/build-rolling-memory.js";
 import { buildChapterDeltaRequest } from "../src/pipeline/extract-chapter-delta.js";
-import { beatCovered, buildSpecGenerationRequest, shouldRunOpusCritique } from "../src/pipeline/generate-spec.js";
+import {
+  alignMandatoryBeatCoverage,
+  beatCovered,
+  buildSpecGenerationRequest,
+  shouldRunOpusCritique,
+} from "../src/pipeline/generate-spec.js";
 import {
   buildLocalizedAuditPatchResult,
 } from "../src/pipeline/localized-audit-patch.js";
@@ -811,6 +816,78 @@ test("beatCovered tolerates number-word drift without substring false positives"
     true,
   );
   assert.equal(beatCovered("scar", spec), false);
+});
+
+test("alignMandatoryBeatCoverage snaps paraphrased beat labels to the matching packet beat", () => {
+  const packetBeats = [
+    "One unforced charisma moment for Vauclair before the toast — handles a junior staffer with off-the-record grace; not performative, not for an audience.",
+    "Plant Vivienne Marchetti's lifeboat pendant in a single sentence registered through Crane's gaze (object plant only; the Marchettis are not active cast for chapter 1).",
+    "Land the first flicker.",
+  ];
+  const spec: ChapterSpec = {
+    title: "Opening Night",
+    purpose: "Stage the gala and the first flicker.",
+    openingImage: "Descent in the elevator-pod.",
+    scenePlan: [],
+    mandatoryBeatCoverage: [
+      {
+        beat: "Vauclair charisma moment",
+        deliveryPlan: "In Scene 2, Vauclair privately rescues a junior staffer with off-the-record grace before the toast; Erik sees enough to remember why he trusted him.",
+      },
+      {
+        beat: "Plant Vivienne's pendant via Crane",
+        deliveryPlan: "Crane's gaze catches the silver lifeboat pendant at Vivienne Marchetti's throat in a single sentence; no symbolic emphasis.",
+      },
+      {
+        beat: "First flicker",
+        deliveryPlan: "Lights dip and recover during the toast; the cause is unspoken.",
+      },
+      {
+        beat: "Bonus cameo: bartender exchange",
+        deliveryPlan: "An optional cameo not in the packet's mandatoryBeats; should be left untouched.",
+      },
+    ],
+    callbackPlan: [],
+    revealControl: { show: [], hint: [], reveal: [], withhold: [] },
+    continuityWatchouts: [],
+    proseGuidance: [],
+    endingBeat: "End on the second flicker.",
+  };
+
+  const aligned = alignMandatoryBeatCoverage(packetBeats, spec);
+
+  assert.equal(aligned.mandatoryBeatCoverage[0]!.beat, packetBeats[0]);
+  assert.equal(aligned.mandatoryBeatCoverage[1]!.beat, packetBeats[1]);
+  assert.equal(aligned.mandatoryBeatCoverage[2]!.beat, packetBeats[2]);
+  assert.equal(aligned.mandatoryBeatCoverage[3]!.beat, "Bonus cameo: bartender exchange");
+
+  for (const beat of packetBeats) {
+    assert.equal(beatCovered(beat, aligned), true, `aligned spec must cover packet beat: ${beat.slice(0, 40)}...`);
+  }
+});
+
+test("alignMandatoryBeatCoverage leaves entries alone when no packet beat substantively overlaps", () => {
+  const packetBeats = ["Land the first flicker."];
+  const spec: ChapterSpec = {
+    title: "X",
+    purpose: "Y",
+    openingImage: "Z",
+    scenePlan: [],
+    mandatoryBeatCoverage: [
+      {
+        beat: "Sun rises over the harbor",
+        deliveryPlan: "Atmospheric paragraph about dawn.",
+      },
+    ],
+    callbackPlan: [],
+    revealControl: { show: [], hint: [], reveal: [], withhold: [] },
+    continuityWatchouts: [],
+    proseGuidance: [],
+    endingBeat: "End on dawn.",
+  };
+
+  const aligned = alignMandatoryBeatCoverage(packetBeats, spec);
+  assert.equal(aligned.mandatoryBeatCoverage[0]!.beat, "Sun rises over the harbor");
 });
 
 test("buildHandoff uses proposal characterStates as authoritative, not delta emotionalRegister", () => {
