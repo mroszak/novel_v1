@@ -9,6 +9,7 @@ import type {
   PairwiseSelection,
   SelectedChapter,
 } from "../types/index.js";
+import { hasBlockingReviewSignals } from "./judge-draft.js";
 import { chapterArtifactPath, createArtifact } from "./stage-utils.js";
 import { createSmokeSelectedChapter } from "./smoke-helpers.js";
 import { writeJson } from "../utils/index.js";
@@ -51,6 +52,8 @@ export function resolveSelectionDecision(params: {
   withinTolerance: boolean;
   draftPassed: boolean;
   revisionPassed: boolean;
+  draftHasBlockers: boolean;
+  revisionHasBlockers: boolean;
 }): {
   finalWinner: "draft" | "revision";
   preservedOriginal: boolean;
@@ -64,6 +67,17 @@ export function resolveSelectionDecision(params: {
       rationale: finalWinner === params.rawWinner
         ? params.rawRationale
         : `${params.rawRationale} Deterministic override: selected ${finalWinner} because it was the only candidate that passed the literary threshold.`,
+    };
+  }
+
+  if (params.draftHasBlockers !== params.revisionHasBlockers) {
+    const finalWinner = params.draftHasBlockers ? "revision" : "draft";
+    return {
+      finalWinner,
+      preservedOriginal: finalWinner === "draft",
+      rationale: finalWinner === params.rawWinner
+        ? params.rawRationale
+        : `${params.rawRationale} Deterministic override: selected ${finalWinner} because it cleared blocking review signals the other candidate still carried.`,
     };
   }
 
@@ -158,6 +172,8 @@ export async function selectDraft(params: {
       withinTolerance,
       draftPassed: draftReviewArtifact.data.passesThreshold,
       revisionPassed: revisedReviewArtifact.data.passesThreshold,
+      draftHasBlockers: hasBlockingReviewSignals(draftReviewArtifact.data),
+      revisionHasBlockers: hasBlockingReviewSignals(revisedReviewArtifact.data),
     });
     selection = {
       ...rawSelection,

@@ -25,6 +25,7 @@ import {
   downgradeValidatorOnlyErrors,
   hasBlockingAuditIssues,
   isValidatorOnlyBlocking,
+  prepareRevertedPublishCandidateAudit,
   shouldRevertToPublishCandidate,
   shouldSkipRevision,
 } from "../src/pipeline/run-chapter.js";
@@ -335,11 +336,45 @@ test("resolveSelectionDecision prefers the only passing candidate", () => {
     withinTolerance: false,
     draftPassed: true,
     revisionPassed: false,
+    draftHasBlockers: false,
+    revisionHasBlockers: true,
   });
 
   assert.equal(decision.finalWinner, "draft");
   assert.equal(decision.preservedOriginal, false);
   assert.match(decision.rationale, /only candidate that passed the literary threshold/i);
+});
+
+test("resolveSelectionDecision picks the blocker-free candidate when both fail threshold within tolerance", () => {
+  const decision = resolveSelectionDecision({
+    rawWinner: "draft",
+    rawRationale: "Draft reads slightly cleaner at the line level.",
+    withinTolerance: true,
+    draftPassed: false,
+    revisionPassed: false,
+    draftHasBlockers: true,
+    revisionHasBlockers: false,
+  });
+
+  assert.equal(decision.finalWinner, "revision");
+  assert.equal(decision.preservedOriginal, false);
+  assert.match(decision.rationale, /cleared blocking review signals/i);
+});
+
+test("resolveSelectionDecision still preserves the original when both candidates are equivalently clean and within tolerance", () => {
+  const decision = resolveSelectionDecision({
+    rawWinner: "revision",
+    rawRationale: "Revision reads slightly cleaner in isolation.",
+    withinTolerance: true,
+    draftPassed: false,
+    revisionPassed: false,
+    draftHasBlockers: false,
+    revisionHasBlockers: false,
+  });
+
+  assert.equal(decision.finalWinner, "draft");
+  assert.equal(decision.preservedOriginal, true);
+  assert.match(decision.rationale, /within tolerance, so the original draft was preserved/i);
 });
 
 test("loadArtifact rejects reused artifacts with mismatched metadata", async (t) => {
@@ -1426,6 +1461,29 @@ test("mergeAuditWithValidator tags model issues as 'model' and validator issues 
   assert.equal(validatorIssue?.source, "validator");
 });
 
+test("mergeAuditWithValidator clears warning-only requiresFix from model audit", () => {
+  const merged = mergeAuditWithValidator(
+    {
+      status: "issues_found",
+      summary: "Warnings only.",
+      factualConfidence: 0.9,
+      requiresFix: true,
+      issues: [
+        { severity: "warning", title: "Minor continuity cleanup", description: "x", fixInstruction: "y" },
+      ],
+    },
+    {
+      passed: true,
+      errorCount: 0,
+      warningCount: 0,
+      issues: [],
+    },
+  );
+
+  assert.equal(merged.requiresFix, false);
+  assert.equal(hasBlockingAuditIssues(merged), false);
+});
+
 test("isValidatorOnlyBlocking returns true when all error issues are validator-sourced", () => {
   const audit = {
     requiresFix: true,
@@ -1498,6 +1556,21 @@ test("annotateRevertedAuditSummary appends sentinel and is idempotent", () => {
   assert.match(once.summary, /publish-candidate ratchet reverted/);
   const twice = annotateRevertedAuditSummary(once);
   assert.equal(twice.summary, once.summary, "second call must not append the sentinel a second time");
+});
+
+test("prepareRevertedPublishCandidateAudit downgrades blocking restored-candidate audits", () => {
+  const audit = prepareRevertedPublishCandidateAudit({
+    requiresFix: true,
+    summary: "Candidate audit blocked on validator noise.",
+    issues: [
+      { severity: "error", source: "validator" as const },
+      { severity: "warning", source: "model" as const },
+    ],
+  });
+
+  assert.equal(audit.requiresFix, false);
+  assert.equal(audit.issues[0]?.severity, "warning");
+  assert.match(audit.summary, /publish-candidate ratchet reverted/);
 });
 
 // --- Publish-candidate immutability ratchet ---
@@ -1669,6 +1742,49 @@ test("detectKnowledgeLeaks does not anchor on trivial articles in title-form cha
     issues.length,
     0,
     "Must not anchor on 'the'; without an actual 'busboy' mention there is no leak.",
+  );
+});
+
+test("detectKnowledgeLeaks disambiguates shared surnames and ignores outline-meta keywords", () => {
+  const prose = [
+    "Roland Vauclair crossed the atrium with a glass raised and made the room laugh.",
+    "He spoke of winter paper, of old house politics, and of what could be burned.",
+    "Adriana entered later with the clipboard against her hip and sent Daniel through the staff corridor.",
+    "Tomás Reyes stood in the wardroom with the running log open, the southwest service corridor marked as preventive maintenance.",
+  ].join("\n\n");
+
+  const issues = detectKnowledgeLeaks(prose, [
+    {
+      character: "Adriana Vauclair",
+      knows: [],
+      suspects: [],
+      hides: [],
+      mustNotKnowYet: [
+        "Knows the back-of-house. Does not know about the third memo until chapter 17 (she walks into the office mid-confession). Initiates the public break with her father at chapter 13 on the open intercom; that break is the midpoint pivot.",
+      ],
+    },
+    {
+      character: "Roland Vauclair",
+      knows: [],
+      suspects: [],
+      hides: [],
+      mustNotKnowYet: [],
+    },
+    {
+      character: "Tomás Reyes",
+      knows: [],
+      suspects: [],
+      hides: [],
+      mustNotKnowYet: [
+        "Suspects the southwest sector is undersized; knows his own bracing is there. Does not yet know it is what's holding the hotel alive when chapter 22 arrives. Identifies the Soviet Morse signal at chapter 9 and protects the information for one hour before bringing it to the wider cast.",
+      ],
+    },
+  ]);
+
+  assert.equal(
+    issues.length,
+    0,
+    "Shared surnames and outline-meta terms must not turn ordinary setup prose into future-knowledge leaks.",
   );
 });
 

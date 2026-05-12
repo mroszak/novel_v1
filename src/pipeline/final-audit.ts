@@ -75,7 +75,7 @@ export function mergeAuditWithValidator(
       || taggedModelIssues.some((issue) => issue.severity === "error")
       ? "issues_found"
       : "clean",
-    requiresFix: audit.requiresFix || taggedModelIssues.some((issue) => issue.severity === "error"),
+    requiresFix: taggedModelIssues.some((issue) => issue.severity === "error"),
     issues: taggedModelIssues,
   };
 
@@ -220,6 +220,7 @@ export async function runFinalAudit(params: {
         "You are the final factual auditor for a chapter-by-chapter novel engine.",
         "Audit only factual continuity, reveal discipline, contract adherence, and chapter-to-chapter causality.",
         "Take deterministic validator findings seriously and escalate concrete repair actions when needed.",
+        "Set requiresFix=true only when at least one issue has severity=error; warning/info-only audits must not block publication.",
       ].join("\n"),
       prompt: buildFinalAuditPrompt({
         genreContract: blueprintArtifacts.genreContract.data,

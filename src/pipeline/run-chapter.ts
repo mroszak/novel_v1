@@ -193,6 +193,14 @@ export function annotateRevertedAuditSummary<
   return { ...audit, summary: `${audit.summary}${REVERT_SUMMARY_SUFFIX}` };
 }
 
+export function prepareRevertedPublishCandidateAudit<
+  T extends { requiresFix: boolean; summary: string; issues: Array<{ severity: string; source?: "model" | "validator" }> },
+>(audit: T): T {
+  return hasBlockingAuditIssues(audit)
+    ? annotateRevertedAuditSummary(downgradeAllErrorsToWarnings(audit))
+    : audit;
+}
+
 /**
  * Publish-candidate ratchet: returns true when the post-fix re-judge score
  * has dropped more than `tolerance` below the candidate score captured at the
@@ -642,6 +650,9 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
     });
     collectUsage(usages, config.stageProfiles.finalAudit.stageName, auditRun.auditArtifact);
     result.auditArtifactPath = chapterArtifactPath(options.chapterNumber, "final-audit");
+    const publishCandidateDeltaArtifact = deltaArtifact;
+    const publishCandidateMemoryArtifact = memoryArtifact;
+    const publishCandidateAuditArtifact = auditRun.auditArtifact;
 
     let currentSelectedArtifact = selectedArtifact;
     let currentDeltaArtifact = deltaArtifact;
@@ -923,44 +934,15 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
         await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
 
-        currentDeltaArtifact = await extractChapterDelta({
-          packetArtifact,
-          selectedArtifact: currentSelectedArtifact,
-          blueprintArtifacts: compilation.artifacts,
-          previousMemory,
-          smoke: options.smoke,
-        });
-        collectUsage(usages, `${config.stageProfiles.chapterDelta.stageName}-publish-candidate-revert`, currentDeltaArtifact);
-        currentMemoryArtifact = await updateMemory({
-          packetArtifact,
-          deltaArtifact: currentDeltaArtifact,
-          previousMemory,
-          smoke: options.smoke,
-        });
-        collectUsage(usages, `${config.stageProfiles.memoryUpdate.stageName}-publish-candidate-revert`, currentMemoryArtifact);
-        auditRun = await runFinalAudit({
-          packetArtifact,
-          selectedArtifact: currentSelectedArtifact,
-          selectedReviewArtifact,
-          deltaArtifact: currentDeltaArtifact,
-          memoryArtifact: currentMemoryArtifact,
-          previousMemory,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        collectUsage(usages, `${config.stageProfiles.finalAudit.stageName}-publish-candidate-revert`, auditRun.auditArtifact);
-        // Trust the literary stack: any blocking errors on the restored
-        // candidate get downgraded so the chapter publishes. Preserve each
-        // issue's `source` (model vs validator) so operator review still has
-        // the truth, and annotate the summary so requiresFix:false reads as
-        // intentional rather than contradicting the original blocking text.
-        if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
-          const downgraded = annotateRevertedAuditSummary(
-            downgradeAllErrorsToWarnings(auditRun.auditArtifact.data),
-          );
-          auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
-          await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
-        }
+        currentDeltaArtifact = publishCandidateDeltaArtifact;
+        currentMemoryArtifact = publishCandidateMemoryArtifact;
+        auditRun.auditArtifact = {
+          ...publishCandidateAuditArtifact,
+          data: prepareRevertedPublishCandidateAudit(publishCandidateAuditArtifact.data),
+        };
+        await writeJson(chapterArtifactPath(options.chapterNumber, "delta"), currentDeltaArtifact);
+        await writeJson(memoryArtifactPath(options.chapterNumber), currentMemoryArtifact);
+        await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
       }
     }
 

@@ -174,11 +174,33 @@ export function checkDialogueTags(prose: string): ValidatorIssue[] {
 }
 
 const LEAK_TRIVIAL = new Set([
-  "about", "after", "before", "being", "could", "chapter", "every",
-  "first", "never", "other", "scene", "should", "still", "story",
-  "their", "there", "these", "those", "under", "until", "where",
-  "which", "while", "would", "knows", "learn",
+  "about", "after", "arrives", "before", "being", "chapter", "could",
+  "every", "first", "holding", "identifies", "intercom", "knows", "learn",
+  "midpoint", "never", "other", "pivot", "protects", "scene", "sector",
+  "should", "southwest", "still", "story", "their", "there", "these",
+  "those", "under", "until", "where", "which", "while", "wider", "would",
 ]);
+
+function buildSharedNameParts(knowledgeMatrix: KnowledgeMatrixEntry[]): Set<string> {
+  const counts = new Map<string, number>();
+
+  for (const entry of knowledgeMatrix) {
+    const parts = new Set(
+      normalizeLookupKey(entry.character)
+        .split(" ")
+        .filter((p) => p.length >= 3 && !TRIVIAL.has(p)),
+    );
+    for (const part of parts) {
+      counts.set(part, (counts.get(part) ?? 0) + 1);
+    }
+  }
+
+  return new Set(
+    Array.from(counts.entries())
+      .filter(([, count]) => count >= 2)
+      .map(([part]) => part),
+  );
+}
 
 function isWordMatch(word: string, target: string): boolean {
   if (word === target) return true;
@@ -196,6 +218,7 @@ export function detectKnowledgeLeaks(
 ): ValidatorIssue[] {
   const issues: ValidatorIssue[] = [];
   const words = prose.toLowerCase().split(/\s+/).map(stripPunctuation);
+  const sharedNameParts = buildSharedNameParts(knowledgeMatrix);
 
   for (const entry of knowledgeMatrix) {
     if (entry.mustNotKnowYet.length === 0) continue;
@@ -208,11 +231,13 @@ export function detectKnowledgeLeaks(
     const charParts = normalizeLookupKey(entry.character)
       .split(" ")
       .filter((p) => p.length >= 3 && !TRIVIAL.has(p));
-    if (charParts.length === 0) continue;
+    const disambiguatedCharParts = charParts.filter((p) => !sharedNameParts.has(p));
+    const anchorParts = disambiguatedCharParts.length > 0 ? disambiguatedCharParts : charParts;
+    if (anchorParts.length === 0) continue;
 
     const charPositions: number[] = [];
     for (let i = 0; i < words.length; i++) {
-      if (charParts.some((p) => isWordMatch(words[i]!, p))) charPositions.push(i);
+      if (anchorParts.some((p) => isWordMatch(words[i]!, p))) charPositions.push(i);
     }
     if (charPositions.length === 0) continue;
 
