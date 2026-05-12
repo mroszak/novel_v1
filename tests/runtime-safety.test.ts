@@ -48,6 +48,7 @@ import {
 import { config } from "../src/config.js";
 import { estimateOpenAiPromptTokens, estimateTextTokens } from "../src/metrics/token-budget.js";
 import { stripMemoryPacketFields } from "../src/pipeline/update-memory.js";
+import { stripHeavyPacketFields } from "../src/pipeline/generate-draft.js";
 import { compactJson, tailExcerpt } from "../src/utils/index.js";
 import type {
   ArtifactEnvelope,
@@ -2602,6 +2603,20 @@ function makePlanningStressPacket(): ChapterPacket {
 
   return packet;
 }
+
+test("stripHeavyPacketFields removes previousChapterExcerpt alongside the other heavy fields", () => {
+  const packet = makeHeavyPacket();
+  const stripped = stripHeavyPacketFields(packet);
+
+  assert.equal("rollingMemory" in stripped, false);
+  assert.equal("handoffMemory" in stripped, false);
+  assert.equal("compactContext" in stripped, false);
+  assert.equal("voiceTarget" in stripped, false);
+  assert.equal("previousChapterExcerpt" in stripped, false);
+
+  assert.equal(stripped.chapterNumber, 2);
+  assert.deepEqual(stripped.mandatoryBeats, ["Beat A", "Beat B"]);
+});
 
 test("stripMemoryPacketFields removes all heavy/redundant fields", () => {
   const packet = makeHeavyPacket();

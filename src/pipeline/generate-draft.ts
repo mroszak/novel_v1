@@ -149,12 +149,13 @@ export function buildDraftSystemPrompt(params: {
 
 export function stripHeavyPacketFields(
   packet: ChapterPacket,
-): Omit<ChapterPacket, "rollingMemory" | "handoffMemory" | "compactContext" | "voiceTarget"> {
+): Omit<ChapterPacket, "rollingMemory" | "handoffMemory" | "compactContext" | "voiceTarget" | "previousChapterExcerpt"> {
   const {
     rollingMemory: _,
     handoffMemory: _h,
     compactContext: _c,
     voiceTarget: _v,
+    previousChapterExcerpt: _pe,
     ...core
   } = packet;
   return core;
