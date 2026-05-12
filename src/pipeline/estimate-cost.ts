@@ -199,6 +199,15 @@ export async function estimateChapterCost(params: {
     notes: ["Deterministic compile from blueprint; no model call; cached on blueprintHash."],
   });
 
+  // ── Genre compilation (one model call per blueprint on cold cache) ──
+  stages.push({
+    ...estimateStageCost({
+      stage: config.stageProfiles.genreCompilation,
+      estimatedInputTokens: storyPromiseTokens + genreContractTokens,
+    }),
+    notes: ["Conditional: only runs on cold blueprint cache; cached on blueprintHash."],
+  });
+
   // ── Author brief (one model call per blueprint, amortized) ──
   stages.push({
     ...estimateStageCost({
@@ -294,7 +303,7 @@ export async function estimateChapterCost(params: {
   }));
 
   const skipNote = profile.skipRevisionThreshold !== null
-    ? `May be skipped if draft scores >= ${profile.skipRevisionThreshold}.`
+    ? "Skipped when draft scores >= skipRevisionThreshold and has no blocking signals."
     : undefined;
 
   const revisionEst = estimateStageCost({
@@ -323,24 +332,22 @@ export async function estimateChapterCost(params: {
 
   // ── Post-selection enhancement: voice-grit (advisory/fail-soft) ──
   const selectedProseTokens = estimateWordTokens(smokeSelected.wordCount);
-  const voiceGritNote = "Conditional: runs only when a voice-target is available; whole-batch discard on >1pt regression or blocking signals.";
   stages.push({
     ...estimateStageCost({
       stage: config.stageProfiles.voiceGritPlan,
       estimatedInputTokens: strippedPacketTokens + styleRulesTokens + motifsTokens + selectedProseTokens,
     }),
-    notes: [voiceGritNote],
+    notes: ["Conditional: runs only when a voice-target is available."],
   });
   stages.push({
     ...estimateStageCost({
       stage: config.stageProfiles.voiceGritRejudge,
       estimatedInputTokens: judgeInput(selectedProseTokens),
     }),
-    notes: [voiceGritNote],
+    notes: ["Conditional: runs only when voice-grit-plan returned applied patches that passed validators."],
   });
 
   // ── Post-selection enhancement: tournament (advisory/fail-soft) ──
-  const tournamentNote = "Conditional: runs only when the corresponding zone exists in the selected prose; per-zone failures are isolated.";
   for (const stageProfile of [
     config.stageProfiles.openingCandidate,
     config.stageProfiles.endingCandidate,
@@ -351,7 +358,7 @@ export async function estimateChapterCost(params: {
         estimatedInputTokens: strippedPacketTokens + styleRulesTokens + selectedProseTokens,
       }),
       stage: `${stageProfile.stageName}-1`,
-      notes: [tournamentNote],
+      notes: ["Conditional: runs only when the zone is locatable in the selected prose."],
     });
   }
   for (const zone of ["opening", "ending"]) {
@@ -361,7 +368,7 @@ export async function estimateChapterCost(params: {
         estimatedInputTokens: strippedPacketTokens + selectedProseTokens / 2,
       }),
       stage: `${config.stageProfiles.tournamentSelection.stageName}-${zone}-1`,
-      notes: [tournamentNote],
+      notes: ["Conditional: runs only when candidate generation succeeded for that zone."],
     });
   }
 
@@ -464,13 +471,18 @@ export async function estimateChapterCost(params: {
 
   // ── Voice calibration (post-publish; deterministic local extraction) ──
   // The voice fingerprint is computed deterministically from published prose
-  // and does not call a model, but we annotate it as a near-zero stage so
-  // operators see the full footprint.
+  // and does not call a model. Hand-build the stage shape so we don't surface
+  // a per-stage cost for a deterministic step.
   stages.push({
-    ...estimateStageCost({
-      stage: config.stageProfiles.voiceCalibration,
-      estimatedInputTokens: 0,
-    }),
+    stage: "voice-calibration",
+    provider: config.stageProfiles.voiceCalibration.provider,
+    model: config.stageProfiles.voiceCalibration.model,
+    estimatedInputTokens: 0,
+    maxOutputTokens: 0,
+    contextWindowTokens: 0,
+    withinBudget: true,
+    estimatedCostUsd: 0,
+    pricingConfigured: true,
     notes: [
       "Deterministic local extraction after publish; no model call by default.",
       "Reads STYLE_SAMPLE.md when present, otherwise derives from the latest 1-3 published chapters (including the chapter that just published).",
