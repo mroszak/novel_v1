@@ -73,7 +73,7 @@ npm run smoke
 
 ## Authoring contracts
 
-Two optional sections in the blueprint shape every model call:
+Three optional sections in the blueprint shape every model call:
 
 ### Market Promise
 
