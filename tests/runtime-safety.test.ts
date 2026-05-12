@@ -30,7 +30,7 @@ import {
   shouldSkipRevision,
 } from "../src/pipeline/run-chapter.js";
 import { mergeAuditWithValidator } from "../src/pipeline/final-audit.js";
-import { resolveSelectionDecision } from "../src/pipeline/select-draft.js";
+import { buildDeterministicSelectionIfPossible, resolveSelectionDecision } from "../src/pipeline/select-draft.js";
 import { createSmokeDelta, createSmokeMemory, createSmokeReview, createSmokeSelection, createSmokeValidatorReport } from "../src/pipeline/smoke-helpers.js";
 import { BlockedPipelineError, createArtifact, loadArtifact } from "../src/pipeline/stage-utils.js";
 import { runDeterministicValidators } from "../src/validators/index.js";
@@ -380,6 +380,76 @@ test("resolveSelectionDecision still preserves the original when both candidates
   assert.equal(decision.finalWinner, "draft");
   assert.equal(decision.preservedOriginal, true);
   assert.match(decision.rationale, /within tolerance, so the original draft was preserved/i);
+});
+
+test("buildDeterministicSelectionIfPossible short-circuits on pass mismatch", () => {
+  const selection = buildDeterministicSelectionIfPossible({
+    presentedOrder: ["draft", "revision"],
+    scoreDelta: 4,
+    withinTolerance: false,
+    draftPassed: true,
+    revisionPassed: false,
+    draftHasBlockers: false,
+    revisionHasBlockers: false,
+  });
+
+  assert.notEqual(selection, null);
+  assert.equal(selection!.finalWinner, "draft");
+  assert.equal(selection!.rawWinner, "draft");
+  assert.equal(selection!.preservedOriginal, false);
+  assert.equal(selection!.scoreDelta, 4);
+  assert.equal(selection!.withinTolerance, false);
+  assert.match(selection!.rationale, /only candidate that passed the literary threshold/i);
+});
+
+test("buildDeterministicSelectionIfPossible short-circuits on blocker mismatch and preserves original when draft wins", () => {
+  const selection = buildDeterministicSelectionIfPossible({
+    presentedOrder: ["revision", "draft"],
+    scoreDelta: 1,
+    withinTolerance: true,
+    draftPassed: false,
+    revisionPassed: false,
+    draftHasBlockers: false,
+    revisionHasBlockers: true,
+  });
+
+  assert.notEqual(selection, null);
+  assert.equal(selection!.finalWinner, "draft");
+  assert.equal(selection!.rawWinner, "draft");
+  assert.equal(selection!.preservedOriginal, true);
+  assert.match(selection!.rationale, /cleared blocking review signals/i);
+});
+
+test("buildDeterministicSelectionIfPossible short-circuits on within-tolerance and preserves the draft", () => {
+  const selection = buildDeterministicSelectionIfPossible({
+    presentedOrder: ["draft", "revision"],
+    scoreDelta: 1,
+    withinTolerance: true,
+    draftPassed: true,
+    revisionPassed: true,
+    draftHasBlockers: false,
+    revisionHasBlockers: false,
+  });
+
+  assert.notEqual(selection, null);
+  assert.equal(selection!.finalWinner, "draft");
+  assert.equal(selection!.rawWinner, "draft");
+  assert.equal(selection!.preservedOriginal, true);
+  assert.match(selection!.rationale, /within tolerance, so the original draft was preserved/i);
+});
+
+test("buildDeterministicSelectionIfPossible returns null when both passed, neither blocked, and scores diverge", () => {
+  const selection = buildDeterministicSelectionIfPossible({
+    presentedOrder: ["draft", "revision"],
+    scoreDelta: 5,
+    withinTolerance: false,
+    draftPassed: true,
+    revisionPassed: true,
+    draftHasBlockers: false,
+    revisionHasBlockers: false,
+  });
+
+  assert.equal(selection, null);
 });
 
 test("loadArtifact rejects reused artifacts with mismatched metadata", async (t) => {

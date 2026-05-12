@@ -46,6 +46,66 @@ function choosePresentationOrder(seed: string): ["draft", "revision"] | ["revisi
   return seed.charCodeAt(0) % 2 === 0 ? ["draft", "revision"] : ["revision", "draft"];
 }
 
+export function buildDeterministicSelectionIfPossible(params: {
+  presentedOrder: ["draft", "revision"] | ["revision", "draft"];
+  scoreDelta: number;
+  withinTolerance: boolean;
+  draftPassed: boolean;
+  revisionPassed: boolean;
+  draftHasBlockers: boolean;
+  revisionHasBlockers: boolean;
+}): PairwiseSelection | null {
+  const {
+    presentedOrder,
+    scoreDelta,
+    withinTolerance,
+    draftPassed,
+    revisionPassed,
+    draftHasBlockers,
+    revisionHasBlockers,
+  } = params;
+
+  if (draftPassed !== revisionPassed) {
+    const finalWinner: "draft" | "revision" = draftPassed ? "draft" : "revision";
+    return {
+      presentedOrder,
+      rawWinner: finalWinner,
+      finalWinner,
+      scoreDelta,
+      withinTolerance,
+      rationale: `Deterministic selection: chose ${finalWinner} because it was the only candidate that passed the literary threshold.`,
+      preservedOriginal: false,
+    };
+  }
+
+  if (draftHasBlockers !== revisionHasBlockers) {
+    const finalWinner: "draft" | "revision" = draftHasBlockers ? "revision" : "draft";
+    return {
+      presentedOrder,
+      rawWinner: finalWinner,
+      finalWinner,
+      scoreDelta,
+      withinTolerance,
+      rationale: `Deterministic selection: chose ${finalWinner} because it cleared blocking review signals the other candidate still carried.`,
+      preservedOriginal: finalWinner === "draft",
+    };
+  }
+
+  if (withinTolerance) {
+    return {
+      presentedOrder,
+      rawWinner: "draft",
+      finalWinner: "draft",
+      scoreDelta,
+      withinTolerance,
+      rationale: "Deterministic selection: candidates were within tolerance, so the original draft was preserved.",
+      preservedOriginal: true,
+    };
+  }
+
+  return null;
+}
+
 export function resolveSelectionDecision(params: {
   rawWinner: "draft" | "revision";
   rawRationale: string;
@@ -138,53 +198,73 @@ export async function selectDraft(params: {
     selection = smokeSelected.selection;
     usage = undefined;
   } else {
-    const candidateFor = (label: "draft" | "revision") => (
-      label === "draft"
-        ? { prose: draftArtifact.data.prose, review: draftReviewArtifact.data }
-        : { prose: revisedDraftArtifact.data.prose, review: revisedReviewArtifact.data }
-    );
-
-    const result = await generateStructuredOutput<PairwiseSelection>({
-      stage: config.stageProfiles.pairwiseSelection,
-      instructions: [
-        "You select the stronger of two full-chapter candidates.",
-        "Anchor the choice to the genre contract, chapter-function profile, and review evidence.",
-        "Never select a failing candidate over one that passed threshold.",
-        `If the candidates are within ${tolerance} points, preserve the original draft by default.`,
-      ].join("\n"),
-      prompt: [
-        `Genre contract: ${JSON.stringify(blueprintArtifacts.genreContract.data, null, 2)}`,
-        `Chapter function profile: ${JSON.stringify(packetArtifact.data.chapterFunction, null, 2)}`,
-        `Presentation order: ${order.join(", ")}`,
-        `Candidate ${order[0]}: ${JSON.stringify(candidateFor(order[0]), null, 2)}`,
-        `Candidate ${order[1]}: ${JSON.stringify(candidateFor(order[1]), null, 2)}`,
-      ].join("\n\n"),
-      schemaName: "pairwise_selection",
-      schema: pairwiseSelectionSchema,
-    });
-
-    const rawSelection = result.value;
     const scoreDelta = revisedReviewArtifact.data.overallScore - draftReviewArtifact.data.overallScore;
     const withinTolerance = Math.abs(scoreDelta) <= tolerance;
-    const decision = resolveSelectionDecision({
-      rawWinner: rawSelection.rawWinner,
-      rawRationale: rawSelection.rationale,
-      withinTolerance,
-      draftPassed: draftReviewArtifact.data.passesThreshold,
-      revisionPassed: revisedReviewArtifact.data.passesThreshold,
-      draftHasBlockers: hasBlockingReviewSignals(draftReviewArtifact.data),
-      revisionHasBlockers: hasBlockingReviewSignals(revisedReviewArtifact.data),
-    });
-    selection = {
-      ...rawSelection,
+    const draftPassed = draftReviewArtifact.data.passesThreshold;
+    const revisionPassed = revisedReviewArtifact.data.passesThreshold;
+    const draftHasBlockers = hasBlockingReviewSignals(draftReviewArtifact.data);
+    const revisionHasBlockers = hasBlockingReviewSignals(revisedReviewArtifact.data);
+
+    const deterministicSelection = buildDeterministicSelectionIfPossible({
       presentedOrder: order,
       scoreDelta,
       withinTolerance,
-      finalWinner: decision.finalWinner,
-      preservedOriginal: decision.preservedOriginal,
-      rationale: decision.rationale,
-    };
-    usage = result.usage;
+      draftPassed,
+      revisionPassed,
+      draftHasBlockers,
+      revisionHasBlockers,
+    });
+
+    if (deterministicSelection !== null) {
+      selection = deterministicSelection;
+      usage = undefined;
+    } else {
+      const candidateFor = (label: "draft" | "revision") => (
+        label === "draft"
+          ? { prose: draftArtifact.data.prose, review: draftReviewArtifact.data }
+          : { prose: revisedDraftArtifact.data.prose, review: revisedReviewArtifact.data }
+      );
+
+      const result = await generateStructuredOutput<PairwiseSelection>({
+        stage: config.stageProfiles.pairwiseSelection,
+        instructions: [
+          "You select the stronger of two full-chapter candidates.",
+          "Anchor the choice to the genre contract, chapter-function profile, and review evidence.",
+          "Never select a failing candidate over one that passed threshold.",
+          `If the candidates are within ${tolerance} points, preserve the original draft by default.`,
+        ].join("\n"),
+        prompt: [
+          `Genre contract: ${JSON.stringify(blueprintArtifacts.genreContract.data, null, 2)}`,
+          `Chapter function profile: ${JSON.stringify(packetArtifact.data.chapterFunction, null, 2)}`,
+          `Presentation order: ${order.join(", ")}`,
+          `Candidate ${order[0]}: ${JSON.stringify(candidateFor(order[0]), null, 2)}`,
+          `Candidate ${order[1]}: ${JSON.stringify(candidateFor(order[1]), null, 2)}`,
+        ].join("\n\n"),
+        schemaName: "pairwise_selection",
+        schema: pairwiseSelectionSchema,
+      });
+
+      const rawSelection = result.value;
+      const decision = resolveSelectionDecision({
+        rawWinner: rawSelection.rawWinner,
+        rawRationale: rawSelection.rationale,
+        withinTolerance,
+        draftPassed,
+        revisionPassed,
+        draftHasBlockers,
+        revisionHasBlockers,
+      });
+      selection = {
+        ...rawSelection,
+        presentedOrder: order,
+        scoreDelta,
+        withinTolerance,
+        finalWinner: decision.finalWinner,
+        preservedOriginal: decision.preservedOriginal,
+        rationale: decision.rationale,
+      };
+      usage = result.usage;
+    }
   }
 
   const selectionArtifact = createArtifact<PairwiseSelection>({
