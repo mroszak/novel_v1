@@ -18,7 +18,7 @@ import { createSmokeSelfRedTeam, createSmokeSpec } from "./smoke-helpers.js";
 import { BlockedPipelineError, chapterArtifactPath, createArtifact } from "./stage-utils.js";
 import { compactJson, normalizeLookupKey, writeJson } from "../utils/index.js";
 
-const chapterSpecSchema = {
+export const chapterSpecSchema = {
   type: "object",
   properties: {
     title: { type: "string", minLength: 1 },
@@ -40,6 +40,9 @@ const chapterSpecSchema = {
           emotionalArc: { type: "string", minLength: 1 },
           sensoryAnchor: { type: "string", minLength: 1 },
           dialogueStrategy: { type: "string", minLength: 1 },
+          humanGrain: {
+            anyOf: [{ type: "string", minLength: 1 }, { type: "null" }],
+          },
         },
         required: [
           "sceneNumber",
@@ -52,6 +55,7 @@ const chapterSpecSchema = {
           "emotionalArc",
           "sensoryAnchor",
           "dialogueStrategy",
+          "humanGrain",
         ],
         additionalProperties: false,
       },
@@ -91,6 +95,20 @@ const chapterSpecSchema = {
       type: "array",
       items: { type: "string" },
     },
+    physicalClueAnchors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          clue: { type: "string", minLength: 1 },
+          anchor: { type: "string", minLength: 1 },
+          beforeState: { type: "string", minLength: 1 },
+          afterState: { type: "string", minLength: 1 },
+        },
+        required: ["clue", "anchor", "beforeState", "afterState"],
+        additionalProperties: false,
+      },
+    },
     endingBeat: { type: "string", minLength: 1 },
   },
   required: [
@@ -103,6 +121,7 @@ const chapterSpecSchema = {
     "revealControl",
     "continuityWatchouts",
     "proseGuidance",
+    "physicalClueAnchors",
     "endingBeat",
   ],
   additionalProperties: false,
@@ -399,6 +418,8 @@ export function buildSpecGenerationRequest(params: {
       "When a `locations` table is provided in the chapter packet, treat its `name` field as the canonical name for each recurring space. Use that exact name (or one of its `aliases`) when planning scene locations; do not invent variant names.",
       "Keep the plan genre-adaptive and specific enough for a full-chapter Opus draft.",
       "For each scene in scenePlan, include emotionalArc (the POV character's emotional trajectory through the scene), sensoryAnchor (the dominant sensory environment), and dialogueStrategy (how dialogue serves the scene).",
+      "For each scene, set `humanGrain` only when the scene risks reading purely symbolic or elegant. Otherwise set it to null. Do not invent forced business; if existing scene material already carries ordinary friction, leave it null.",
+      "When this chapter contains a clue whose physical state visibly changes between two scenes within the chapter, declare it in `physicalClueAnchors` with a simple fixed marker and an unmistakable before/after pair. Both states must be observable in the chapter's prose. Leave the array empty when no in-chapter physical change is planned; cross-chapter plants belong in `revealControl`, not here.",
       "In proseGuidance, include 2-4 concrete prose targets: dominant sensory channel for the chapter, a signature metaphor or image family, and the primary dialogue tactic for the POV character.",
       "Style rules from the author's blueprint take priority over any general guidance.",
     ].join("\n"),

@@ -207,13 +207,32 @@ export function prepareRevertedPublishCandidateAudit<
  * start of the final-audit phase. Reverting protects against silent
  * downstream degradation — fix-loop rewrites that pass threshold but produce
  * artistically weaker prose than the literary stack approved.
+ *
+ * Also reverts when the candidate cleared `passThreshold` but the post-fix
+ * does not, even within tolerance. Otherwise a fix-loop nudge that lands
+ * just under threshold would block the chapter even though the candidate
+ * was publishable — the threshold gate would beat the ratchet to the punch.
+ * Preserving immutability means the candidate always wins when the fix path
+ * cannot match it on the threshold the literary judge already approved.
  */
 export function shouldRevertToPublishCandidate(params: {
   candidateScore: number;
   postFixScore: number;
   tolerance: number;
+  passThreshold?: number;
+  postFixPassesThreshold?: boolean;
 }): boolean {
-  return params.postFixScore < params.candidateScore - params.tolerance;
+  if (params.postFixScore < params.candidateScore - params.tolerance) {
+    return true;
+  }
+  if (
+    params.passThreshold !== undefined
+    && params.postFixPassesThreshold === false
+    && params.candidateScore >= params.passThreshold
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function shouldSkipRevision(params: {
@@ -886,40 +905,26 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
       await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
 
-      if (!selectedReviewArtifact.data.passesThreshold) {
-        const localizedOnly = localizedAuditPatchApplied && fixAttempt === 0;
-        result.status = "BLOCKED_QUALITY";
-        result.statusArtifactPath = await writeStatusArtifact({
-          chapterNumber: options.chapterNumber,
-          blueprintHash: compilation.parsed.blueprintHash,
-          blueprintVersion: compilation.parsed.metadata.blueprintVersion,
-          status: "BLOCKED_QUALITY",
-          stage: localizedOnly ? "localized-audit-patch" : "continuity-fix",
-          message: localizedOnly
-            ? "Localized audit patch preserved continuity but nudged the selected chapter below the literary quality threshold."
-            : "Continuity fixes pushed the selected chapter below the literary quality threshold.",
-          details: {
-            overallScore: selectedReviewArtifact.data.overallScore,
-            blockingIssues: selectedReviewArtifact.data.blockingIssues,
-          },
-        });
-        return result;
-      }
-
-      // Publish-candidate immutability ratchet. The fix-loop just rewrote
-      // prose; if the rejudge regressed beyond tolerance against the prose
-      // that entered final audit, revert. Later passes are allowed to
-      // improve or repair, never to quietly degrade.
+      // Publish-candidate immutability ratchet runs before the threshold
+      // gate. The fix-loop just rewrote prose; if the rejudge regressed
+      // beyond tolerance, OR fell below the literary threshold the
+      // candidate had already cleared, revert. Later passes are allowed
+      // to improve or repair, never to quietly degrade — including by
+      // nudging a publishable candidate just under threshold.
       if (shouldRevertToPublishCandidate({
         candidateScore: publishCandidateSnapshot.candidateScore,
         postFixScore: selectedReviewArtifact.data.overallScore,
         tolerance: config.qualitySettings.publishCandidateRegressionTolerance,
+        passThreshold: config.qualitySettings.judgePassThreshold,
+        postFixPassesThreshold: selectedReviewArtifact.data.passesThreshold,
       })) {
         console.error(
           `[ch${options.chapterNumber}] Reverting to publish-candidate: post-fix score `
-          + `${selectedReviewArtifact.data.overallScore.toFixed(2)} < candidate `
-          + `${publishCandidateSnapshot.candidateScore.toFixed(2)} - tol `
-          + `${config.qualitySettings.publishCandidateRegressionTolerance}.`,
+          + `${selectedReviewArtifact.data.overallScore.toFixed(2)} (passesThreshold=`
+          + `${selectedReviewArtifact.data.passesThreshold}) vs candidate `
+          + `${publishCandidateSnapshot.candidateScore.toFixed(2)}, tol `
+          + `${config.qualitySettings.publishCandidateRegressionTolerance}, threshold `
+          + `${config.qualitySettings.judgePassThreshold}.`,
         );
         currentSelectedArtifact = {
           ...currentSelectedArtifact,
@@ -944,6 +949,25 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         await writeJson(chapterArtifactPath(options.chapterNumber, "delta"), currentDeltaArtifact);
         await writeJson(memoryArtifactPath(options.chapterNumber), currentMemoryArtifact);
         await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
+      } else if (!selectedReviewArtifact.data.passesThreshold) {
+        // No revert path available (candidate also under threshold) — block.
+        const localizedOnly = localizedAuditPatchApplied && fixAttempt === 0;
+        result.status = "BLOCKED_QUALITY";
+        result.statusArtifactPath = await writeStatusArtifact({
+          chapterNumber: options.chapterNumber,
+          blueprintHash: compilation.parsed.blueprintHash,
+          blueprintVersion: compilation.parsed.metadata.blueprintVersion,
+          status: "BLOCKED_QUALITY",
+          stage: localizedOnly ? "localized-audit-patch" : "continuity-fix",
+          message: localizedOnly
+            ? "Localized audit patch preserved continuity but nudged the selected chapter below the literary quality threshold."
+            : "Continuity fixes pushed the selected chapter below the literary quality threshold.",
+          details: {
+            overallScore: selectedReviewArtifact.data.overallScore,
+            blockingIssues: selectedReviewArtifact.data.blockingIssues,
+          },
+        });
+        return result;
       }
     }
 

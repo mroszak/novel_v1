@@ -61,7 +61,76 @@ const SENTENCE_SHAPE_PHRASES: readonly string[] = [
   "half second",
   "half a second",
   "for a moment",
+  "a man who",
 ];
+
+// Inverted noun-phrase contrast frame: "not <NP1> but <NP2>". Catches the
+// generated cadence "He was not a guide but a witness." Counted independently
+// against SENTENCE_SHAPE_MIN_COUNT, same as each watchlist phrase.
+const INVERTED_NP_CONTRAST_RE =
+  /\bnot (a|an|the) \w+(\s+\w+){0,2} but (a|an|the) \w+\b/gi;
+
+// Withholding / clarification tics. Any narration instance produces a warning;
+// the seed list is partly predictive — the generator paraphrases this shape
+// often even when the exact phrase shifts. Extend as new variants appear.
+const WITHHOLDING_PHRASES: readonly string[] = [
+  "which was to say",
+  "did not name",
+  "had not earned the right",
+  "did not let himself",
+];
+
+// Narration-`because`-cluster heuristic. Subjects we treat as obvious
+// human/social-role markers signaling psychologizing rather than physical
+// causality. `it` is intentionally absent: too many physical antecedents in
+// engineering-heavy chapters. Extend cautiously.
+const EXPLANATORY_BECAUSE_SUBJECTS = new Set<string>([
+  "he", "she", "they",
+  "man", "men", "woman", "women",
+  "boy", "boys", "girl", "girls",
+  "admiral", "admirals",
+  "reporter", "reporters",
+  "journalist", "journalists",
+  "senator", "senators",
+  "officer", "officers",
+  "soldier", "soldiers",
+  "engineer", "engineers",
+  "writer", "writers",
+  "host", "hosts",
+  "guest", "guests",
+  "father", "mother",
+  "people",
+]);
+
+// Concrete system nouns that exempt a `because` clause from the explanatory
+// cluster heuristic. Engineering-heavy chapters have lots of legitimate
+// physical causality; we err toward false negatives. Extend as future
+// chapters surface false positives.
+const EXPLANATORY_BECAUSE_SYSTEM_NOUNS = new Set<string>([
+  "bulkhead", "bulkheads",
+  "valve", "valves",
+  "hatch", "hatches",
+  "line", "lines",
+  "water",
+  "pressure",
+  "gauge", "gauges",
+  "pump", "pumps",
+  "seal", "seals",
+  "door", "doors",
+  "cable", "cables",
+  "current", "currents",
+  "lamp", "lamps",
+  "relay", "relays",
+  "acrylic",
+  "glass",
+  "engine", "engines",
+  "pipe", "pipes",
+]);
+
+const BECAUSE_DETERMINERS = new Set<string>([
+  "the", "a", "an",
+  "his", "her", "their", "its", "my", "your", "our",
+]);
 
 // v1 calibration. count ≥ 8 with rate ≥ 2.0 / 1000 surfaces distinctive-word
 // tics (e.g. "acrylic" 10x at ~4200 words → 2.37/1000) without firing on
@@ -142,40 +211,71 @@ export function detectRepetition(
     .split(/\s+/)
     .filter(Boolean);
 
-  if (words.length < 8) return issues;
+  // The 4-gram pass needs at least 8 words to compute a single window, but
+  // the warning-only detectors below (lexical, sentence-shape, withholding,
+  // explanatory-because) must still run so that "any-instance" rules like
+  // WITHHOLDING_TIC fire on short prose. Each of those helpers has its own
+  // length safety net.
+  if (words.length >= 8) {
+    const counts = new Map<string, number>();
+    for (let i = 0; i <= words.length - 4; i++) {
+      const gram = words.slice(i, i + 4);
+      if (gram.filter((w) => !TRIVIAL.has(w)).length < 2) continue;
+      const key = gram.join(" ");
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
 
-  const counts = new Map<string, number>();
-  for (let i = 0; i <= words.length - 4; i++) {
-    const gram = words.slice(i, i + 4);
-    if (gram.filter((w) => !TRIVIAL.has(w)).length < 2) continue;
-    const key = gram.join(" ");
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-
-  // 4-word phrase echoes are statistically common in literary prose at ~4000 words.
-  // Two occurrences are typically incidental; three is suspicious; four+ is a craft failure.
-  for (const [phrase, count] of counts) {
-    if (count >= 4) {
-      issues.push({
-        severity: "error",
-        code: "REPETITION",
-        message: `Phrase "${phrase}" repeated ${count} times.`,
-        evidence: [phrase],
-      });
-    } else if (count === 3) {
-      issues.push({
-        severity: "warning",
-        code: "REPETITION",
-        message: `Phrase "${phrase}" repeated 3 times.`,
-        evidence: [phrase],
-      });
+    // 4-word phrase echoes are statistically common in literary prose at ~4000 words.
+    // Two occurrences are typically incidental; three is suspicious; four+ is a craft failure.
+    for (const [phrase, count] of counts) {
+      if (count >= 4) {
+        issues.push({
+          severity: "error",
+          code: "REPETITION",
+          message: `Phrase "${phrase}" repeated ${count} times.`,
+          evidence: [phrase],
+        });
+      } else if (count === 3) {
+        issues.push({
+          severity: "warning",
+          code: "REPETITION",
+          message: `Phrase "${phrase}" repeated 3 times.`,
+          evidence: [phrase],
+        });
+      }
     }
   }
 
   issues.push(...detectLexicalRepetition(prose, context));
   issues.push(...detectSentenceShapeRepetition(prose));
+  issues.push(...detectWithholdingTic(prose));
+  issues.push(...detectExplanatoryBecauseCluster(prose));
 
   return issues;
+}
+
+/**
+ * Conservative dialogue stripper for narration-only prose detectors. Removes
+ * spans inside straight double quotes, curly double quotes, and (cautiously)
+ * straight single quotes. False negatives are preferred over stripping
+ * narration: possessives ("Erik's") and contractions ("didn't") must survive
+ * untouched. Canonical helper for any future narration-only prose detector
+ * — call this before counting tic phrases or shape patterns.
+ */
+export function stripDialogueForNarration(prose: string): string {
+  let result = prose;
+  result = result.replace(/"[^"\n]*"/g, "");
+  result = result.replace(/\u201C[^\u201D\n]*\u201D/g, "");
+  // Straight single quotes: only strip when the open quote follows a sentence
+  // boundary (start, whitespace, opening bracket) and the close quote is
+  // followed by a sentence boundary, AND the contents have at least one
+  // internal whitespace. This avoids matching possessives like Erik's or
+  // contractions like didn't.
+  result = result.replace(
+    /(^|[\s(\[])'([^'\n]*\s[^'\n]*)'(?=[\s.,;!?)\]:]|$)/g,
+    "$1",
+  );
+  return result;
 }
 
 function normalizeAllowedSet(allowedTerms: readonly string[] | undefined): Set<string> {
@@ -248,13 +348,17 @@ function buildPhraseRegex(phrase: string): RegExp {
 /**
  * Sentence-shape repetition detector. Counts curated literary tic phrases
  * (e.g. "the way", "as though") that signal authorial-fingerprint rhythm
- * when overused. Warning-only; extend SENTENCE_SHAPE_PHRASES as new tics
- * appear in published chapters.
+ * when overused. Also runs a regex-backed check for the inverted noun-phrase
+ * contrast frame ("not a man but a manatee") and emits `INVERTED_NP_CONTRAST`
+ * when its occurrences cross `SENTENCE_SHAPE_MIN_COUNT`. Warning-only; extend
+ * `SENTENCE_SHAPE_PHRASES` as new tics appear in published chapters.
  */
 export function detectSentenceShapeRepetition(prose: string): ValidatorIssue[] {
   const issues: ValidatorIssue[] = [];
+  const narration = stripDialogueForNarration(prose);
+
   for (const phrase of SENTENCE_SHAPE_PHRASES) {
-    const matches = prose.match(buildPhraseRegex(phrase)) ?? [];
+    const matches = narration.match(buildPhraseRegex(phrase)) ?? [];
     if (matches.length < SENTENCE_SHAPE_MIN_COUNT) continue;
     issues.push({
       severity: "warning",
@@ -263,6 +367,139 @@ export function detectSentenceShapeRepetition(prose: string): ValidatorIssue[] {
       evidence: [phrase, String(matches.length)],
     });
   }
+
+  // Inverted noun-phrase contrast: counted independently against the same
+  // SENTENCE_SHAPE_MIN_COUNT threshold, but emits a distinct code with
+  // paragraph references rather than [phrase, count] evidence.
+  const paragraphs = prose.split(/\n\n+/);
+  const invertedHits: Array<{ phrase: string; paragraph: number }> = [];
+  paragraphs.forEach((rawPara, idx) => {
+    const stripped = stripDialogueForNarration(rawPara);
+    const matches = stripped.match(INVERTED_NP_CONTRAST_RE) ?? [];
+    for (const match of matches) {
+      invertedHits.push({ phrase: match.toLowerCase(), paragraph: idx + 1 });
+    }
+  });
+  if (invertedHits.length >= SENTENCE_SHAPE_MIN_COUNT) {
+    for (const hit of invertedHits) {
+      issues.push({
+        severity: "warning",
+        code: "INVERTED_NP_CONTRAST",
+        message:
+          "Repeated comparison frames make the prose feel generated. Ration them and vary rhetorical shape.",
+        evidence: [hit.phrase, `paragraph ${hit.paragraph}`],
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Withholding / clarification-tic detector. Flags any narration instance of a
+ * curated phrase list that signals the generator's habit of explaining its
+ * own metaphors. Warning-only; any single instance produces a hit. Extend
+ * `WITHHOLDING_PHRASES` as new variants appear.
+ */
+export function detectWithholdingTic(prose: string): ValidatorIssue[] {
+  const issues: ValidatorIssue[] = [];
+  const paragraphs = prose.split(/\n\n+/);
+  paragraphs.forEach((rawPara, idx) => {
+    const stripped = stripDialogueForNarration(rawPara);
+    for (const phrase of WITHHOLDING_PHRASES) {
+      const re = buildPhraseRegex(phrase);
+      const matches = stripped.match(re) ?? [];
+      for (const match of matches) {
+        issues.push({
+          severity: "warning",
+          code: "WITHHOLDING_TIC",
+          message:
+            "Withholding should be structural, not narrated. Clarifying a metaphor with an elegant explanatory phrase is a generator tic.",
+          evidence: [match.toLowerCase(), `paragraph ${idx + 1}`],
+        });
+      }
+    }
+  });
+  return issues;
+}
+
+function tokenizeBecauseClause(clauseTail: string): string[] {
+  return clauseTail
+    .toLowerCase()
+    .replace(/[^a-z'\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function looksExplanatoryBecause(
+  clauseTail: string,
+): { phrase: string } | null {
+  const tokens = tokenizeBecauseClause(clauseTail);
+  if (tokens.length === 0) return null;
+
+  let i = 0;
+  while (i < tokens.length && BECAUSE_DETERMINERS.has(tokens[i]!)) {
+    i++;
+  }
+  if (i >= tokens.length) return null;
+  const subject = tokens[i]!;
+  if (!EXPLANATORY_BECAUSE_SUBJECTS.has(subject)) return null;
+  if (tokens.some((t) => EXPLANATORY_BECAUSE_SYSTEM_NOUNS.has(t))) return null;
+
+  const previewTokens = tokens.slice(0, Math.min(5, tokens.length));
+  return { phrase: `because ${previewTokens.join(" ")}` };
+}
+
+/**
+ * Explanatory-`because`-cluster detector. Per-paragraph clusters (no
+ * chapter-level cap). Flags when 2+ narration `because` clauses in the same
+ * paragraph look explanatory: pronoun or human/social-role subject, no
+ * concrete system noun. Warning-only.
+ */
+export function detectExplanatoryBecauseCluster(prose: string): ValidatorIssue[] {
+  const issues: ValidatorIssue[] = [];
+  const paragraphs = prose.split(/\n\n+/);
+  paragraphs.forEach((rawPara, idx) => {
+    const stripped = stripDialogueForNarration(rawPara);
+    // Match each "because" position independently. A single greedy regex
+    // would swallow "because A and because B" as one match and lose the
+    // second clause; we anchor on the word and slice the tail manually so
+    // multi-`because` paragraphs stay visible to the cluster heuristic.
+    const becauseRE = /\bbecause\b/gi;
+    const explanatory: Array<{ phrase: string }> = [];
+    let match: RegExpExecArray | null;
+    while ((match = becauseRE.exec(stripped)) !== null) {
+      const start = match.index + match[0].length;
+      // Cap the tail at the next sentence boundary OR ~10 words, whichever is
+      // shorter. Without the word cap, two `because` clauses joined by a
+      // comma would share a system-noun exemption and silently cancel each
+      // other out.
+      const sentenceTail = stripped
+        .slice(start, start + 200)
+        .match(/^[^.!?;\n\u2014\u2013]*/);
+      let rawTail = sentenceTail ? sentenceTail[0] : "";
+      // Clip at the next `because` so each clause is evaluated independently.
+      // Without this, a comma-joined sequence like "because admirals took
+      // columns, because the bulkhead would not hold" would let `bulkhead`
+      // exempt the earlier explanatory clause and silently swallow the hit.
+      const nextBecause = rawTail.search(/\bbecause\b/i);
+      if (nextBecause >= 0) rawTail = rawTail.slice(0, nextBecause);
+      const tail = rawTail.split(/\s+/).slice(0, 11).join(" ");
+      const result = looksExplanatoryBecause(tail);
+      if (result) explanatory.push(result);
+    }
+    if (explanatory.length >= 2) {
+      for (const hit of explanatory) {
+        issues.push({
+          severity: "warning",
+          code: "EXPLANATORY_BECAUSE_CLUSTER",
+          message:
+            "Do not over-explain character motivation through narrator `because` clauses. Show the action and let context imply the reason.",
+          evidence: [hit.phrase, `paragraph ${idx + 1}`],
+        });
+      }
+    }
+  });
   return issues;
 }
 

@@ -123,6 +123,30 @@ export function buildDraftSystemPrompt(params: {
     ].join("\n"),
   );
 
+  sections.push(
+    [
+      "CHAPTER-1 LESSONS — HARD RULES (treat as contracts; violation is a craft failure):",
+      "",
+      "- H1. Every scene must turn the story. By the end, someone must know more, hide more, fear more, misread something, make a choice, lose control, or shift loyalty. Atmosphere alone is not a turn.",
+      "- H2. Earn a remembered name with a future hook. Name a character only when the name will do work the reader needs later — recurrence, recognition, recall, or a hook the plot will collect. For everyone else, render through role + one vivid detail (a press attendant in service black, a steward at the cloakroom, a journalist she half-recognized, a senator holding his glass in both hands the way a man holds a child he has just lifted up). Naming a walk-on is a cost the chapter must be willing to pay; if the name has no future job, drop it.",
+      "- H3. Anchor any clue whose physical state changes within this chapter. Tie it to a simple fixed marker (a screw, nick, seam, gauge, light, sound, position). Before-state and after-state must be visually unmistakable in the prose. When `physicalClueAnchors` is set on the spec, follow it. Cross-chapter plants belong in `revealControl`, not here.",
+      "- H4. Each chapter ending must create an irreversible shift in knowledge, danger, guilt, loyalty, or control. The reader and at least one character must be unable to return to the prior state of certainty.",
+      "",
+      "CHAPTER-1 LESSONS — DEFAULTS (break only with reason):",
+      "",
+      "- D1. Give every POV a distinct noticing engine. When `noticingEngine` is set on a character card, that character must perceive the scene through it (job, fear, training, class, guilt, or habit). No two POV sections in a chapter should sound like the same narrator wearing different hats.",
+      "- D2. Keep suspense procedural. Characters first process danger through role, habit, etiquette, denial, or training before they understand the full threat. Do not let them narrate the theme or explain the danger on contact.",
+      "- D3. Technical details must do at least one job: create tension, clarify space, reveal character, set up consequence, or produce later irony. If a detail only sounds cool, cut it.",
+      "- D4. Use big cinematic imagery only at structural thresholds: arrival, reveal, disaster, realization, irreversible ending. Between thresholds, keep prose concrete and functional.",
+      "- D5. Motifs may repeat only when they escalate, reverse, or gain new context. Do not repeat the same image at the same emotional intensity.",
+      "- D6. Maintain the core contrast: social performance and luxury above, machinery and procedure underneath. Both surfaces should be present in any scene that occupies the contested space.",
+      "- D7. Charismatic characters may be genuinely graceful or useful early; their grace may be instinct, performance, or both. This ambiguity has a shelf life — defer to the chapter function profile and pacing contract for when the ambiguity must close.",
+      "- D8. Keep dialogue mixed and human: formal speech, work speech, evasions, interruptions, jokes, corrections, plain reactions. Not every line should be quotable. When a scene risks reading too polished, ground it with ordinary behavior — a practical concern, fatigue, awkwardness, a small kindness, a routine task. Use `humanGrain` from the scene plan when it is non-null; do not invent forced business when it is null.",
+      "- D9. Do not over-explain what an image, action, silence, or gesture already proves. Withholding should be structural, not narrated.",
+      "- D10. When `revealControl` carries multiple mysteries (`show` / `hint` / `reveal` / `withhold`), do not spotlight all of them equally. Treat the most plot-bearing one as the primary mystery the reader actively tracks, others as secondary mysteries to notice, and the rest as atmospheric — felt, not explained.",
+    ].join("\n"),
+  );
+
   if (comparables.length > 0) {
     sections.push(`Write at the literary quality level of: ${comparables.join(", ")}. Match their tension architecture and sentence sophistication.`);
   }

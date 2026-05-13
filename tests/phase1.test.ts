@@ -732,6 +732,7 @@ function makePhase1JudgeFixtures() {
           emotionalArc: "Rising.",
           sensoryAnchor: "Cold.",
           dialogueStrategy: "Subtext.",
+          humanGrain: null,
         },
       ],
       mandatoryBeatCoverage: [{ beat: "Establish tension.", deliveryPlan: "Through action." }],
@@ -739,6 +740,7 @@ function makePhase1JudgeFixtures() {
       revealControl: { show: [], hint: [], reveal: [], withhold: [] },
       continuityWatchouts: [],
       proseGuidance: [],
+      physicalClueAnchors: [],
       endingBeat: "Land on a sharp turn.",
     },
   });

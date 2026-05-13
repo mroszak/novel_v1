@@ -52,6 +52,7 @@ function parseCharacters(section: string): CharacterCard[] {
   return Array.from(subsections.entries()).map(([heading, body]) => {
     const fields = parseStructuredFields(body);
     const surnameAlias = parseSurnameAlias(asString(fields["Surname Alias"]));
+    const noticingEngine = asString(fields["Noticing Engine"]);
     return {
       name: asString(fields.Name, heading),
       role: asString(fields.Role),
@@ -62,6 +63,7 @@ function parseCharacters(section: string): CharacterCard[] {
       privateTruth: asString(fields["Private Truth"]),
       voiceNotes: asList(fields["Voice Notes"]),
       knowledgeBoundary: asString(fields["Knowledge Boundary"]),
+      ...(noticingEngine ? { noticingEngine } : {}),
       ...(surnameAlias ? { surnameAlias } : {}),
       rawBody: body.trim(),
     };

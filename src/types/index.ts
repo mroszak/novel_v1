@@ -88,6 +88,12 @@ export interface CharacterCard {
   voiceNotes: string[];
   knowledgeBoundary: string;
   /**
+   * Optional. What this character perceives the world through — job, fear,
+   * training, class position, guilt, or habit. One sentence. Used by the
+   * drafter and judge to keep POV voices distinct.
+   */
+  noticingEngine?: string;
+  /**
    * Optional opt-in. When `true`, the named-character-cap validator treats
    * the last token of `name` as a standalone surname reference (case-sensitive
    * prose match required). Off by default so common-noun surnames like "Park"
@@ -469,6 +475,14 @@ export interface ChapterSpec {
     emotionalArc: string;
     sensoryAnchor: string;
     dialogueStrategy: string;
+    /**
+     * One ordinary human beat (mistake, fatigue, joke, practical interruption,
+     * small kindness, routine task, social awkwardness) used to ground a scene
+     * that would otherwise read purely symbolic or elegant. Set to `null` when
+     * the scene's existing material already carries human friction; do not
+     * invent forced business.
+     */
+    humanGrain: string | null;
   }>;
   mandatoryBeatCoverage: Array<{
     beat: string;
@@ -483,6 +497,20 @@ export interface ChapterSpec {
   };
   continuityWatchouts: string[];
   proseGuidance: string[];
+  /**
+   * Clues whose physical state changes within this same chapter must be tied
+   * to a simple fixed marker (a screw, nick, mark, seam, gauge, light, sound,
+   * position) with unmistakable before/after states. Both states must be
+   * visible in this chapter's prose. Use an empty array when no in-chapter
+   * physical change is planned. Cross-chapter plants belong in `revealControl`,
+   * not here.
+   */
+  physicalClueAnchors: Array<{
+    clue: string;
+    anchor: string;
+    beforeState: string;
+    afterState: string;
+  }>;
   endingBeat: string;
 }
 

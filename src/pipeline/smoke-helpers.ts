@@ -41,6 +41,7 @@ export function createSmokeSpec(packet: ChapterPacket): ChapterSpec {
         emotionalArc: "From controlled watchfulness to sharpening unease.",
         sensoryAnchor: "Immediate physical environment — texture, temperature, ambient sound.",
         dialogueStrategy: "Characters perform normalcy while subtext carries the real pressure.",
+        humanGrain: null,
       },
       {
         sceneNumber: 2,
@@ -53,6 +54,7 @@ export function createSmokeSpec(packet: ChapterPacket): ChapterSpec {
         emotionalArc: "From mounting pressure to a turn that reshapes understanding.",
         sensoryAnchor: "The environment itself becomes threatening — sound, light, or structure shifts.",
         dialogueStrategy: "Dialogue shortens under stress and begins hiding more than it reveals.",
+        humanGrain: null,
       },
     ],
     mandatoryBeatCoverage: packet.mandatoryBeats.map((beat) => ({
@@ -63,6 +65,7 @@ export function createSmokeSpec(packet: ChapterPacket): ChapterSpec {
     revealControl: packet.revealBudget,
     continuityWatchouts: packet.continuityNotes,
     proseGuidance: [...packet.voiceGuidance, ...packet.pacingGuidance],
+    physicalClueAnchors: [],
     endingBeat: packet.endingHookTarget,
   };
 }

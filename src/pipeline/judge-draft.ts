@@ -6,8 +6,10 @@ import type {
   ChapterDraft,
   ChapterPacket,
   ChapterSpec,
+  CharacterCard,
   DraftReview,
   ReviewScoreBreakdown,
+  VoiceCard,
 } from "../types/index.js";
 import { mapChapterFunctionToReaderJob } from "./generate-spec.js";
 import { chapterArtifactPath, createArtifact } from "./stage-utils.js";
@@ -150,6 +152,70 @@ export function derivePassesThreshold(review: DraftReview, passThreshold: number
   return review.overallScore >= passThreshold && !hasBlockingReviewSignals(review);
 }
 
+export function buildVoiceCardSummary(
+  activeCast: CharacterCard[],
+  runtimeCards: VoiceCard[],
+): string {
+  return activeCast
+    .map((c) => {
+      const noticesSegment = c.noticingEngine ? ` notices="${c.noticingEngine}"` : "";
+      const runtimeCard = runtimeCards.find(
+        (card) => card.character.toLowerCase() === c.name.toLowerCase(),
+      );
+      if (runtimeCard) {
+        return `${c.name} (${c.role}): traits=[${runtimeCard.activeTraits.join("; ")}] habits=[${runtimeCard.dialogueHabits.join("; ")}] stress="${runtimeCard.stressPattern}" taboo=[${runtimeCard.tabooNotes.join("; ")}]${noticesSegment}`;
+      }
+      return `${c.name} (${c.role}): ${c.voiceNotes.join("; ")}${noticesSegment}`;
+    })
+    .join("\n");
+}
+
+export function buildJudgeInstructions(
+  passThreshold: number,
+  readerJob: string | null,
+): string {
+  return [
+    "You are the literary judge for a chapter-by-chapter novel engine.",
+    "Score the chapter on all 15 dimensions using a 0-100 scale. Never use a 0-10 scale.",
+    "The 15 dimensions: beatCoverage, tension, forwardMotion, characterTruth, voiceConsistency, specificity, thematicEmbodiment, openingPower, endingHookStrength, revealControl, freshness, repetitionPenalty, proseQuality, dialogueAuthenticity, sensoryImmersion.",
+    "proseQuality: sentence-level rhythm, precision, image quality, varied sentence structure.",
+    "dialogueAuthenticity: distinct character voices matching their voice cards, subtext over exposition, naturalism under pressure.",
+    "sensoryImmersion: physical grounding, environmental presence, body-in-space awareness, the reader feels present.",
+    "voiceConsistency: scene prose stays inside the POV character's perceptual filter and authorized knowledge.",
+    `Set passesThreshold true only when the overall chapter clearly clears ${passThreshold} and has no blocking literary or continuity issues.`,
+    "When evaluating voice consistency, compare against the character voice cards and style rules provided.",
+    "When evaluating continuity, check that the chapter opens consistently with where the previous chapter ended and respects the continuity active slice when provided.",
+    "",
+    "POV DISCIPLINE (strict — penalize voiceConsistency hard for any violation).",
+    "Close-third stays inside the POV character's head. Treat as a violation any narration that gives a fact the POV character has no on-page reason to know in the moment: exact ages, full names of strangers, rehearsal history, training history, biographical detail, backstory of background characters, what someone said in a private conversation the POV did not witness, or what someone is feeling internally.",
+    "An on-page reason can be: prior establishment within this chapter or the previous chapter, the character has just been introduced by name, a packet/spec note that the POV personally knows the fact, or the prose makes the inference observable (e.g. \"young enough to flush like a schoolgirl\" instead of \"sixteen years old and trained all spring\"). Inference from observable behavior is allowed; omniscient assertion is not.",
+    "Flag every POV violation in revisionActions and, when the violation is structural rather than incidental, add it to blockingIssues.",
+    "",
+    "SCENE TURN CHECK (feeds forwardMotion).",
+    "For each scene break in the candidate prose, evaluate whether the scene actually changed the story state — someone now knows more, hides more, fears more, has misread something, has made a choice, has lost control, or has shifted loyalty. Atmosphere alone is not a turn. When a scene fails this check, lower forwardMotion, name the failing scene in weaknesses with a one-line reason, and add a concrete fix to revisionActions.",
+    "",
+    "NAMED WITHOUT FUTURE USE (feeds freshness).",
+    "Flag named figures who appear in this chapter but have neither an on-page hook for future appearance, recognition, or recall, NOR a packet/spec reason to be named (active cast, mandatory beat participants, secondary cameos already scheduled). Required active-cast names are not flagged. The target is the named walk-on whose name does no work — give them a hook the reader will need later, or render them by role + one vivid detail. When this pattern appears, lower freshness slightly and list the over-named figures in weaknesses. Judging this from one chapter is necessarily uncertain; bias toward not flagging when in doubt.",
+    "",
+    "PHYSICAL CLUE ANCHOR CHECK (feeds specificity).",
+    "When the approved spec contains a non-empty `physicalClueAnchors` array, verify each entry's geometry is legible in the prose: the marker is named, the before-state is concrete, and the after-state is told apart from the before-state. When a referenced clue's before/after geometry is not legible (marker missing, before-state fuzzy, after-state indistinguishable from before), lower specificity and add a one-line entry to weaknesses naming which clue/marker failed.",
+    "",
+    "NOTICING ENGINE CHECK (feeds voiceConsistency).",
+    "When a character voice card carries a `notices=\"...\"` segment, that character must perceive the scene through the declared engine during their POV section (job, fear, training, class, guilt, or habit). When the prose makes no use of it and the POV reads as generic narrator perception, lower voiceConsistency and add a one-line entry to weaknesses naming the character. These are weakness signals, not blocking issues.",
+    "",
+    "ANTI-COMMITTEE PRINCIPLES.",
+    "REWARD: asymmetry, weird vivid specificity, uncomfortable character choices, scene-specific physicality, unresolved tension, strong taste, sentences that risk being wrong to feel true.",
+    'PUNISH: generic polish, explained emotion, fake profundity, cinematic vagueness, "AI thriller voice," sentences sanded to sound smart.',
+    "When two candidates score equally on craft but one risks more, the riskier one wins.",
+    "",
+    "BESTSELLER QUESTION (context signal, NOT a 16th rubric dimension):",
+    readerJob
+      ? `Treat this as a binding context signal: does this chapter make the target reader open chapter N+1 right now? The declared reader job is: ${readerJob}.`
+      : "Does this chapter make the target reader open chapter N+1 right now?",
+    "Weight this answer in the overall verdict and in revisionActions/blockingIssues, but DO NOT add a 16th score; never re-normalize the existing 15-dimension weights.",
+  ].join("\n");
+}
+
 export async function judgeDraft(params: {
   candidateId: "draft" | "revision";
   packetArtifact: ArtifactEnvelope<ChapterPacket>;
@@ -200,17 +266,7 @@ export async function judgeDraft(params: {
       : null;
 
     const runtimeCards = packetArtifact.data.rollingMemory?.activeCharacterVoiceCards ?? [];
-    const voiceCardSummary = packetArtifact.data.activeCast
-      .map((c) => {
-        const runtimeCard = runtimeCards.find(
-          (card) => card.character.toLowerCase() === c.name.toLowerCase(),
-        );
-        if (runtimeCard) {
-          return `${c.name} (${c.role}): traits=[${runtimeCard.activeTraits.join("; ")}] habits=[${runtimeCard.dialogueHabits.join("; ")}] stress="${runtimeCard.stressPattern}" taboo=[${runtimeCard.tabooNotes.join("; ")}]`;
-        }
-        return `${c.name} (${c.role}): ${c.voiceNotes.join("; ")}`;
-      })
-      .join("\n");
+    const voiceCardSummary = buildVoiceCardSummary(packetArtifact.data.activeCast, runtimeCards);
 
     const marketPromise = packetArtifact.data.marketPromise;
     const continuitySlice = packetArtifact.data.continuityActiveSlice;
@@ -255,34 +311,7 @@ export async function judgeDraft(params: {
     const stage = params.stageOverride ?? config.stageProfiles.literaryJudge;
     const result = await generateStructuredOutput<DraftReview>({
       stage,
-      instructions: [
-        "You are the literary judge for a chapter-by-chapter novel engine.",
-        "Score the chapter on all 15 dimensions using a 0-100 scale. Never use a 0-10 scale.",
-        "The 15 dimensions: beatCoverage, tension, forwardMotion, characterTruth, voiceConsistency, specificity, thematicEmbodiment, openingPower, endingHookStrength, revealControl, freshness, repetitionPenalty, proseQuality, dialogueAuthenticity, sensoryImmersion.",
-        "proseQuality: sentence-level rhythm, precision, image quality, varied sentence structure.",
-        "dialogueAuthenticity: distinct character voices matching their voice cards, subtext over exposition, naturalism under pressure.",
-        "sensoryImmersion: physical grounding, environmental presence, body-in-space awareness, the reader feels present.",
-        "voiceConsistency: scene prose stays inside the POV character's perceptual filter and authorized knowledge.",
-        `Set passesThreshold true only when the overall chapter clearly clears ${passThreshold} and has no blocking literary or continuity issues.`,
-        "When evaluating voice consistency, compare against the character voice cards and style rules provided.",
-        "When evaluating continuity, check that the chapter opens consistently with where the previous chapter ended and respects the continuity active slice when provided.",
-        "",
-        "POV DISCIPLINE (strict — penalize voiceConsistency hard for any violation).",
-        "Close-third stays inside the POV character's head. Treat as a violation any narration that gives a fact the POV character has no on-page reason to know in the moment: exact ages, full names of strangers, rehearsal history, training history, biographical detail, backstory of background characters, what someone said in a private conversation the POV did not witness, or what someone is feeling internally.",
-        "An on-page reason can be: prior establishment within this chapter or the previous chapter, the character has just been introduced by name, a packet/spec note that the POV personally knows the fact, or the prose makes the inference observable (e.g. \"young enough to flush like a schoolgirl\" instead of \"sixteen years old and trained all spring\"). Inference from observable behavior is allowed; omniscient assertion is not.",
-        "Flag every POV violation in revisionActions and, when the violation is structural rather than incidental, add it to blockingIssues.",
-        "",
-        "ANTI-COMMITTEE PRINCIPLES.",
-        "REWARD: asymmetry, weird vivid specificity, uncomfortable character choices, scene-specific physicality, unresolved tension, strong taste, sentences that risk being wrong to feel true.",
-        'PUNISH: generic polish, explained emotion, fake profundity, cinematic vagueness, "AI thriller voice," sentences sanded to sound smart.',
-        "When two candidates score equally on craft but one risks more, the riskier one wins.",
-        "",
-        "BESTSELLER QUESTION (context signal, NOT a 16th rubric dimension):",
-        readerJob
-          ? `Treat this as a binding context signal: does this chapter make the target reader open chapter N+1 right now? The declared reader job is: ${readerJob}.`
-          : "Does this chapter make the target reader open chapter N+1 right now?",
-        "Weight this answer in the overall verdict and in revisionActions/blockingIssues, but DO NOT add a 16th score; never re-normalize the existing 15-dimension weights.",
-      ].join("\n"),
+      instructions: buildJudgeInstructions(passThreshold, readerJob),
       prompt: promptParts.join("\n\n"),
       schemaName: `draft_review_${candidateId}`,
       schema: reviewSchema,

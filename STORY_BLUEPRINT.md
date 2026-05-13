@@ -80,7 +80,7 @@ version: "1.0.0"
   - dialogueRatioTarget: balanced — roughly 40% dialogue at chapter level, dropping during structural-failure sequences and the late climax.
   - interiorityRatioTarget: moderate — the protagonist's interior shame and recalibration runs underneath every operational scene without overtaking it.
   - revealCadence: disciplined late-1970s pacing — show small mechanical failures early, hint at cover-up across the first third, confirm cover-up at midpoint, deliver the design-flaw confession at three-quarters, and pay off the sacrifice and the tape in the final quarter.
-  - hookStyle: cinematic chapter-end image or pivot rather than verbal cliffhanger; hooks land on physical state changes (a crack widening, a light failing, a body found, a door closing).
+  - hookStyle: cinematic chapter-end image or pivot rather than verbal cliffhanger. The closing image must contain a concrete change in physical, operational, or moral reality — answerable as: what is now different, who knows it, who is hiding it, why does it force the next chapter. Atmospheric unease alone is not enough for early or anchor chapters. Valid state changes include a crack lengthening, a light failing, a warning reclassified as maintenance, a public reassurance contradicting a private reading, a submersible going off the board, a person choosing not to report, a sealed door closing with someone on the wrong side, a tape capturing a sentence that should not exist.
   - endingMode: catastrophic with limited survival; bittersweet, not nihilistic; the cover-up is wounded but not defeated.
   - povDistance: close third, anchored per scene; one character per scene; no head-hopping; section breaks are the only place POV changes.
   - ambiguityTolerance: low on plot mechanics and physical fact, high on moral compromise and institutional motive.
@@ -96,6 +96,16 @@ The narration sits in close third, one character per scene, anchored to that cha
 The book grants the reader low ambiguity about what is physically happening (the building is failing; the submersibles are limited; the surface is delaying) and high ambiguity about who is responsible for the moral chain that put the building, the submarines, and the cover-up into the same waters on the same night. There is no single villain who absolves the rest, and no single hero who exonerates the system. The Aurelia is photographed in glamour and then in pressure red; the sea outside is rendered without personification; the dialogue carries subtext as a structural load and only collapses to plain language when crisis earns the line.
 
 Period restraint over modern shock. The book remembers it is set in 1979 and trusts the reader to do the work — no on-the-nose modern parallels, no anachronistic technology, no contemporary vocabulary smuggled in for accessibility. Grief, when it comes, is shown rather than narrated; sentimentality is treated as a craft failure.
+
+### Chapter Construction Rules
+
+These principles sit beneath the genre, tonal, and canon contracts and govern how individual chapters are built. They preserve the prestige 1979 disaster-epic identity while making the chapter engine enforceable.
+
+- **Primary POV per chapter.** Every chapter has one primary POV character even when the chapter is ensemble. Secondary POV sections are allowed only if they sharpen the primary chapter question; secondary scenes that exist only to introduce cast, plant atmosphere, or distribute setup tokens are compressed, deferred, or bound to a concrete tension before publication.
+- **POV purpose.** Each POV section reveals something only that POV can reveal — public myth, operational reality, institutional deception, emotional cost, physical danger, social hierarchy, or private guilt. POV is not used as a character-introduction lens.
+- **Early-chapter propulsion (chapters 1–7).** The prose remains slow-burn in texture; the situation does not remain slow-burn in consequence. Each first-quarter chapter delivers at least one undeniable new piece of physical or institutional pressure. Restraint of voice is a feature; restraint of consequence is a craft failure.
+- **Clue handling.** Foreshadowing reads as professional observation, operational routine, social behavior, or physical texture — never spotlit clue handoff. The reader should sense wrongness before they understand it. Erik notices a seam line because he drew it; Reyes sees a one-pulse amber before it returns to green; Crane catches a public phrase repeated privately; Adriana sees a staff instruction become a liability; Halloran hears a word choice convert routine into classification.
+- **Public/private contradiction.** Tension escalates through contradiction between public reassurance and private fact. A public room says celebration; a service corridor says strain. A leader says routine; a panel reads amber. A guest sees glamour; staff see procedure. A Navy phrase says exercise; a body or a signal says accident. These contradictions are the engine of the cover-up and should appear early and often.
 
 ## Canon Law and World Rules
 - The hotel cannot be saved. The story is about who survives the loss, not whether the building does. Any plot move that suggests structural rescue is a violation of the contract.
@@ -218,7 +228,7 @@ The Aurelia is, by design, an ensemble novel — but a strong novel needs a stru
 - Desire: To bring his crew home alive — which, the night of the book, becomes inseparable from the question of what he is willing to write down.
 - Fear: That his decision to fire was protective in the moment and indefensible on paper, and that the paper will outlast him.
 - Contradiction: He is a man trained to make irreversible decisions on a clock, and the book makes him spend the rest of the night learning that the clock did not stop when the torpedo did.
-- Public Face: Late forties, Sturgeon-class skipper, commanding the USS Charlotte (SSN-693, fictionalized for this novel); a careful, well-regarded officer.
+- Public Face: Late forties, Los Angeles-class skipper, commanding the USS Charlotte (SSN-693, fictionalized for this novel); a careful, well-regarded officer.
 - Private Truth: He writes a letter to his wife on the night of the book and does not send it. The letter contains the names of his three watchstanders and the word "civilians" three times. The reader never reads the letter.
 - Voice Notes:
   - Naval procedural diction; writes more than he speaks once the firing decision is past.
@@ -462,7 +472,7 @@ Non-negotiable functional obligations: chapter 1 = opening (genre promise + firs
 - Setup (Ch 1): Erik's third memo, folded inside his coat, never named directly. Payoff (Ch 17): he reads it aloud to Vauclair, Halloran, and Reyes in the office. Re-payoff (Ch 23): he reads it again into Crane's cassette.
 - Setup (Ch 2): Reyes's "preventive maintenance" budget line; Reyes is mentioned, in passing, as having spent two days that summer in the southwest service corridor. Payoff (Ch 22): the bracing is revealed. Re-payoff (Ch 24): the bracing holds for forty-three minutes longer than it should.
 - Setup (Ch 1): the silver lifeboat-shaped pendant Vivienne wears. Payoffs: (Ch 11) Vivienne presses it into a young busboy's hand during the gallery breach; (Ch 18) the busboy returns it to Vivienne in the corridor outside Le Hublot after Hugo dies — clean chain of custody, the busboy stays with Vivienne from this point; (Ch 21) Vivienne kneels and gives the pendant to Maddie at the airlock; (Ch 25) Maddie holds it on the deck of the USCGC Vigilant; (Ch 26, by implication) the pendant is logged in the Coast Guard's debrief and stays with Maddie.
-- Setup (Ch 3): the cosmetic hairline crack in the southwest gallery glass. Payoff (Ch 11): the same crack opens.
+- Setup (Ch 1): the cosmetic hairline in the southwest gallery glass — first registered by Erik as a cosmetic polish-mark during the pre-toast gallery walk, then registered as wrong (without diagnosis) after the first flicker. Payoff (Ch 3): the hairline has bloomed under load — a second pale thread branches from the first and a faint silver line of moisture surfaces along the inner gasket bed; Erik can no longer dismiss it as cosmetic. Re-payoff (Ch 6): structural diagnosis. Re-payoff (Ch 7): the cosmetic crack is reframed as confirmed structural lethality. Re-payoff (Ch 11): the same crack opens.
 - Setup (Ch 4): Felix Crane's portable cassette recorder and his promise to his editor for a "Vauclair piece." Payoff (Ch 23): the recorder captures the design-flaw confession. Re-payoff (Ch 26): the cassette crosses a New York street.
 - Setup (Ch 5): Maddie's habit of counting the koi-colored fish through the dome glass. Payoff (Ch 25): she counts rescue vessels, helicopters, float beacons, the last lift's running lights, and finally the absence of the Aurelia's surface marker lights.
 - Setup (Ch 6): Halloran's wedding ring, never on his hand on duty, kept in a sealed envelope in his breast pocket. Payoff (Ch 12): he opens the envelope. Re-payoff (Ch 19): the ring is on his finger when he disobeys.
@@ -593,8 +603,9 @@ Notes: Vauclair, Reyes (in the southwest corridor), and unnamed staff who stayed
 - Sacrifice paid (Reyes dies in the southwest corridor; pumps hold) | reader | 24 | payoff
 - Felix Crane's tape | reader | 4 | show
 - Felix Crane's tape | reader | 26 | payoff
-- The empty Coral Suite | reader | 5 | reveal
-- The empty Coral Suite | reader | 26 | payoff
+- Coral Suite (dark on descent / Adriana's threshold check) | reader | 1 | hint
+- Coral Suite booking identity (Julien Vauclair, the son who did not come) | reader | 5 | reveal
+- Coral Suite as closing image (Crane's drafted final paragraph) | reader | 26 | payoff
 
 ### Relationship States
 - Erik Halvorsen x Roland Vauclair | trust=20 | distance=high | dependency=medium | rivalry=high
@@ -682,40 +693,35 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Title: The Aurelia
 - Function: opening
 - POV: Erik Halvorsen
-- Summary: At 19:00 on September 14, 1979, the underwater hotel Aurelia opens four hundred and twelve feet below the Atlantic off Cape Hatteras; Erik Halvorsen, the building's resigned-then-reinstated architect, descends in the elevator-pod with Roland Vauclair and the gathered VIPs, the party blooms in the Grand Atrium under the dome, in the public rooms champagne rises while throughout the rest of the structure two hundred and seventy people in total are aboard tonight (engineering crew, kitchen staff, sub pilots, security, and some four dozen back-of-house personnel still at posts), Erik keeps his hand on the third memo in his coat pocket, Tomás Reyes meets his eyes once across the lobby and they exchange the small unspoken nod that has carried them through eighteen months of design battles, and before the orchestra moves into the second piece the lights flicker — not enough to disturb a guest, enough to disturb an architect.
-- Chapter Goal: Place the reader physically inside the Aurelia before any disaster information arrives; establish the Aurelia as desirable and faintly wrong; anchor Erik's interior contradiction; plant the third memo, the cosmetic crack, the empty Coral Suite, the lifeboat pendant, and Felix Crane's recorder without naming any of them as problems.
-- Target Word Count: 4500
-- Ending Hook: The lights settle. The orchestra recovers. Erik looks past the dome and sees the water moving in a way that, for one full breath, he does not understand.
+- Summary: At 19:00 on September 14, 1979, the underwater hotel Aurelia opens four hundred and twelve feet below the Atlantic off Cape Hatteras; Erik Halvorsen, the building's resigned-then-reinstated architect, descends in the elevator-pod with Roland Vauclair and the gathered VIPs, the party blooms in the Grand Atrium under the dome, in the public rooms champagne rises while throughout the rest of the structure two hundred and seventy people in total are aboard tonight (engineering crew, kitchen staff, sub pilots, security, and some four dozen back-of-house personnel still at posts), Erik keeps his hand on the third memo in his coat pocket, Tomás Reyes meets his eyes once across the lobby and they exchange the small unspoken nod that has carried them through eighteen months of design battles, the orchestra moves into the second piece and the lights flicker — not enough to disturb a guest, enough to disturb an architect — and after the flicker Erik returns to the southwest gallery and finds the cosmetic hairline is not where he left it.
+- Chapter Goal: Place the reader physically inside the Aurelia before any disaster information arrives; establish the Aurelia as desirable and faintly wrong; anchor Erik's interior contradiction; plant the third memo, the cosmetic crack, the empty Coral Suite, the lifeboat pendant, and Felix Crane's recorder without diagnosing any of them; convert the chapter's atmospheric unease into one undeniable physical state change before the chapter ends.
+- Target Word Count: 4000
+- Ending Hook: The lights settle. The orchestra recovers. Erik looks back at the southwest gallery and finds the pale line in the acrylic is not where he left it. Beyond it, in the floodlight beams, the Atlantic moves sideways across the lamps in a slow lateral shear he has no equation for.
 - Active Cast:
   - Erik Halvorsen
   - Roland Vauclair
   - Tomás Reyes
   - Adriana Vauclair
   - Felix Crane
-  - Reed Halloran
-  - Hugo Marchetti
-  - Vivienne Marchetti
-  - Ben Aldridge
-  - Cora Aldridge
-  - Maddie Aldridge
-  - Dr. Eve Sandoval
 - Mandatory Beats:
   - Place the reader physically inside the Aurelia by the third paragraph.
   - Establish Erik's third memo as a present hidden object.
-  - Make the southwest gallery's cosmetic hairline crack visible without naming it as a problem.
-  - Land the first flicker.
-  - Plant Vivienne's lifeboat pendant in a single sentence.
-  - Plant Felix Crane's portable cassette recorder in his jacket without switching it on.
   - Show that the Coral Suite is dark on the upper level when the elevator-pod passes it on descent.
   - One unforced charisma moment for Vauclair — before the toast, in passing, he handles a junior staffer (or a frightened first-time guest, or a bus girl who has spilled something) with real, off-the-record grace; not performative, not for an audience. The reader sees, briefly, why investors trusted him, why Adriana stayed, and why Erik once wanted to build impossible things with him. This must not be undone or reframed elsewhere in the chapter; it stands as a true thing about him that the rest of the book has to live with.
-  - One human detail for Daniel Park, the waiter who will die at chapter 7 — a single line registered through Adriana, Crane, or Erik (e.g., he is new, proud of the uniform, and knows the service-route gangway better than the VIP corridor; or he and Adriana have a small running joke about the orchestra's tempo).
-  - One human detail for the Florida senator who will die at chapter 18 — a single line registered through Crane or Adriana (e.g., he is unexpectedly kind to the staff, or he is physically slower than his bearing suggests, or he keeps asking what the depth is and then forgetting the answer).
-  - Cora Aldridge declines champagne at the toast and Ben does not notice. (Pregnancy ghost thread; never named, only behavior.)
+  - Plant Felix Crane's portable cassette recorder in his jacket without switching it on.
+  - Plant Vivienne Marchetti's lifeboat pendant in a single sentence registered through Crane's gaze (object plant only; the Marchettis are not active cast for chapter 1).
+  - Make the southwest gallery's cosmetic hairline visible to Erik without naming or diagnosing it as a problem.
+  - Land the first flicker.
+  - Erik returns to the southwest hairline after the flicker and registers it as wrong — without diagnosing it, without naming it. This is the chapter's concrete state change.
+- Secondary Cameo Beats:
+  - One human detail for Daniel Park, the waiter who will die at chapter 7 — a single line through Adriana (e.g., a small running joke about the orchestra's tempo, or his pride in the new uniform and his preference for the service-route gangway over the VIP corridor).
+  - One human detail for the Florida senator who will die at chapter 18 — a single line through Crane (e.g., he keeps asking what the depth is and forgetting the answer, or he is unexpectedly kind to a waiter).
+  - Cora Aldridge declines champagne at the toast and Ben does not notice — registered through Crane's gaze. (Pregnancy ghost thread; never named, only behavior.)
 - Callback Obligations:
   - None (this is the chapter the rest of the book calls back to).
 - Show:
   - The Aurelia's working interior — the Grand Atrium dome, the helical staircase, the orchestra, the southwest observation gallery, the elevator-pod descent.
-  - The night's guest list as a class portrait — magazine writers, a Florida senator, the Marchettis, the Aldridges, NOAA scientists, a retired admiral.
+  - The night's guest list as a class portrait — magazine writers, a Florida senator, the Marchettis, the Aldridges, NOAA scientists, a retired admiral — in passing, not by introduction.
 - Hint:
   - That the submarine clash is occurring in nearby waters.
   - Erik's resignation history with Vauclair, by way of a single overheard journalist's question.
@@ -726,16 +732,18 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - The impact has not happened yet. Do not foreshadow with omniscient warning.
   - The third memo's contents.
   - The fact that Vauclair's son is not coming.
+  - Any structural diagnosis of the hairline. Erik registers it as wrong; he does not yet understand why.
 - Risk Flags:
   - anchor
 - Notes:
-  - Chapter 1 must read as a love letter to the building before it becomes a death warrant for it; resist any narrator-side foreshadowing; the only foreshadowing permitted is sensory.
+  - Chapter 1 is Erik-primary. Ensemble texture is allowed but secondary scenes (Adriana on the floor, Crane at the bar, Reyes in engineering) must orbit Erik's guilt, Vauclair's mythmaking, or the building's first wrongness; this is not a rotating cast introduction.
+  - The opening movement reads as a love letter to the building. After the reader has felt the building's beauty, atmospheric unease must convert into plot pressure. Resist narrator-side foreshadowing; the only foreshadowing permitted is sensory and the only structural state change permitted is the post-flicker hairline registration.
 
 ### Chapter 2
 - Title: Charlotte and the Echo
 - Function: escalation
 - POV: Cmdr. Leonard Beckwith
-- Summary: Eleven nautical miles east of the Aurelia, the USS Charlotte (Sturgeon-class, SSN-693, fictionalized) is shadowing a Soviet Victor-class hunter that has been inside the Navy's declared exercise box and the restricted approach corridor to the Aurelia (which is hosting a retired admiral, a Senator, and other senior officers tonight) for ninety-three minutes; sonar contact tightens, the Soviet sub fires first — a glancing torpedo, but a torpedo — the Charlotte is hit and bulkhead 4 floods, Beckwith fires back, the Soviet sub is crippled, debris fans through the water, and Beckwith does not yet know there is a non-military structure below him.
+- Summary: Eleven nautical miles east of the Aurelia, the USS Charlotte (Los Angeles-class, SSN-693, fictionalized) is shadowing a Soviet Victor-class hunter that has been inside the Navy's declared exercise box and the restricted approach corridor to the Aurelia (which is hosting a retired admiral, a Senator, and other senior officers tonight) for ninety-three minutes; sonar contact tightens, the Soviet sub fires first — a glancing torpedo, but a torpedo — the Charlotte is hit and bulkhead 4 floods, Beckwith fires back, the Soviet sub is crippled, debris fans through the water, and Beckwith does not yet know there is a non-military structure below him.
 - Chapter Goal: Show the submarine clash on page so the reader carries the moral weight from the moment it happens; establish Beckwith as a man who is not a villain; place the debris field on its trajectory toward the Aurelia without yet showing it arrive; establish "preventive maintenance" as the line item Reyes will use later.
 - Target Word Count: 4200
 - Ending Hook: A sonarman, very young, says the word "civilians" into the microphone, and Beckwith asks him to repeat it.
@@ -772,7 +780,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Title: Hairline
 - Function: escalation
 - POV: Erik Halvorsen
-- Summary: Erik feels a tremor through the soles of his feet — the kind a builder learns to read; Vauclair toasts the dome from the dais; Reyes radios the engineering spine and orders a quiet check; the lights flicker for the second time and do not settle as cleanly; in the southwest gallery the cosmetic hairline crack in the curved acrylic has lengthened by two inches; a pressure alarm flickers and resets; Adriana smooths it over publicly and then finds her father in the office and asks if anything is wrong, and he says no; the chapter ends with Erik kneeling in front of the gallery glass while behind him two hundred guests dance.
+- Summary: Erik feels a tremor through the soles of his feet — the kind a builder learns to read; Vauclair toasts the dome from the dais; Reyes radios the engineering spine and orders a quiet check; the lights flicker for the second time and do not settle as cleanly; in the southwest gallery the chapter-1 hairline has bloomed laterally — a second pale thread now branches from the first, and along the inner gasket bed a faint silver line of moisture has begun to surface; a pressure alarm flickers and resets; Adriana smooths it over publicly and then finds her father in the office and asks if anything is wrong, and he says no; the chapter ends with Erik kneeling in front of the gallery glass while behind him two hundred guests dance.
 - Chapter Goal: Land the impact's first internal evidence; establish that the building has been wounded and is not yet aware of itself; sharpen the Erik/Vauclair fault line; show Adriana's first private question to her father.
 - Target Word Count: 4000
 - Ending Hook: Erik puts his palm flat on the gallery glass and feels the sea push back harder than the sea should.
@@ -786,7 +794,7 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
 - Mandatory Beats:
   - First tremor felt by Erik.
   - Pressure alarm reset.
-  - The hairline crack has visibly grown.
+  - The hairline has bloomed under load — a second pale thread branches from the first and a faint silver line of moisture surfaces along the inner gasket bed. A different kind of evidence than chapter 1's lateral migration of the original line; the building is now actively deteriorating, not merely changed.
   - Adriana confronts her father privately for the first time and does not yet break with him.
 - Callback Obligations:
   - The cosmetic crack from chapter 1 evolves; Erik's coat-pocket memo stays in the body of the scene without being named.
@@ -1612,3 +1620,13 @@ Two tiers. **Primary motifs** carry the book's emotional spine and recur across 
   - reveal-sensitive
 - Notes:
   - End on the empty Coral Suite. No epilogue past it. One paragraph of dwell on the suite, then white space. The dwell paragraph is Crane's drafted prose on the page in his typewriter, registered through Crane's POV (he is reading what he just wrote); this preserves the no-omniscient-narrator rule while still allowing the closing image to be the dark, abandoned, glass-ceilinged room four hundred and twelve feet below.
+
+## Chapter Spec Checklist
+
+Spec-stage check before approving any chapter spec:
+
+- One primary POV named, even in ensemble chapters.
+- Each named secondary POV justifies itself by what it reveals (not by what it introduces).
+- Ending hook contains a concrete physical, operational, or moral state change.
+- At least one public/private contradiction lands on page.
+- Setup/payoff objects appear through natural observation, not listed clue handoff.

@@ -19,6 +19,7 @@ export interface PromptCharacterView {
   contradiction: string;
   privateTruth: string;
   knowledgeBoundary: string;
+  noticingEngine?: string;
 }
 
 export interface SpecStoryStateView {
@@ -84,6 +85,7 @@ function buildPromptCharacterView(character: CharacterCard): PromptCharacterView
     contradiction: character.contradiction,
     privateTruth: character.privateTruth,
     knowledgeBoundary: character.knowledgeBoundary,
+    ...(character.noticingEngine ? { noticingEngine: character.noticingEngine } : {}),
   };
 }
 

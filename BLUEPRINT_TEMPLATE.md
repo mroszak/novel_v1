@@ -98,6 +98,7 @@ Write the tonal contract in prose. Cover how close the narration sits to the poi
   - Replace with diction and rhythm notes.
   - Replace with what this character notices first.
 - Knowledge Boundary: Replace with what this character must not know too early.
+- Noticing Engine: Optional. One sentence describing what this character perceives through (job, fear, training, class position, guilt, or habit). Used by the drafter and judge to keep POVs distinct.
 - Surname Alias: Optional. Set to `true` only when prose routinely refers to this character by surname alone (e.g. `Crane`, `Halvorsen`). When omitted or `false`, the named-character-cap validator counts first-name and full-name references only; surname-only matches are skipped. Helpful when surnames are also common nouns (e.g. `Park`, `Crane`).
 
 ### Antagonist
@@ -112,6 +113,7 @@ Write the tonal contract in prose. Cover how close the narration sits to the poi
   - Replace with language patterns or emotional temperature.
   - Replace with what their scenes must never sound like.
 - Knowledge Boundary: Replace with what they know that others must not.
+- Noticing Engine: Optional. One sentence describing what this character perceives through (job, fear, training, class position, guilt, or habit). Used by the drafter and judge to keep POVs distinct.
 
 ### Key Supporting Character
 - Name: Supporting Character Name
@@ -125,6 +127,7 @@ Write the tonal contract in prose. Cover how close the narration sits to the poi
   - Replace with speech and behavior notes.
   - Replace with the sensory or symbolic signature around them.
 - Knowledge Boundary: Replace with what they suspect, know, or hide.
+- Noticing Engine: Optional. One sentence describing what this character perceives through (job, fear, training, class position, guilt, or habit). Used by the drafter and judge to keep POVs distinct.
 
 ## Relationship Dynamics
 Write the pressure lines between the major characters here. Include desire, resentment, dependency, attraction, authority, debt, rivalry, and what each pairing can weaponize against the other.

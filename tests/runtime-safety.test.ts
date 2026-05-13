@@ -43,12 +43,15 @@ import {
   buildAllowedTermsFromPacket,
   checkDialogueTags,
   checkParagraphDistribution,
+  detectExplanatoryBecauseCluster,
   detectFilterWords,
   detectKnowledgeLeaks,
   detectLexicalRepetition,
   detectNamedCharacterCapExceeded,
   detectRepetition,
   detectSentenceShapeRepetition,
+  detectWithholdingTic,
+  stripDialogueForNarration,
 } from "../src/validators/prose-quality.js";
 import { config } from "../src/config.js";
 import { estimateOpenAiPromptTokens, estimateTextTokens } from "../src/metrics/token-budget.js";
@@ -808,6 +811,7 @@ test("beatCovered tolerates number-word drift without substring false positives"
     revealControl: { show: [], hint: [], reveal: [], withhold: [] },
     continuityWatchouts: [],
     proseGuidance: [],
+    physicalClueAnchors: [],
     endingBeat: "End under pressure.",
   };
 
@@ -851,6 +855,7 @@ test("alignMandatoryBeatCoverage snaps paraphrased beat labels to the matching p
     revealControl: { show: [], hint: [], reveal: [], withhold: [] },
     continuityWatchouts: [],
     proseGuidance: [],
+    physicalClueAnchors: [],
     endingBeat: "End on the second flicker.",
   };
 
@@ -883,6 +888,7 @@ test("alignMandatoryBeatCoverage leaves entries alone when no packet beat substa
     revealControl: { show: [], hint: [], reveal: [], withhold: [] },
     continuityWatchouts: [],
     proseGuidance: [],
+    physicalClueAnchors: [],
     endingBeat: "End on dawn.",
   };
 
@@ -1294,6 +1300,188 @@ test("detectRepetition surfaces both lexical and sentence-shape evidence in one 
     issues.some((i) => i.code === "SENTENCE_SHAPE_REPETITION" && i.evidence[0] === "the way"),
     "Combined surface must include sentence-shape evidence",
   );
+});
+
+// --- INVERTED_NP_CONTRAST + WITHHOLDING_TIC + EXPLANATORY_BECAUSE_CLUSTER ---
+
+test("detectSentenceShapeRepetition emits INVERTED_NP_CONTRAST at threshold with paragraph references", () => {
+  const prose = [
+    "He was not a man but a witness.",
+    "She was not the girl but the message.",
+    "It was not an answer but a question.",
+    "He was not a guide but a stranger.",
+    "She wore not the dress but the silence.",
+  ].join("\n\n");
+
+  const issues = detectSentenceShapeRepetition(prose).filter(
+    (i) => i.code === "INVERTED_NP_CONTRAST",
+  );
+  assert.equal(issues.length, 5, "All five inverted-NP frames must surface");
+  for (const issue of issues) {
+    assert.equal(issue.severity, "warning");
+    assert.match(issue.evidence[1] ?? "", /^paragraph \d+$/);
+    assert.ok(/^not (a|an|the) /.test(issue.evidence[0] ?? ""));
+  }
+
+  const four = [
+    "He was not a man but a witness.",
+    "She was not the girl but the message.",
+    "It was not an answer but a question.",
+    "He was not a guide but a stranger.",
+  ].join("\n\n");
+  assert.equal(
+    detectSentenceShapeRepetition(four).filter(
+      (i) => i.code === "INVERTED_NP_CONTRAST",
+    ).length,
+    0,
+    "Below SENTENCE_SHAPE_MIN_COUNT (5) the inverted-NP regex must stay quiet",
+  );
+});
+
+test("detectWithholdingTic warns on any narration instance and reports paragraph", () => {
+  const prose = [
+    "He stood at the rail.",
+    "He did not name what he saw, which was to say nothing at all.",
+    "She had not earned the right to ask. He did not let himself look back.",
+  ].join("\n\n");
+
+  const issues = detectWithholdingTic(prose);
+  const phrases = issues.map((i) => i.evidence[0]);
+  assert.ok(phrases.includes("which was to say"));
+  assert.ok(phrases.includes("did not name"));
+  assert.ok(phrases.includes("had not earned the right"));
+  assert.ok(phrases.includes("did not let himself"));
+  for (const issue of issues) {
+    assert.equal(issue.severity, "warning");
+    assert.equal(issue.code, "WITHHOLDING_TIC");
+    assert.match(issue.evidence[1] ?? "", /^paragraph \d+$/);
+  }
+});
+
+test("detectExplanatoryBecauseCluster fires on 2+ pronoun/role-subject becauses in one paragraph", () => {
+  const cluster = `He took the column because admirals took columns, and the reporter laughed because reporters always laughed at that joke.`;
+  const issues = detectExplanatoryBecauseCluster(cluster);
+  assert.equal(issues.length, 2, "Two explanatory becauses in one paragraph trigger the cluster");
+  for (const issue of issues) {
+    assert.equal(issue.severity, "warning");
+    assert.equal(issue.code, "EXPLANATORY_BECAUSE_CLUSTER");
+    assert.ok(issue.evidence[0]?.startsWith("because "));
+    assert.match(issue.evidence[1] ?? "", /^paragraph \d+$/);
+  }
+
+  const single = `He took the column because admirals took columns. The room held still.`;
+  assert.equal(
+    detectExplanatoryBecauseCluster(single).length,
+    0,
+    "A single explanatory because does not cluster",
+  );
+
+  const exempt = `He held position because admirals took columns and because the bulkhead would not hold.`;
+  assert.equal(
+    detectExplanatoryBecauseCluster(exempt).length,
+    0,
+    "Single explanatory because (admirals) does not cluster; the bulkhead clause is physical, not psychologizing",
+  );
+});
+
+test("explanatory cluster does not bleed system-noun exemption from a later clause", () => {
+  // Two explanatory becauses with a physical because between them. Without
+  // per-clause clipping, the first clause's tail would swallow `bulkhead`
+  // and the system-noun exemption would silently drop the explanatory hit.
+  const prose = "He stayed because admirals took columns, because the bulkhead would not hold, because reporters always smiled.";
+  const issues = detectExplanatoryBecauseCluster(prose);
+  const phrases = issues.map((i) => i.evidence[0] ?? "");
+  assert.equal(issues.length, 2, "Both explanatory clauses must surface despite the bulkhead clause between them");
+  assert.ok(phrases.some((p) => p.includes("admirals")), "First explanatory clause (admirals) must hit");
+  assert.ok(phrases.some((p) => p.includes("reporters")), "Third explanatory clause (reporters) must hit");
+});
+
+test("detectRepetition runs new narration-only detectors on prose under the 4-gram threshold", () => {
+  // Prose is 4 words — below the 4-gram pass's 8-word minimum. The new
+  // any-instance detectors must still run, otherwise short fragments would
+  // silently bypass WITHHOLDING_TIC.
+  const prose = "Which was to say.";
+  const issues = detectRepetition(prose);
+  assert.ok(
+    issues.some((i) => i.code === "WITHHOLDING_TIC" && i.evidence[0] === "which was to say"),
+    "Short prose must still surface withholding-tic warnings via the single-call entrypoint",
+  );
+});
+
+test("dialogue exclusion: WITHHOLDING tics inside straight double quotes do not count", () => {
+  const prose = `He took the rail.
+
+"Erik did not name what he saw, which was to say nothing at all," she said.
+
+The room held still.`;
+  const issues = detectWithholdingTic(prose);
+  assert.equal(issues.length, 0, "Phrases buried inside dialogue must not trip the narration-only detector");
+
+  const narrationVersion = `He took the rail.
+
+Erik did not name what he saw, which was to say nothing at all.
+
+The room held still.`;
+  assert.ok(
+    detectWithholdingTic(narrationVersion).length >= 2,
+    "Same phrases in narration must trip the detector",
+  );
+});
+
+test("stripDialogueForNarration preserves possessives and contractions", () => {
+  const prose = `Erik's coat caught on the rail. He didn't move. "I came down," he said.`;
+  const stripped = stripDialogueForNarration(prose);
+  assert.match(stripped, /Erik's/, "Possessive single-quote apostrophes must survive");
+  assert.match(stripped, /didn't/, "Contraction apostrophes must survive");
+  assert.doesNotMatch(stripped, /I came down/, "Straight double-quote dialogue must be stripped");
+});
+
+test("smoke-prose stays clean of all three new prose-quality detectors", () => {
+  // Representative paragraphs lifted from the smoke-helpers filler pool. We
+  // assert that none of the three new warning-only detectors fire, so smoke
+  // mode keeps a deterministic, validator-clean signal for calibration.
+  const smokeProse = [
+    "Erik Halvorsen entered the chapter already carrying the pressure forward. The room held its breath while he counted the exits without turning, mapping the geometry of the space through peripheral awareness alone.",
+    "The active cast in motion was Erik Halvorsen, Roland Vauclair, Adriana Vauclair. The chapter pursued its central narrative obligation with controlled escalation, and the prose stayed anchored in the body of the POV character.",
+    "First came the inspection tick crack rendered in concrete action instead of explanation. Then the toast pushed the chapter into cost and consequence, and the architecture of the confrontation had its own momentum now.",
+    "The scene honored its mandatory obligations without collapsing into summary. Every exchange reinforced the ending hook while preserving the withheld truth for later revelation.",
+    "Continuity pressure remained active through the chapter's unresolved callbacks. The prose stayed aligned with establishing logic, giving consequence room to land before the next turn arrived.",
+    "Time moved at the speed of consequence inside the scene. Each small action rippled into the next, tightening the causal chain until retreat was no longer available to anyone present.",
+  ].join("\n\n");
+
+  const inverted = detectSentenceShapeRepetition(smokeProse).filter(
+    (i) => i.code === "INVERTED_NP_CONTRAST",
+  );
+  assert.equal(inverted.length, 0, "Smoke prose must not trip INVERTED_NP_CONTRAST");
+  assert.equal(detectWithholdingTic(smokeProse).length, 0, "Smoke prose must not trip WITHHOLDING_TIC");
+  assert.equal(
+    detectExplanatoryBecauseCluster(smokeProse).length,
+    0,
+    "Smoke prose must not trip EXPLANATORY_BECAUSE_CLUSTER",
+  );
+});
+
+test("new prose-quality detectors are warning-severity only", () => {
+  const inverted = [
+    "He was not a man but a witness.",
+    "She was not the girl but the message.",
+    "It was not an answer but a question.",
+    "He was not a guide but a stranger.",
+    "She wore not the dress but the silence.",
+  ].join("\n\n");
+  const withholding = `He did not name it, which was to say everything. He had not earned the right to speak. He did not let himself name it.`;
+  const cluster = `He took the column because admirals took columns, and the reporter laughed because reporters always laughed at that joke.`;
+
+  const all = [
+    ...detectSentenceShapeRepetition(inverted).filter((i) => i.code === "INVERTED_NP_CONTRAST"),
+    ...detectWithholdingTic(withholding),
+    ...detectExplanatoryBecauseCluster(cluster),
+  ];
+  assert.ok(all.length >= 6, "Synthetic fixtures should produce a non-trivial number of issues");
+  for (const issue of all) {
+    assert.notEqual(issue.severity, "error", `${issue.code} must never be error severity`);
+    assert.equal(issue.severity, "warning");
+  }
 });
 
 test("buildAllowedTermsFromPacket exempts character tokens + beat proper nouns, never common nouns", () => {
@@ -2107,6 +2295,42 @@ test("shouldRevertToPublishCandidate returns false when post-fix score improves"
     shouldRevertToPublishCandidate({ candidateScore: 88, postFixScore: 90, tolerance: 1 }),
     false,
     "Improvement must never trigger revert",
+  );
+});
+
+test("shouldRevertToPublishCandidate reverts when post-fix dips just under threshold even within tolerance", () => {
+  assert.equal(
+    shouldRevertToPublishCandidate({
+      candidateScore: 86.96,
+      postFixScore: 85.98,
+      tolerance: 1,
+      passThreshold: 86,
+      postFixPassesThreshold: false,
+    }),
+    true,
+    "Candidate cleared 86; fix-loop nudge to 85.98 must revert, not block",
+  );
+  assert.equal(
+    shouldRevertToPublishCandidate({
+      candidateScore: 87,
+      postFixScore: 86.5,
+      tolerance: 1,
+      passThreshold: 86,
+      postFixPassesThreshold: true,
+    }),
+    false,
+    "Both candidate and post-fix above threshold within tolerance: stay",
+  );
+  assert.equal(
+    shouldRevertToPublishCandidate({
+      candidateScore: 85,
+      postFixScore: 84,
+      tolerance: 1,
+      passThreshold: 86,
+      postFixPassesThreshold: false,
+    }),
+    false,
+    "Candidate also below threshold: nothing to revert toward; let the threshold gate block",
   );
 });
 
