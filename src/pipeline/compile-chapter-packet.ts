@@ -9,6 +9,7 @@ import type {
   ContinuityActiveSlice,
   ContinuityManifest,
   HandoffMemory,
+  MistakenBelief,
   RollingMemory,
   VoiceTarget,
 } from "../types/index.js";
@@ -312,17 +313,24 @@ export async function compileChapterPacket(params: {
   // silently falls back to the manifest on mismatch.
   let activeManifest: ContinuityManifest | null = blueprintArtifacts.continuityManifest.data;
   const activeManifestNotes: string[] = [];
-  if (activeManifest && chapterNumber > 1) {
+  let mistakenBeliefs: Record<string, MistakenBelief[]> = {};
+  if (chapterNumber > 1) {
     const persistedState = await loadPersistedContinuityState({
       chapterNumber: chapterNumber - 1,
       blueprintHash: blueprintArtifacts.compiledBlueprint.blueprintHash,
       blueprintVersion: blueprintArtifacts.compiledBlueprint.blueprintVersion,
     });
     if (persistedState) {
-      activeManifest = projectStateToManifest(persistedState.data);
-      activeManifestNotes.push(
-        `Active slice derived from continuity-state-after-${chapterNumber - 1}.json (delivered reveals, last-seen bumps, motif progression applied).`,
-      );
+      // mistakenBeliefs surface to the packet via direct read from
+      // ContinuityState — NOT through projectStateToManifest, which is the
+      // static blueprint-derived projection target.
+      mistakenBeliefs = persistedState.data.mistakenBeliefs ?? {};
+      if (activeManifest) {
+        activeManifest = projectStateToManifest(persistedState.data);
+        activeManifestNotes.push(
+          `Active slice derived from continuity-state-after-${chapterNumber - 1}.json (delivered reveals, last-seen bumps, motif progression applied).`,
+        );
+      }
     }
   }
 
@@ -421,6 +429,7 @@ export async function compileChapterPacket(params: {
     ...(chapter.namedCharacterCap !== undefined
       ? { namedCharacterCap: chapter.namedCharacterCap }
       : {}),
+    mistakenBeliefs,
   };
 
   const artifact = createArtifact<ChapterPacket>({

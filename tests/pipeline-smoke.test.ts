@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { cleanupTempRoot, createTempRoot, readJson, runChapterCli, writeRootBlueprint } from "./helpers.js";
 import { FIXTURE_BLUEPRINT, INVALID_BLUEPRINT } from "./fixtures/blueprint-fixture.js";
+import { EFFECT_TICS_SEED } from "../src/blueprint/extract-voice-fingerprint.js";
 
 test("smoke pipeline writes delta and rolling memory artifacts", async (t) => {
   const rootDir = await createTempRoot();
@@ -156,6 +157,42 @@ test("Named Character Cap + Surname Alias propagate from blueprint markdown into
     rowan.surnameAlias,
     undefined,
     "Characters without the flag must NOT have surnameAlias set on the card",
+  );
+});
+
+test("compile-blueprint seeds voice-target.json with the seed effectTics catalog when none exists", async (t) => {
+  const rootDir = await createTempRoot();
+  t.after(async () => {
+    await cleanupTempRoot(rootDir);
+  });
+
+  await writeRootBlueprint(rootDir, FIXTURE_BLUEPRINT);
+  const compile = runChapterCli(["--compile-blueprint", "--no-genre-ai"], rootDir);
+  assert.equal(compile.status, 0, compile.stderr || compile.stdout);
+
+  const voiceTarget = await readJson<any>(
+    path.join(rootDir, "artifacts", "blueprint", "voice-target.json"),
+  );
+  assert.equal(voiceTarget.artifactType, "voice-target");
+  assert.equal(voiceTarget.data.source, "blueprint-fallback");
+  assert.deepEqual(voiceTarget.data.derivedFromChapters, []);
+  assert.deepEqual(
+    voiceTarget.data.fingerprint.effectTics,
+    EFFECT_TICS_SEED,
+    "first-chapter voice-grit needs the seed catalog as the deterministic fallback",
+  );
+
+  // Idempotent: re-compile must not clobber an existing voice-target.
+  const beforeMtime = voiceTarget.createdAt;
+  const recompile = runChapterCli(["--compile-blueprint", "--no-genre-ai"], rootDir);
+  assert.equal(recompile.status, 0, recompile.stderr || recompile.stdout);
+  const afterRecompile = await readJson<any>(
+    path.join(rootDir, "artifacts", "blueprint", "voice-target.json"),
+  );
+  assert.equal(
+    afterRecompile.createdAt,
+    beforeMtime,
+    "ensureVoiceTargetSeeded must leave an existing voice-target.json untouched",
   );
 });
 

@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 
 import { hasOpenAiCredentials } from "../api/openai.js";
@@ -9,8 +10,10 @@ import { compileGenreContract } from "../blueprint/compile-genre-contract.js";
 import { compileLocations } from "../blueprint/compile-locations.js";
 import { compileMarketPromise } from "../blueprint/compile-market-promise.js";
 import { compileStoryCore } from "../blueprint/compile-story-core.js";
+import { extractAndPersistVoiceTarget } from "../blueprint/extract-voice-fingerprint.js";
 import { parseBlueprint } from "../blueprint/parse-blueprint.js";
 import { validateBlueprint } from "../blueprint/validate-blueprint.js";
+import { voiceTargetArtifactPath } from "./stage-utils.js";
 import type {
   ArtifactEnvelope,
   AuthorBrief,
@@ -80,6 +83,47 @@ async function writeCachedArtifacts(
   await writeJson(path.join(cacheDir, "continuity-manifest.json"), artifacts.continuityManifest);
   await writeJson(path.join(cacheDir, "locations.json"), artifacts.locations);
   await writeJson(path.join(cacheDir, "author-brief.json"), artifacts.authorBrief);
+}
+
+// Find the highest published chapter number on disk (chapter-N.md). Returns 0
+// when no chapters are published. Used to seed the voice-target fingerprint
+// at compile-blueprint time so chapter 1's voice-grit pass has a target.
+async function findMaxPublishedChapter(): Promise<number> {
+  let entries: string[];
+  try {
+    entries = await fs.readdir(config.paths.chapters);
+  } catch {
+    return 0;
+  }
+  let max = 0;
+  for (const name of entries) {
+    const match = /^chapter-(\d+)\.md$/.exec(name);
+    if (!match) continue;
+    const n = Number(match[1]);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max;
+}
+
+// First-chapter voice-grit needs `voice-target.json` to exist BEFORE drafting
+// (post-publish extraction is too late for chapter 1). When the artifact is
+// absent, seed it deterministically: extract from any published chapters that
+// happen to exist, otherwise fall back to the seed effectTics catalog inside
+// extractAndPersistVoiceTarget. Existing voice-targets are left untouched so
+// the live post-publish extraction continues to overwrite them per chapter.
+async function ensureVoiceTargetSeeded(params: {
+  blueprint: ParsedStoryBlueprint;
+  compiledBlueprintData: CompiledStoryBlueprint;
+}): Promise<void> {
+  if (await fileExists(voiceTargetArtifactPath())) {
+    return;
+  }
+  await extractAndPersistVoiceTarget({
+    publishedThroughChapter: await findMaxPublishedChapter(),
+    blueprint: params.compiledBlueprintData,
+    blueprintHash: params.blueprint.blueprintHash,
+    blueprintVersion: params.blueprint.metadata.blueprintVersion,
+  });
 }
 
 function resolveGenreCompilationMode(noGenreAi: boolean): string {
@@ -178,6 +222,10 @@ export async function compileBlueprintRuntime(options: {
   const cachedArtifacts = await loadCachedArtifacts(cacheDir, parsed);
   if (cachedArtifacts) {
     await writeCanonicalArtifacts(cachedArtifacts);
+    await ensureVoiceTargetSeeded({
+      blueprint: parsed,
+      compiledBlueprintData: cachedArtifacts.compiledBlueprint.data,
+    });
     return {
       parsed,
       artifacts: cachedArtifacts,
@@ -232,6 +280,10 @@ export async function compileBlueprintRuntime(options: {
 
   await writeCachedArtifacts(cacheDir, artifacts);
   await writeCanonicalArtifacts(artifacts);
+  await ensureVoiceTargetSeeded({
+    blueprint: parsed,
+    compiledBlueprintData: compiledBlueprint.data,
+  });
 
   return {
     parsed,

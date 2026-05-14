@@ -155,17 +155,22 @@ export function derivePassesThreshold(review: DraftReview, passThreshold: number
 export function buildVoiceCardSummary(
   activeCast: CharacterCard[],
   runtimeCards: VoiceCard[],
+  mistakenBeliefsByCharacter: Record<string, string[]> = {},
 ): string {
   return activeCast
     .map((c) => {
       const noticesSegment = c.noticingEngine ? ` notices="${c.noticingEngine}"` : "";
+      const beliefs = mistakenBeliefsByCharacter[c.name] ?? [];
+      const beliefsSegment = beliefs.length > 0
+        ? `; believes=[${beliefs.map((b) => `"${b}"`).join(", ")}]`
+        : "";
       const runtimeCard = runtimeCards.find(
         (card) => card.character.toLowerCase() === c.name.toLowerCase(),
       );
       if (runtimeCard) {
-        return `${c.name} (${c.role}): traits=[${runtimeCard.activeTraits.join("; ")}] habits=[${runtimeCard.dialogueHabits.join("; ")}] stress="${runtimeCard.stressPattern}" taboo=[${runtimeCard.tabooNotes.join("; ")}]${noticesSegment}`;
+        return `${c.name} (${c.role}): traits=[${runtimeCard.activeTraits.join("; ")}] habits=[${runtimeCard.dialogueHabits.join("; ")}] stress="${runtimeCard.stressPattern}" taboo=[${runtimeCard.tabooNotes.join("; ")}]${noticesSegment}${beliefsSegment}`;
       }
-      return `${c.name} (${c.role}): ${c.voiceNotes.join("; ")}${noticesSegment}`;
+      return `${c.name} (${c.role}): ${c.voiceNotes.join("; ")}${noticesSegment}${beliefsSegment}`;
     })
     .join("\n");
 }
@@ -182,6 +187,7 @@ export function buildJudgeInstructions(
     "dialogueAuthenticity: distinct character voices matching their voice cards, subtext over exposition, naturalism under pressure.",
     "sensoryImmersion: physical grounding, environmental presence, body-in-space awareness, the reader feels present.",
     "voiceConsistency: scene prose stays inside the POV character's perceptual filter and authorized knowledge.",
+    "repetitionPenalty: this dimension is INVERTED from the other 14. It scores PENALTY MAGNITUDE, not cleanliness. Score 0 when the chapter has no perceived repetition problem, score 100 when the chapter is saturated with repeated words, phrases, sentence shapes, body anchors, gestures, or rhetorical structures. Treat the deterministic validator's repetition warnings as one input but use literary judgment for the final number. Higher values lower the overall score.",
     `Set passesThreshold true only when the overall chapter clearly clears ${passThreshold} and has no blocking literary or continuity issues.`,
     "When evaluating voice consistency, compare against the character voice cards and style rules provided.",
     "When evaluating continuity, check that the chapter opens consistently with where the previous chapter ended and respects the continuity active slice when provided.",
@@ -190,6 +196,7 @@ export function buildJudgeInstructions(
     "Close-third stays inside the POV character's head. Treat as a violation any narration that gives a fact the POV character has no on-page reason to know in the moment: exact ages, full names of strangers, rehearsal history, training history, biographical detail, backstory of background characters, what someone said in a private conversation the POV did not witness, or what someone is feeling internally.",
     "An on-page reason can be: prior establishment within this chapter or the previous chapter, the character has just been introduced by name, a packet/spec note that the POV personally knows the fact, or the prose makes the inference observable (e.g. \"young enough to flush like a schoolgirl\" instead of \"sixteen years old and trained all spring\"). Inference from observable behavior is allowed; omniscient assertion is not.",
     "Flag every POV violation in revisionActions and, when the violation is structural rather than incidental, add it to blockingIssues.",
+    "BLOCKING SUB-RULE (no discretion): any unsourced demographic assertion about a non-cast walk-on — ethnicity, nationality, exact age, training history, professional background, or any biographical fact the POV character has no on-page reason to know — is STRUCTURAL, not incidental. Add it to blockingIssues every time, even if it appears only once and reads as a small detail. The fix is trivial (let the prose use observable description, or have a cast character introduce the fact in dialogue), so the bar for blocking is low.",
     "",
     "SCENE TURN CHECK (feeds forwardMotion).",
     "For each scene break in the candidate prose, evaluate whether the scene actually changed the story state — someone now knows more, hides more, fears more, has misread something, has made a choice, has lost control, or has shifted loyalty. Atmosphere alone is not a turn. When a scene fails this check, lower forwardMotion, name the failing scene in weaknesses with a one-line reason, and add a concrete fix to revisionActions.",
@@ -266,7 +273,19 @@ export async function judgeDraft(params: {
       : null;
 
     const runtimeCards = packetArtifact.data.rollingMemory?.activeCharacterVoiceCards ?? [];
-    const voiceCardSummary = buildVoiceCardSummary(packetArtifact.data.activeCast, runtimeCards);
+    const beliefStringsByCharacter: Record<string, string[]> = {};
+    for (const c of packetArtifact.data.activeCast) {
+      const beliefs = packetArtifact.data.mistakenBeliefs?.[c.name] ?? [];
+      const filtered = beliefs
+        .filter((b) => b.status === "active" || b.status === "questioned")
+        .map((b) => b.belief);
+      if (filtered.length > 0) beliefStringsByCharacter[c.name] = filtered;
+    }
+    const voiceCardSummary = buildVoiceCardSummary(
+      packetArtifact.data.activeCast,
+      runtimeCards,
+      beliefStringsByCharacter,
+    );
 
     const marketPromise = packetArtifact.data.marketPromise;
     const continuitySlice = packetArtifact.data.continuityActiveSlice;

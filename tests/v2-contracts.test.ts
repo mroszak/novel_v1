@@ -6,7 +6,9 @@ import test from "node:test";
 
 import { parseBlueprint } from "../src/blueprint/parse-blueprint.js";
 import { runContinuityManifestValidators } from "../src/validators/continuity-manifest.js";
-import { applyVoiceGritPatches } from "../src/pipeline/voice-grit-pass.js";
+import { applyVoiceGritPatches, buildEffectTicLookup } from "../src/pipeline/voice-grit-pass.js";
+
+const EMPTY_EFFECT_TIC_LOOKUP = buildEffectTicLookup(null);
 import {
   _internals as continuityInternals,
   buildDeclaredRevealsFromSpec,
@@ -316,6 +318,7 @@ function makePacket(overrides: Partial<ChapterPacket> = {}): ChapterPacket {
     continuityActiveSlice: null,
     locations: null,
     authorBrief: { authorialPersona: "x", craftDirectives: ["x"], source: "deterministic" },
+    mistakenBeliefs: {},
     ...overrides,
   };
 }
@@ -394,6 +397,7 @@ test("voice-grit validator rejects voice-tic without ticSource", () => {
     prose,
     patches,
     voiceCards: { activeTraits: new Set(["Clipped"]), dialogueHabits: new Set(), taboos: new Set() },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.equal(result.applied.length, 0);
   assert.equal(result.skipped.length, 1);
@@ -420,6 +424,7 @@ test("voice-grit validator rejects ticSource that matches a taboo", () => {
       dialogueHabits: new Set(),
       taboos: new Set(["Do not name the architect"]),
     },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.equal(result.applied.length, 0);
   assert.match(result.skipped[0]!.skipReason, /tabooNotes/);
@@ -461,6 +466,7 @@ test("voice-grit validator enforces total patch cap (6)", () => {
     prose,
     patches,
     voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.ok(result.applied.length <= 6, `applied <= 6, got ${result.applied.length}`);
   assert.ok(
@@ -488,6 +494,7 @@ test("voice-grit validator enforces per-scene patch cap (2)", () => {
     prose,
     patches,
     voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.equal(result.applied.length, 2);
   assert.equal(result.skipped.length, 1);
@@ -523,6 +530,7 @@ test("voice-grit validator enforces once-per-chapter texture caps", () => {
     prose,
     patches,
     voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.equal(result.applied.length, 1);
   assert.equal(result.skipped.length, 1);
@@ -541,6 +549,7 @@ test("voice-grit validator rejects originalText not present in prose", () => {
     prose,
     patches,
     voiceCards: { activeTraits: new Set(), dialogueHabits: new Set(), taboos: new Set() },
+    effectTics: EMPTY_EFFECT_TIC_LOOKUP,
   });
   assert.equal(result.applied.length, 0);
   assert.match(result.skipped[0]!.skipReason, /verbatim exactly once/);
@@ -585,6 +594,7 @@ function makeDelta(overrides: Partial<ChapterDelta> = {}): ChapterDelta {
     activeVoiceSignals: [],
     storySpineUpdate: "Spine.",
     characterEmotionalStates: [],
+    mistakenBeliefDeltas: [],
     ...overrides,
   };
 }
@@ -696,6 +706,7 @@ test("projectStateToManifest drops delivered + notes and clones entries", () => 
     relationshipStates: [{ pair: "A x B", trust: "low", distance: "high", dependency: "low", rivalry: "med" }],
     motifStates: [{ motif: "white seam", intensity: "low", lastChapter: 2, stage: "recurring" }],
     notes: ["irreversible note"],
+    mistakenBeliefs: {},
   };
   const projected = projectStateToManifest(state);
   assert.ok(!("notes" in projected));

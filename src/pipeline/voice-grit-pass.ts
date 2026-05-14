@@ -42,12 +42,66 @@ const VALID_TEXTURES = new Set<GritTexture>([
   "strategic-under-explanation",
   "specificity-swap",
   "asymmetric-paragraph-weight",
+  "repeated-effect",
 ]);
 
 interface VoiceCardLookup {
   activeTraits: Set<string>;
   dialogueHabits: Set<string>;
   taboos: Set<string>;
+}
+
+export type EffectTicCategory =
+  | "bodyAnchors"
+  | "rhetoricalStructures"
+  | "modifierTics"
+  | "sensoryTics"
+  | "gestureTics"
+  | "abstractionTics"
+  | "balancedClauseTics";
+
+export type EffectTicLookup = Record<EffectTicCategory, Set<string>>;
+
+const EFFECT_TIC_CATEGORIES: EffectTicCategory[] = [
+  "bodyAnchors",
+  "rhetoricalStructures",
+  "modifierTics",
+  "sensoryTics",
+  "gestureTics",
+  "abstractionTics",
+  "balancedClauseTics",
+];
+
+export function buildEffectTicLookup(voiceTarget: VoiceTarget | null): EffectTicLookup {
+  const lookup: EffectTicLookup = {
+    bodyAnchors: new Set<string>(),
+    rhetoricalStructures: new Set<string>(),
+    modifierTics: new Set<string>(),
+    sensoryTics: new Set<string>(),
+    gestureTics: new Set<string>(),
+    abstractionTics: new Set<string>(),
+    balancedClauseTics: new Set<string>(),
+  };
+  const tics = voiceTarget?.fingerprint.effectTics;
+  if (!tics) return lookup;
+  for (const category of EFFECT_TIC_CATEGORIES) {
+    for (const entry of tics[category] ?? []) {
+      lookup[category].add(entry);
+    }
+  }
+  return lookup;
+}
+
+const TIC_SOURCE_EFFECT_RE = /^effectTics\.([A-Za-z]+):(.+)$/;
+
+function parseEffectTicSource(
+  ticSource: string,
+): { category: EffectTicCategory; entry: string } | null {
+  const match = TIC_SOURCE_EFFECT_RE.exec(ticSource);
+  if (!match) return null;
+  const category = match[1] as EffectTicCategory;
+  if (!EFFECT_TIC_CATEGORIES.includes(category)) return null;
+  return { category, entry: match[2]! };
 }
 
 // CRLF-safe: matches one or more blank-line separators (LF or CRLF).
@@ -183,8 +237,9 @@ export function applyVoiceGritPatches(params: {
   prose: string;
   patches: GritPatch[];
   voiceCards: VoiceCardLookup;
+  effectTics: EffectTicLookup;
 }): ApplyResult {
-  const { voiceCards } = params;
+  const { voiceCards, effectTics } = params;
   let working = params.prose;
   const applied: GritPatch[] = [];
   const skipped: Array<GritPatch & { skipReason: string }> = [];
@@ -234,12 +289,34 @@ export function applyVoiceGritPatches(params: {
         skipped.push({ ...patch, skipReason: "voice-tic requires ticSource citing a real voice-card entry." });
         continue;
       }
+      if (parseEffectTicSource(patch.ticSource)) {
+        skipped.push({ ...patch, skipReason: "voice-tic ticSource cites an effectTics entry; must cite an activeTrait or dialogueHabit instead." });
+        continue;
+      }
       if (voiceCards.taboos.has(patch.ticSource)) {
         skipped.push({ ...patch, skipReason: "ticSource is from tabooNotes; voice-tic must source from activeTraits or dialogueHabits." });
         continue;
       }
       if (!voiceCards.activeTraits.has(patch.ticSource) && !voiceCards.dialogueHabits.has(patch.ticSource)) {
         skipped.push({ ...patch, skipReason: "ticSource does not match any activeTrait or dialogueHabit on the active voice cards." });
+        continue;
+      }
+    } else if (patch.texture === "repeated-effect") {
+      if (!patch.ticSource || patch.ticSource.trim().length === 0) {
+        skipped.push({ ...patch, skipReason: "repeated-effect requires ticSource citing an effectTics entry." });
+        continue;
+      }
+      const parsed = parseEffectTicSource(patch.ticSource);
+      if (!parsed) {
+        skipped.push({ ...patch, skipReason: "repeated-effect ticSource must follow the canonical form 'effectTics.<category>:<entry>'." });
+        continue;
+      }
+      if (voiceCards.taboos.has(parsed.entry)) {
+        skipped.push({ ...patch, skipReason: "ticSource entry is on a tabooNote; excluded for both textures." });
+        continue;
+      }
+      if (!effectTics[parsed.category].has(parsed.entry)) {
+        skipped.push({ ...patch, skipReason: `repeated-effect ticSource entry is not present in effectTics.${parsed.category}.` });
         continue;
       }
     }
@@ -393,6 +470,8 @@ export async function runVoiceGritPass(params: {
           "Each originalText must appear verbatim exactly once in the chapter prose.",
           "Reserved zones BLOCKED: chapter opening (~200 words), chapter ending (last paragraph), chapter title, paragraph-end sentences, scene-break leadout sentences.",
           "voice-tic patches REQUIRE a ticSource citing a real activeTrait or dialogueHabit (NOT a tabooNote).",
+          "repeated-effect patches REQUIRE a ticSource in the canonical form 'effectTics.<category>:<entry>' (no quotes, no whitespace, exact match against the KNOWN EFFECT TICS lookup). Tabooed entries excluded.",
+          "Detect repeated effects in addition to repeated words. For each repeated body anchor, gesture, rhetorical structure, modifier tic, sensory beat, abstraction tic, or balanced-clause turn, classify it as KEEP (intentional motif that escalates or changes meaning), VARY (useful effect but the phrasing or gesture repeats too closely), or CUT (duplicate effect that adds no new pressure, character, or information). Only emit a `repeated-effect` patch for VARY or CUT — KEEP is recorded in `earnedJustification` only. Do not flatten intentional motifs. The goal is to prevent the chapter from sounding uniformly polished or generated, not to remove all repetition.",
           "interrupted-observation: max one per chapter. strategic-under-explanation: max one per chapter.",
           "Do not change plot, world facts, or character knowledge. Do not introduce typos or grammatical errors.",
         ].join("\n"),
@@ -403,6 +482,9 @@ export async function runVoiceGritPass(params: {
             guidanceLines: params.voiceTarget.guidanceLines,
           }),
           "</voice_target>",
+          "<known_effect_tics>",
+          compactJson(params.voiceTarget.fingerprint.effectTics),
+          "</known_effect_tics>",
           "<voice_cards>",
           compactJson(voiceCards.map((card) => ({
             character: card.character,
@@ -469,6 +551,7 @@ export async function runVoiceGritPass(params: {
     prose: preProse,
     patches: plan.patches,
     voiceCards: buildVoiceCardLookup(params.packetArtifact.data),
+    effectTics: buildEffectTicLookup(params.voiceTarget),
   });
 
   if (apply.applied.length === 0) {

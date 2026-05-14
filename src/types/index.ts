@@ -234,6 +234,29 @@ export interface ContinuityRevealStatus extends RevealEntry {
   delivered: boolean;
 }
 
+export type MistakenBeliefStatus = "active" | "questioned" | "corrected" | "exploited";
+
+export interface MistakenBelief {
+  belief: string;
+  basis: string | null;
+  introducedInChapter: number;
+  lastReinforcedInChapter: number | null;
+  status: MistakenBeliefStatus;
+  readerKnowsItIsWrong: boolean;
+  consequence: string | null;
+}
+
+export type MistakenBeliefDeltaOp = "introduce" | "reinforce" | "question" | "correct" | "exploit";
+
+export interface MistakenBeliefDelta {
+  character: string;
+  op: MistakenBeliefDeltaOp;
+  belief: string;
+  basis: string | null;
+  readerKnowsItIsWrong: boolean;
+  consequence: string | null;
+}
+
 export interface ContinuityState {
   chapterNumber: number;
   persistentObjects: PersistentObject[];
@@ -243,6 +266,13 @@ export interface ContinuityState {
   relationshipStates: RelationshipState[];
   motifStates: MotifState[];
   notes: string[];
+  /**
+   * Per-POV-character beliefs that the character holds incorrectly. Drives
+   * spec/draft/judge surfacing of dramatic-irony pressure. Keyed by
+   * character name string (matching `CharacterCard.name`). Defaults to `{}`
+   * when no beliefs are tracked.
+   */
+  mistakenBeliefs: Record<string, MistakenBelief[]>;
 }
 
 export interface AuthorBrief {
@@ -257,7 +287,8 @@ export type GritTexture =
   | "interrupted-observation"
   | "strategic-under-explanation"
   | "specificity-swap"
-  | "asymmetric-paragraph-weight";
+  | "asymmetric-paragraph-weight"
+  | "repeated-effect";
 
 export interface GritPatch {
   texture: GritTexture;
@@ -458,6 +489,14 @@ export interface ChapterPacket {
    * enforced as a warning by the deterministic validator.
    */
   namedCharacterCap?: number;
+  /**
+   * Per-POV-character mistaken beliefs surfaced from the prior chapter's
+   * persisted `ContinuityState`. Read directly from the loaded state — NOT
+   * routed through `projectStateToManifest`, which is the static
+   * blueprint-derived projection target. Defaults to `{}` when no prior
+   * state exists or the prior state lacks the field.
+   */
+  mistakenBeliefs: Record<string, MistakenBelief[]>;
 }
 
 export interface ChapterSpec {
@@ -646,6 +685,13 @@ export interface ChapterDelta {
   }>;
   storySpineUpdate: string;
   characterEmotionalStates: CharacterEmotionalState[];
+  /**
+   * Per-chapter signals that introduce, reinforce, question, correct, or
+   * exploit a POV character's mistaken belief. Consumed deterministically
+   * by `update-continuity-state.ts` to merge into
+   * `ContinuityState.mistakenBeliefs`. Defaults to `[]`.
+   */
+  mistakenBeliefDeltas: MistakenBeliefDelta[];
 }
 
 export interface MemoryUpdateProposal {
@@ -742,6 +788,21 @@ export interface VoiceFingerprint {
   povInteriorityDensity: {
     interiorMarkersPer1000Words: number;
     sampleMarkers: string[];
+  };
+  /**
+   * Repeated-effect catalog used by the voice-grit `repeated-effect`
+   * texture. Populated deterministically from published-chapter text by
+   * `extract-voice-fingerprint.ts`; falls back to a seed catalog when no
+   * corpus exists. All seven sub-arrays required; default `[]` per array.
+   */
+  effectTics: {
+    bodyAnchors: string[];
+    rhetoricalStructures: string[];
+    modifierTics: string[];
+    sensoryTics: string[];
+    gestureTics: string[];
+    abstractionTics: string[];
+    balancedClauseTics: string[];
   };
 }
 

@@ -12,9 +12,10 @@ import type {
 import { buildDeltaPacketView } from "./prompt-packet-views.js";
 import { createSmokeDelta } from "./smoke-helpers.js";
 import { chapterArtifactPath, createArtifact } from "./stage-utils.js";
+import { normalizeChapterDelta } from "./update-continuity-state.js";
 import { compactJson, writeJson } from "../utils/index.js";
 
-const chapterDeltaSchema = {
+export const chapterDeltaSchema = {
   type: "object",
   properties: {
     entityMentions: {
@@ -140,6 +141,32 @@ const chapterDeltaSchema = {
         additionalProperties: false,
       },
     },
+    mistakenBeliefDeltas: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          character: { type: "string", minLength: 1 },
+          op: {
+            type: "string",
+            enum: ["introduce", "reinforce", "question", "correct", "exploit"],
+          },
+          belief: { type: "string", minLength: 1 },
+          basis: { anyOf: [{ type: "string", minLength: 1 }, { type: "null" }] },
+          readerKnowsItIsWrong: { type: "boolean" },
+          consequence: { anyOf: [{ type: "string", minLength: 1 }, { type: "null" }] },
+        },
+        required: [
+          "character",
+          "op",
+          "belief",
+          "basis",
+          "readerKnowsItIsWrong",
+          "consequence",
+        ],
+        additionalProperties: false,
+      },
+    },
   },
   required: [
     "entityMentions",
@@ -154,6 +181,7 @@ const chapterDeltaSchema = {
     "activeVoiceSignals",
     "storySpineUpdate",
     "characterEmotionalStates",
+    "mistakenBeliefDeltas",
   ],
   additionalProperties: false,
 } as const;
@@ -176,6 +204,7 @@ export function buildChapterDeltaRequest(params: {
       "Track entities, knowledge changes, plot-thread movement, reveal/payoff movement, and the exact handoff pressure for the next chapter.",
       "When a character directly witnesses or plausibly overhears official spin, euphemistic guest-facing language, or message-control decisions before facts are confirmed, preserve that in their knowledge or suspicion state.",
       "For each active character, extract their emotional state at chapter end: current belief, current doubt, emotional register, and how far they have moved from their starting arc position.",
+      "Extract **only** mistaken beliefs that materially affect future action, delay, failed warnings, social cover-ups, professional misclassification, reversals, or reader suspense. A mistaken belief is something the character believes, assumes, classifies, or dismisses incorrectly — not merely something they do not yet know. For each: name the character (matching the active cast), choose `op` (`introduce` for first appearance, `reinforce` if it persists, `question` if the character starts to doubt it, `correct` if they learn the truth, `exploit` if another character uses it against them), state the belief in one sentence, the on-page basis if any, whether the reader knows it is wrong, and the dramatic consequence in one sentence. Empty array is valid; do not invent beliefs to fill it.",
     ].join("\n"),
     prompt: [
       `Genre contract: ${compactJson(params.genreContract)}`,
@@ -201,7 +230,7 @@ export async function extractChapterDelta(params: {
   let usage: ArtifactEnvelope<ChapterDelta>["usage"];
 
   if (smoke) {
-    delta = createSmokeDelta(packetArtifact.data, selectedArtifact.data);
+    delta = normalizeChapterDelta(createSmokeDelta(packetArtifact.data, selectedArtifact.data));
     usage = undefined;
   } else {
     const deltaRequest = buildChapterDeltaRequest({
@@ -214,7 +243,7 @@ export async function extractChapterDelta(params: {
       stage: config.stageProfiles.chapterDelta,
       ...deltaRequest,
     });
-    delta = result.value;
+    delta = normalizeChapterDelta(result.value);
     usage = result.usage;
   }
 

@@ -28,6 +28,7 @@ Planner picks 0–6 textures. Empty is a valid plan. Locally earned only — thi
 4. `strategic-under-explanation` — delete 1–2 consecutive sentences that narrate what the prior beat already showed. **Max one patch of this type per chapter.**
 5. `specificity-swap` — replace one abstract noun phrase with a hyper-specific concrete detail consistent with POV expertise.
 6. `asymmetric-paragraph-weight` — split or merge a balanced paragraph where it serves emotional pressure.
+7. `repeated-effect` — VARY or CUT one sentence whose dominant effect duplicates another within the chapter without escalation, inversion, or new information. `ticSource` cites an `effectTics` entry from the voice fingerprint. Honors reserved zones, count caps, and the atomic discard rule.
 
 ## Hard constraints (validator-enforced)
 
@@ -35,7 +36,7 @@ Planner picks 0–6 textures. Empty is a valid plan. Locally earned only — thi
 - Reserved zones blocked: chapter opening (~200 words), chapter ending (last paragraph), chapter title, paragraph-end sentences, scene-break leadout sentences. (Owned by the opening/ending tournament.)
 - Each `originalText` must appear verbatim **exactly once** in the chapter.
 - Max 2 patches per scene.
-- `tabooNote` is **excluded** from `ticSource` — taboos flow to the planner only as a "DO NOT SURFACE" constraint section.
+- `ticSource` may cite either an `activeTrait` / `dialogueHabit` (for `voice-tic`) or an `effectTics.<category>:<entry>` (for `repeated-effect`). Wrong-shape citations skip with a clear reason. `tabooNote` entries are **excluded** for both textures — taboos flow to the planner only as a "DO NOT SURFACE" constraint section.
 - No new plot, info, character knowledge, or world facts. No typos, grammatical errors, or vocal hedges in narration.
 
 ## Rejudge atomicity

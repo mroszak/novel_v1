@@ -135,7 +135,7 @@ export function buildDraftSystemPrompt(params: {
       "CHAPTER-1 LESSONS — DEFAULTS (break only with reason):",
       "",
       "- D1. Give every POV a distinct noticing engine. When `noticingEngine` is set on a character card, that character must perceive the scene through it (job, fear, training, class, guilt, or habit). No two POV sections in a chapter should sound like the same narrator wearing different hats.",
-      "- D2. Keep suspense procedural. Characters first process danger through role, habit, etiquette, denial, or training before they understand the full threat. Do not let them narrate the theme or explain the danger on contact.",
+      "- D2. Keep suspense procedural. Characters first process danger through role, habit, etiquette, denial, or training before they understand the full threat. Do not let them narrate the theme or explain the danger on contact. When a POV character's voice card lists `mistakenBeliefs`, the prose should let those beliefs drive their reading of the scene (classification, dismissal, comforting interpretation), not contradict them prematurely.",
       "- D3. Technical details must do at least one job: create tension, clarify space, reveal character, set up consequence, or produce later irony. If a detail only sounds cool, cut it.",
       "- D4. Use big cinematic imagery only at structural thresholds: arrival, reveal, disaster, realization, irreversible ending. Between thresholds, keep prose concrete and functional.",
       "- D5. Motifs may repeat only when they escalate, reverse, or gain new context. Do not repeat the same image at the same emotional intensity.",

@@ -35,6 +35,117 @@ const SENTENCE_BUCKETS: Array<{ label: string; min: number; max: number }> = [
   { label: "33+", min: 33, max: Infinity },
 ];
 
+// Seed catalog used as the deterministic-fallback default for `effectTics`
+// when no corpus exists. The corpus-derived path may legitimately override
+// per-book once published chapters have been written.
+export const EFFECT_TICS_SEED: VoiceFingerprint["effectTics"] = {
+  bodyAnchors: ["ribs", "palm", "hands flat", "breath", "teeth", "throat", "chest", "wrist", "thumb"],
+  rhetoricalStructures: [
+    "the way X does Y",
+    "as if",
+    "as though",
+    "not X but Y",
+    "X and not X",
+    "before he had time to",
+    "without meaning to",
+    "he did not let himself",
+    "he had learned",
+  ],
+  modifierTics: ["small", "clean", "soft", "private", "precise", "polite", "warm", "wrong"],
+  sensoryTics: [
+    "warmth/cold contrast",
+    "music as atmosphere",
+    "light dimming/returning",
+    "pressure felt through body",
+    "object pressing against ribs",
+    "glass/acrylic surface description",
+  ],
+  gestureTics: [
+    "touching rail",
+    "setting palm flat",
+    "checking pocket",
+    "making clipboard mark",
+    "not drinking",
+    "turning away before answering",
+    "counting silently",
+  ],
+  abstractionTics: [
+    "shame as a physical presence",
+    "room as an actor",
+    "silence as an object",
+    "professional category as emotional shield",
+  ],
+  balancedClauseTics: [
+    "It was X, and it was not X",
+    "He had Y, and he had not Y",
+    "The room had recovered; the building had not",
+    "beautiful but wrong",
+    "public order/private failure",
+  ],
+};
+
+function emptyEffectTics(): VoiceFingerprint["effectTics"] {
+  return {
+    bodyAnchors: [],
+    rhetoricalStructures: [],
+    modifierTics: [],
+    sensoryTics: [],
+    gestureTics: [],
+    abstractionTics: [],
+    balancedClauseTics: [],
+  };
+}
+
+// Build per-category regex patterns for the rhetorical/gesture/sensory/
+// abstraction/balanced-clause families. These are heuristic predictors of
+// the seed-listed *effects*; calibrate by extending the seed list and the
+// per-entry regex map rather than lowering thresholds.
+const RHETORICAL_PATTERNS: Array<[string, RegExp]> = [
+  ["the way X does Y", /\bthe way [a-z][a-z'\-]+ [a-z][a-z'\-]+/i],
+  ["as if", /\bas if\b/i],
+  ["as though", /\bas though\b/i],
+  ["not X but Y", /\bnot [a-z][a-z'\-]+,? but [a-z][a-z'\-]+/i],
+  ["X and not X", /\b([a-z][a-z'\-]+) and not \1/i],
+  ["before he had time to", /\bbefore (?:he|she|they) had time to\b/i],
+  ["without meaning to", /\bwithout meaning to\b/i],
+  ["he did not let himself", /\b(?:he|she|they) did not let (?:himself|herself|themselves)\b/i],
+  ["he had learned", /\b(?:he|she|they) had learned\b/i],
+];
+
+const SENSORY_PATTERNS: Array<[string, RegExp]> = [
+  ["warmth/cold contrast", /\b(warm[a-z]*\b[^.]{0,40}\bcold\b|cold[a-z]*\b[^.]{0,40}\bwarm)\b/i],
+  ["music as atmosphere", /\b(music|melody|song)\b[^.]{0,40}\b(room|air|space|hall)\b/i],
+  ["light dimming/returning", /\blight[a-z]*\b[^.]{0,30}\b(dim|dipped|dipping|return|returned|flicker)/i],
+  ["pressure felt through body", /\b(pressure|weight)\b[^.]{0,30}\b(chest|ribs|throat|jaw|skin)\b/i],
+  ["object pressing against ribs", /\b(press|pressing|pressed)\b[^.]{0,20}\b(ribs|chest|sternum)\b/i],
+  ["glass/acrylic surface description", /\b(glass|acrylic|pane|panel)\b[^.]{0,30}\b(surface|edge|seam|rim)\b/i],
+];
+
+const GESTURE_PATTERNS: Array<[string, RegExp]> = [
+  ["touching rail", /\b(touch|touching|touched|fingertip|fingertips)\b[^.]{0,20}\b(rail|railing|banister)\b/i],
+  ["setting palm flat", /\b(set|setting|placed)\b[^.]{0,15}\bpalm[s]?\b[^.]{0,15}\bflat\b/i],
+  ["checking pocket", /\b(check|checked|checking)\b[^.]{0,15}\bpocket\b/i],
+  ["making clipboard mark", /\bclipboard\b[^.]{0,30}\b(mark|tick|line|note)\b/i],
+  ["not drinking", /\b(did not|didn't|hadn't|had not)\b[^.]{0,15}\b(drink|sip|taste)\b/i],
+  ["turning away before answering", /\bturn(?:ed|ing)? away\b[^.]{0,20}\b(answer|reply|spoke|speaking)\b/i],
+  ["counting silently", /\b(count|counted|counting)\b[^.]{0,15}\b(silent|silently|quietly|under his|under her)/i],
+];
+
+const ABSTRACTION_PATTERNS: Array<[string, RegExp]> = [
+  ["shame as a physical presence", /\bshame\b[^.]{0,30}\b(weight|presence|sat|settled|filled)\b/i],
+  ["room as an actor", /\b(room|hall|space|building)\b[^.]{0,30}\b(decided|refused|allowed|insisted|recovered)\b/i],
+  ["silence as an object", /\bsilence\b[^.]{0,25}\b(thick|heavy|solid|object|edge|surface|filled)\b/i],
+  ["professional category as emotional shield", /\b(training|protocol|procedure|category|profession)\b[^.]{0,30}\b(shield|cover|hide|distance|protect)\b/i],
+];
+
+const BALANCED_CLAUSE_PATTERNS: Array<[string, RegExp]> = [
+  ["It was X, and it was not X", /\bIt was [a-z][a-z'\-]+,? and it was not\b/i],
+  ["He had Y, and he had not Y", /\b(?:He|She|They) had [a-z][a-z'\-]+,? and (?:he|she|they) had not\b/i],
+  ["The room had recovered; the building had not", /\b(?:room|hall|space|building) had [a-z][a-z'\-]+;\s*the (?:room|hall|space|building) had not\b/i],
+  ["beautiful but wrong", /\b(beautiful|elegant|graceful|polished|clean) but (wrong|broken|false|hollow|cold)\b/i],
+  ["public order/private failure", /\b(public)\b[^.]{0,30}\b(private)\b/i],
+];
+
 function countWordsLocal(text: string): number {
   const trimmed = text.trim();
   return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
@@ -101,6 +212,62 @@ function buildBlueprintLexicon(blueprint: CompiledStoryBlueprint): Set<string> {
     }
   }
   return set;
+}
+
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function tokenFrequencyMatches(text: string, seeds: string[], minCount: number): string[] {
+  if (text.trim().length === 0) return [];
+  const out: string[] = [];
+  for (const seed of seeds) {
+    const phrase = seed.trim();
+    if (!phrase) continue;
+    const re = new RegExp(`\\b${escapeRegex(phrase)}\\b`, "gi");
+    let count = 0;
+    while (re.exec(text) !== null) {
+      count += 1;
+      if (count >= minCount) break;
+    }
+    if (count >= minCount) out.push(seed);
+  }
+  return out;
+}
+
+function regexFamilyMatches(
+  text: string,
+  patterns: Array<[string, RegExp]>,
+  minCount: number,
+): string[] {
+  if (text.trim().length === 0) return [];
+  const out: string[] = [];
+  for (const [label, re] of patterns) {
+    const flags = re.flags.includes("g") ? re.flags : `${re.flags}g`;
+    const globalRe = new RegExp(re.source, flags);
+    let count = 0;
+    while (globalRe.exec(text) !== null) {
+      count += 1;
+      if (count >= minCount) break;
+    }
+    if (count >= minCount) out.push(label);
+  }
+  return out;
+}
+
+export function buildEffectTics(text: string): VoiceFingerprint["effectTics"] {
+  if (text.trim().length === 0) {
+    return { ...EFFECT_TICS_SEED };
+  }
+  return {
+    bodyAnchors: tokenFrequencyMatches(text, EFFECT_TICS_SEED.bodyAnchors, 3),
+    modifierTics: tokenFrequencyMatches(text, EFFECT_TICS_SEED.modifierTics, 3),
+    rhetoricalStructures: regexFamilyMatches(text, RHETORICAL_PATTERNS, 2),
+    sensoryTics: regexFamilyMatches(text, SENSORY_PATTERNS, 2),
+    gestureTics: regexFamilyMatches(text, GESTURE_PATTERNS, 2),
+    abstractionTics: regexFamilyMatches(text, ABSTRACTION_PATTERNS, 2),
+    balancedClauseTics: regexFamilyMatches(text, BALANCED_CLAUSE_PATTERNS, 2),
+  };
 }
 
 function extractMetaphorFamilies(text: string, blueprintMotifs: string[]): string[] {
@@ -201,6 +368,7 @@ export function buildVoiceFingerprint(params: {
         : 0,
       sampleMarkers: [...new Set(interiorMarkers.map((m) => m.toLowerCase()))].slice(0, 8),
     },
+    effectTics: buildEffectTics(text),
   };
 }
 
@@ -262,6 +430,18 @@ export async function loadVoiceTargetIfPresent(expected?: {
   if (artifact.artifactType !== "voice-target") return null;
   if (expected?.blueprintHash && artifact.blueprintHash !== expected.blueprintHash) return null;
   if (expected?.blueprintVersion && artifact.blueprintVersion !== expected.blueprintVersion) return null;
+  // Older `voice-target.json` artifacts may pre-date `effectTics`. Default
+  // to all-empty sub-arrays rather than throw or null.
+  const fingerprint = artifact.data?.fingerprint;
+  if (fingerprint && (fingerprint as Partial<VoiceFingerprint>).effectTics === undefined) {
+    return {
+      ...artifact,
+      data: {
+        ...artifact.data,
+        fingerprint: { ...fingerprint, effectTics: emptyEffectTics() } as VoiceFingerprint,
+      },
+    };
+  }
   return artifact;
 }
 
@@ -309,14 +489,16 @@ export async function extractAndPersistVoiceTarget(params: {
         recent.push(n);
       }
     }
-    if (recent.length === 0) {
-      return null;
-    }
     derivedFromChapters = recent;
   }
 
+  // Deterministic fallback when there is no usable source text: still emit a
+  // VoiceTarget carrying the seed effectTics catalog (and zeroed fingerprint
+  // metrics) so downstream stages always have a fingerprint shape to read.
   if (text.trim().length < 200) {
-    return null;
+    source = "blueprint-fallback";
+    text = "";
+    derivedFromChapters = [];
   }
 
   const fingerprint = buildVoiceFingerprint({ text, blueprint: params.blueprint });

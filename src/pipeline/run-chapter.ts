@@ -14,7 +14,11 @@ import { hasBlockingReviewSignals, judgeDraft } from "./judge-draft.js";
 import { applyLocalizedAuditPatch, applyLocalizedAuditPatchResult } from "./localized-audit-patch.js";
 import { runOpeningEndingTournament } from "./opening-ending-tournament.js";
 import { reviseDraft } from "./revise-draft.js";
-import { buildDeclaredRevealsFromSpec, updateContinuityState } from "./update-continuity-state.js";
+import {
+  buildDeclaredRevealsFromSpec,
+  normalizeChapterDelta,
+  updateContinuityState,
+} from "./update-continuity-state.js";
 import { runVoiceGritPass } from "./voice-grit-pass.js";
 import { selectDraft } from "./select-draft.js";
 import {
@@ -602,6 +606,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
           artifactType: "chapter-delta",
         },
       );
+      deltaArtifact = { ...deltaArtifact, data: normalizeChapterDelta(deltaArtifact.data) };
       memoryArtifact = await loadArtifact<RollingMemory>(
         memoryArtifactPath(options.chapterNumber),
         "Rolling memory artifact",

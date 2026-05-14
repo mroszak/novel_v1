@@ -573,6 +573,7 @@ function makeMinimalPhase1ChapterPacket(): ChapterPacket {
     continuityActiveSlice: null,
     locations: null,
     authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
+    mistakenBeliefs: {},
   };
 }
 

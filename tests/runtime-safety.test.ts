@@ -195,6 +195,7 @@ test("buildRollingMemory preserves prior continuity state when proposal is parti
     ],
     storySpineUpdate: "The story pressure tightens around the package.",
     characterEmotionalStates: [],
+    mistakenBeliefDeltas: [],
   };
 
   const proposal = {
@@ -545,6 +546,7 @@ test("buildRollingMemory routes delta voiceNotes only to activeTraits, not taboo
       }],
       storySpineUpdate: "A story.",
       characterEmotionalStates: [],
+      mistakenBeliefDeltas: [],
     },
     proposal: {
       storySpine: "A story.",
@@ -618,6 +620,7 @@ test("buildRollingMemory advances updatedFromChapter on existing cards touched b
       }],
       storySpineUpdate: "",
       characterEmotionalStates: [],
+      mistakenBeliefDeltas: [],
     },
     proposal: {
       storySpine: "Spine.",
@@ -937,6 +940,7 @@ test("buildHandoff uses proposal characterStates as authoritative, not delta emo
       emotionalRegister: "Raw and exposed.",
       arcDistance: "Midpoint.",
     }],
+    mistakenBeliefDeltas: [],
   };
 
   const handoff = buildHandoff(proposal, delta);
@@ -990,6 +994,7 @@ test("buildHandoff falls back to flat arrays when proposal characterStates is em
       emotionalRegister: "Raw.",
       arcDistance: "Midpoint.",
     }],
+    mistakenBeliefDeltas: [],
   };
 
   const handoff = buildHandoff(proposal, delta);
@@ -1054,6 +1059,7 @@ test("buildRollingMemory merges emotionalStates with newest chapter winning per 
         emotionalRegister: "Sharpened.",
         arcDistance: "Midpoint.",
       }],
+      mistakenBeliefDeltas: [],
     },
     proposal: {
       storySpine: "Updated.",
@@ -1975,6 +1981,7 @@ test("mergeKnowledgeMatrix clears mustNotKnowYet when the character now knows th
       activeVoiceSignals: [],
       storySpineUpdate: "Updated.",
       characterEmotionalStates: [],
+      mistakenBeliefDeltas: [],
     },
     proposal: {
       storySpine: "Updated.",
@@ -2394,6 +2401,7 @@ test("mergeKnowledgeMatrix does NOT clear mustNotKnowYet when knows only shares 
       activeVoiceSignals: [],
       storySpineUpdate: "Updated.",
       characterEmotionalStates: [],
+      mistakenBeliefDeltas: [],
     },
     proposal: {
       storySpine: "Updated.",
@@ -2755,6 +2763,7 @@ function makeHeavyPacket(): ChapterPacket {
     continuityActiveSlice: null,
     locations: null,
     authorBrief: { authorialPersona: "Test persona.", craftDirectives: ["Test directive."], source: "deterministic" },
+    mistakenBeliefs: {},
   };
 }
 
@@ -2959,7 +2968,16 @@ test("buildSpecPacketView strips heavy packet fields and keeps recent planning c
 
   assert.deepEqual(
     Object.keys(view.activeCast[0]!).sort(),
-    ["contradiction", "desire", "fear", "knowledgeBoundary", "name", "privateTruth", "role"],
+    [
+      "contradiction",
+      "desire",
+      "fear",
+      "knowledgeBoundary",
+      "mistakenBeliefs",
+      "name",
+      "privateTruth",
+      "role",
+    ],
   );
   assert.ok(view.storyState.activeCharacterArcs.length > 0, "Active cast arc positions must be preserved");
   assert.ok(

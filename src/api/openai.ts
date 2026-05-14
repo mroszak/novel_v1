@@ -140,7 +140,9 @@ function isRetryableError(error: unknown): boolean {
   }
 
   const name = error instanceof Error ? error.name : "";
-  return /connection|timeout|rate.?limit/i.test(name);
+  const message = error instanceof Error ? error.message : String(error);
+  const haystack = `${name} ${message}`;
+  return /connection|timeout|rate.?limit|terminated|aborted|socket|ECONNRESET|ECONNREFUSED|EPIPE|fetch failed/i.test(haystack);
 }
 
 function toProviderFailure(stage: OpenAiStageProfile, error: unknown): BlockedPipelineError {

@@ -1,5 +1,10 @@
 import { compactListToTokenBudget, compactTextToTokenBudget } from "../metrics/token-budget.js";
-import type { ChapterPacket, CharacterCard, RollingMemory } from "../types/index.js";
+import type {
+  ChapterPacket,
+  CharacterCard,
+  MistakenBelief,
+  RollingMemory,
+} from "../types/index.js";
 import { normalizeLookupKey } from "../utils/index.js";
 
 const SPEC_STORY_SPINE_TOKENS = 240;
@@ -20,6 +25,13 @@ export interface PromptCharacterView {
   privateTruth: string;
   knowledgeBoundary: string;
   noticingEngine?: string;
+  /**
+   * Belief strings projected from `ChapterPacket.mistakenBeliefs[name]` and
+   * filtered to `active` / `questioned` only — `corrected` and `exploited`
+   * beliefs are excluded so the spec/draft prompts focus on live pressure.
+   * Empty array is valid.
+   */
+  mistakenBeliefs: string[];
 }
 
 export interface SpecStoryStateView {
@@ -76,7 +88,19 @@ function compactRecentList(items: string[], maxTokens: number): string[] {
   return compactListToTokenBudget([...items].reverse(), maxTokens).reverse();
 }
 
-function buildPromptCharacterView(character: CharacterCard): PromptCharacterView {
+function projectActiveMistakenBeliefs(
+  beliefs: MistakenBelief[] | undefined,
+): string[] {
+  if (!beliefs) return [];
+  return beliefs
+    .filter((b) => b.status === "active" || b.status === "questioned")
+    .map((b) => b.belief);
+}
+
+function buildPromptCharacterView(
+  character: CharacterCard,
+  mistakenBeliefsByCharacter: Record<string, MistakenBelief[]>,
+): PromptCharacterView {
   return {
     name: character.name,
     role: character.role,
@@ -86,6 +110,7 @@ function buildPromptCharacterView(character: CharacterCard): PromptCharacterView
     privateTruth: character.privateTruth,
     knowledgeBoundary: character.knowledgeBoundary,
     ...(character.noticingEngine ? { noticingEngine: character.noticingEngine } : {}),
+    mistakenBeliefs: projectActiveMistakenBeliefs(mistakenBeliefsByCharacter[character.name]),
   };
 }
 
@@ -145,6 +170,7 @@ function buildSpecStoryStateView(packet: ChapterPacket): SpecStoryStateView {
 }
 
 export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
+  const beliefMap = packet.mistakenBeliefs ?? {};
   return {
     chapterNumber: packet.chapterNumber,
     title: packet.title,
@@ -152,7 +178,7 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
     purpose: packet.purpose,
     chapterFunction: packet.chapterFunction,
     openingHandoff: packet.openingHandoff,
-    activeCast: packet.activeCast.map(buildPromptCharacterView),
+    activeCast: packet.activeCast.map((c) => buildPromptCharacterView(c, beliefMap)),
     mandatoryBeats: packet.mandatoryBeats,
     secondaryCameoBeats: packet.secondaryCameoBeats,
     revealBudget: packet.revealBudget,
@@ -170,6 +196,7 @@ export function buildSpecPacketView(packet: ChapterPacket): SpecPacketView {
 }
 
 export function buildDeltaPacketView(packet: ChapterPacket): DeltaPacketView {
+  const beliefMap = packet.mistakenBeliefs ?? {};
   return {
     chapterNumber: packet.chapterNumber,
     title: packet.title,
@@ -177,7 +204,7 @@ export function buildDeltaPacketView(packet: ChapterPacket): DeltaPacketView {
     purpose: packet.purpose,
     chapterFunction: packet.chapterFunction,
     openingHandoff: packet.openingHandoff,
-    activeCast: packet.activeCast.map(buildPromptCharacterView),
+    activeCast: packet.activeCast.map((c) => buildPromptCharacterView(c, beliefMap)),
     mandatoryBeats: packet.mandatoryBeats,
     revealBudget: packet.revealBudget,
     callbackObligations: packet.callbackObligations,

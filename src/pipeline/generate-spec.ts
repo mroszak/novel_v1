@@ -413,6 +413,7 @@ export function buildSpecGenerationRequest(params: {
       "Honor reveal control, mandatory beats, active cast, target word band, ending hook, and continuity notes.",
       "`secondaryCameoBeats` are soft cameo obligations: weave them in passing through the named POVs if natural; their absence is not a blocker and they must not be elevated into mandatory beats or scene-driving plot.",
       "When `namedCharacterCap` is set, the chapter must keep distinct named blueprint characters at or below the cap. Use unnamed walk-ons (`the waiter`, `the senator's aide`, `a girl in service black`) for any human detail beyond the cap; they do not count.",
+      "Each POV character's `mistakenBeliefs` lists what that character currently believes that is wrong. Treat them as live pressure: scenes may reinforce, question, correct, or exploit them, but the chapter must engage with them rather than ignore them. Do not narrate around a belief that should be operative.",
       "When a Market Promise is provided, target its commercial hook and emotional promise. When a reader job is provided for this chapter function, the spec must serve it explicitly.",
       "When a continuity active slice is provided, declare your continuity intentions per scene and do not contradict it.",
       "When a `locations` table is provided in the chapter packet, treat its `name` field as the canonical name for each recurring space. Use that exact name (or one of its `aliases`) when planning scene locations; do not invent variant names.",

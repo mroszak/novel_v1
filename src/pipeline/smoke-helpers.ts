@@ -311,6 +311,7 @@ export function createSmokeDelta(packet: ChapterPacket, selected: SelectedChapte
       emotionalRegister: "Watchful and pressured.",
       arcDistance: "Early — still operating from starting assumptions.",
     })),
+    mistakenBeliefDeltas: [],
   };
 }
 

@@ -7,11 +7,36 @@ import type {
   ContinuityManifest,
   ContinuityRevealStatus,
   ContinuityState,
+  MistakenBelief,
+  MistakenBeliefDelta,
   PersistentObject,
   RevealEntry,
 } from "../types/index.js";
 import { fileExists, readJson, writeJson } from "../utils/index.js";
 import { createArtifact } from "./stage-utils.js";
+
+/**
+ * Narrow legacy-delta shape used by `normalizeChapterDelta`. Only the fields
+ * newly added in this pass are optional; pre-existing required fields stay
+ * required so we never invent values for them.
+ */
+export type LegacyChapterDelta = Omit<ChapterDelta, "mistakenBeliefDeltas"> & {
+  mistakenBeliefDeltas?: MistakenBeliefDelta[];
+};
+
+/**
+ * Backfill `mistakenBeliefDeltas: []` (and any other newly-required arrays
+ * added in later passes) on a delta artifact that pre-dates the field.
+ * Called after every model extraction, smoke output, and `--rerun-from`
+ * artifact load that consumes a persisted `chapter-N-delta.json`. Must NOT
+ * invent values for required pre-existing fields.
+ */
+export function normalizeChapterDelta(delta: LegacyChapterDelta): ChapterDelta {
+  return {
+    ...delta,
+    mistakenBeliefDeltas: delta.mistakenBeliefDeltas ?? [],
+  };
+}
 
 function statePath(chapterNumber: number): string {
   return path.join(config.paths.blueprintArtifacts, `continuity-state-after-${chapterNumber}.json`);
@@ -27,6 +52,7 @@ function initialStateFromManifest(manifest: ContinuityManifest): ContinuityState
     relationshipStates: manifest.relationshipStates.map((rs) => ({ ...rs })),
     motifStates: manifest.motifStates.map((ms) => ({ ...ms })),
     notes: [],
+    mistakenBeliefs: {},
   };
 }
 
@@ -40,6 +66,7 @@ function emptyState(chapterNumber: number): ContinuityState {
     relationshipStates: [],
     motifStates: [],
     notes: ["No continuity manifest defined; engine carries no structured state."],
+    mistakenBeliefs: {},
   };
 }
 
@@ -133,6 +160,124 @@ function applyDeltaToReveals(
   });
 }
 
+function normalizeBeliefKey(belief: string): string {
+  return belief.trim().toLowerCase();
+}
+
+/**
+ * Deterministic merge of `mistakenBeliefDeltas` from this chapter's
+ * extracted delta into the per-character belief lists. Op semantics:
+ * - `introduce`: append a new belief; case-insensitive trim duplicates
+ *   fold into a `reinforce` instead.
+ * - `reinforce`: bump `lastReinforcedInChapter`. If the matched belief is
+ *   already `corrected`, leave it `corrected` (sticky). Unknown belief →
+ *   treated as `introduce`.
+ * - `question`/`correct`/`exploit`: flip status and bump
+ *   `lastReinforcedInChapter`. Unknown belief → ignored.
+ *
+ * `consequence` is overwritten by every op when the delta supplies a
+ * non-null value; otherwise the prior consequence is preserved.
+ */
+export function applyMistakenBeliefDeltas(params: {
+  current: Record<string, MistakenBelief[]>;
+  deltas: MistakenBeliefDelta[];
+  chapterNumber: number;
+}): Record<string, MistakenBelief[]> {
+  const next: Record<string, MistakenBelief[]> = {};
+  for (const [character, beliefs] of Object.entries(params.current)) {
+    next[character] = beliefs.map((b) => ({ ...b }));
+  }
+
+  for (const delta of params.deltas) {
+    const list = (next[delta.character] ?? []).slice();
+    const matchIndex = list.findIndex(
+      (b) => normalizeBeliefKey(b.belief) === normalizeBeliefKey(delta.belief),
+    );
+
+    const applyConsequence = (existing: MistakenBelief["consequence"]): MistakenBelief["consequence"] => (
+      delta.consequence !== null && delta.consequence !== undefined
+        ? delta.consequence
+        : existing
+    );
+
+    if (delta.op === "introduce") {
+      if (matchIndex >= 0) {
+        const existing = list[matchIndex]!;
+        list[matchIndex] = {
+          ...existing,
+          lastReinforcedInChapter: params.chapterNumber,
+          consequence: applyConsequence(existing.consequence),
+        };
+      } else {
+        list.push({
+          belief: delta.belief,
+          basis: delta.basis,
+          introducedInChapter: params.chapterNumber,
+          lastReinforcedInChapter: null,
+          status: "active",
+          readerKnowsItIsWrong: delta.readerKnowsItIsWrong,
+          consequence: delta.consequence,
+        });
+      }
+    } else if (delta.op === "reinforce") {
+      if (matchIndex >= 0) {
+        const existing = list[matchIndex]!;
+        list[matchIndex] = {
+          ...existing,
+          lastReinforcedInChapter: params.chapterNumber,
+          consequence: applyConsequence(existing.consequence),
+        };
+      } else {
+        list.push({
+          belief: delta.belief,
+          basis: delta.basis,
+          introducedInChapter: params.chapterNumber,
+          lastReinforcedInChapter: null,
+          status: "active",
+          readerKnowsItIsWrong: delta.readerKnowsItIsWrong,
+          consequence: delta.consequence,
+        });
+      }
+    } else if (delta.op === "question") {
+      if (matchIndex >= 0) {
+        const existing = list[matchIndex]!;
+        list[matchIndex] = {
+          ...existing,
+          status: "questioned",
+          lastReinforcedInChapter: params.chapterNumber,
+          consequence: applyConsequence(existing.consequence),
+        };
+      }
+    } else if (delta.op === "correct") {
+      if (matchIndex >= 0) {
+        const existing = list[matchIndex]!;
+        list[matchIndex] = {
+          ...existing,
+          status: "corrected",
+          lastReinforcedInChapter: params.chapterNumber,
+          consequence: applyConsequence(existing.consequence),
+        };
+      }
+    } else if (delta.op === "exploit") {
+      if (matchIndex >= 0) {
+        const existing = list[matchIndex]!;
+        list[matchIndex] = {
+          ...existing,
+          status: "exploited",
+          lastReinforcedInChapter: params.chapterNumber,
+          consequence: applyConsequence(existing.consequence),
+        };
+      }
+    }
+
+    if (list.length > 0) {
+      next[delta.character] = list;
+    }
+  }
+
+  return next;
+}
+
 // Builds declared reveals from an approved spec's revealControl. `withhold`
 // is excluded by design: a withheld thread is explicitly NOT delivered this
 // chapter, so it must NOT enter the deliveredKeys set inside
@@ -192,6 +337,12 @@ export async function updateContinuityState(params: {
     .filter((entry) => entry.length > 0)
     .map((entry) => `ch${params.chapterNumber}: ${entry}`);
 
+  const mistakenBeliefs = applyMistakenBeliefDeltas({
+    current: previous.mistakenBeliefs ?? {},
+    deltas: params.chapterDelta?.mistakenBeliefDeltas ?? [],
+    chapterNumber: params.chapterNumber,
+  });
+
   const next: ContinuityState = {
     chapterNumber: params.chapterNumber,
     persistentObjects: objectsAfterDelta,
@@ -201,6 +352,7 @@ export async function updateContinuityState(params: {
     relationshipStates: previous.relationshipStates,
     motifStates: bumpMotifs(params.publishedProse, previous.motifStates, params.chapterNumber),
     notes: [...previous.notes, ...irreversibleNotes],
+    mistakenBeliefs,
   };
 
   const artifact = createArtifact<ContinuityState>({
@@ -217,6 +369,8 @@ export async function updateContinuityState(params: {
 
 // Soft-fail loader: returns null on metadata mismatch so the next chapter's
 // packet silently falls back to the static manifest rather than throwing.
+// Defaults missing top-level fields newly added in later passes (e.g.
+// `mistakenBeliefs: {}`) so older persisted artifacts load cleanly.
 export async function loadPersistedContinuityState(params: {
   chapterNumber: number;
   blueprintHash?: string;
@@ -234,6 +388,13 @@ export async function loadPersistedContinuityState(params: {
   if (artifact.artifactType !== "continuity-state") return null;
   if (params.blueprintHash && artifact.blueprintHash !== params.blueprintHash) return null;
   if (params.blueprintVersion && artifact.blueprintVersion !== params.blueprintVersion) return null;
+  const data = artifact.data ?? null;
+  if (data && (data as Partial<ContinuityState>).mistakenBeliefs === undefined) {
+    return {
+      ...artifact,
+      data: { ...data, mistakenBeliefs: {} } as ContinuityState,
+    };
+  }
   return artifact;
 }
 
@@ -256,4 +417,5 @@ export const _internals = {
   bumpMotifs,
   applyDeltaToObjects,
   applyDeltaToReveals,
+  applyMistakenBeliefDeltas,
 };
