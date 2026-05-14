@@ -414,7 +414,7 @@ test("buildDraftSystemPrompt includes the CHAPTER-1 LESSONS section", () => {
   );
 });
 
-test("buildJudgeInstructions includes SCENE TURN CHECK and NAMED WITHOUT FUTURE USE blocks", () => {
+test("buildJudgeInstructions includes scene-turn, named-without-future-use, and density-governor blocks", () => {
   const instructions = buildJudgeInstructions(80, "Make the premise irresistible.");
 
   assert.ok(
@@ -440,6 +440,56 @@ test("buildJudgeInstructions includes SCENE TURN CHECK and NAMED WITHOUT FUTURE 
   assert.ok(
     instructions.includes("NOTICING ENGINE CHECK (feeds voiceConsistency)."),
     "Judge instructions must include the conditional noticing-engine signal",
+  );
+
+  // Density governors (B.1–B.5 from the density-discipline pass).
+  assert.ok(
+    instructions.includes("statable in one sentence each, anchored to a single fixed marker"),
+    "Physical Clue Anchor block must include the one-sentence-each-side tightening",
+  );
+  assert.ok(
+    instructions.includes("inventories three or more named figures"),
+    "Named Without Future Use block must include the inventory-to-consequence clause",
+  );
+  assert.ok(
+    instructions.includes("WITHHELD ACTION VARIETY (feeds freshness)."),
+    "Judge instructions must include the WITHHELD ACTION VARIETY header that mirrors the validator",
+  );
+  assert.ok(
+    instructions.includes("OVER-COMPOSED CLUSTER CHECK (feeds proseQuality)."),
+    "Judge instructions must include the OVER-COMPOSED CLUSTER CHECK header",
+  );
+  assert.ok(
+    instructions.includes("densest 10%"),
+    "Over-composed cluster block must include the densest-10% revision target",
+  );
+  assert.ok(
+    instructions.includes("by its opening phrase"),
+    "Over-composed cluster block must require identification by opening phrase, not paragraph index",
+  );
+  assert.ok(
+    instructions.includes("Judge by necessity, not abundance"),
+    "Anti-committee block must include the necessity-over-abundance principle",
+  );
+  assert.ok(
+    instructions.includes("DOMINANT JOB DISCIPLINE (feeds forwardMotion)."),
+    "Judge instructions must include the DOMINANT JOB DISCIPLINE header",
+  );
+  assert.ok(
+    instructions.includes("the chapter's dominant job"),
+    "Dominant-job block must reference the chapter's dominant job",
+  );
+
+  // B.1 and B.2 must produce concrete revisionActions (not just weaknesses
+  // entries) so the revision pass has a directive — pins the AGENTS.md
+  // wording that "all five density signals surface in revisionActions."
+  assert.ok(
+    instructions.includes("revisionAction asking for the supporting geometry to be compressed"),
+    "Physical Clue Anchor block must request a revisionAction, not only a weakness entry",
+  );
+  assert.ok(
+    instructions.includes("revisionAction asking for unnecessary names to be compressed"),
+    "Inventory-to-consequence clause must request a revisionAction, not only a weakness entry",
   );
 });
 

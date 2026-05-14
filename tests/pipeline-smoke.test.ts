@@ -17,6 +17,7 @@ test("smoke pipeline writes delta and rolling memory artifacts", async (t) => {
 
   const delta = await readJson<any>(path.join(rootDir, "artifacts", "chapters", "chapter-1-delta.json"));
   const memory = await readJson<any>(path.join(rootDir, "artifacts", "memory", "after-chapter-1.json"));
+  const finalAudit = await readJson<any>(path.join(rootDir, "artifacts", "chapters", "chapter-1-final-audit.json"));
 
   assert.ok(Array.isArray(delta.data.entityMentions));
   assert.ok(delta.data.entityMentions.length > 0);
@@ -26,6 +27,21 @@ test("smoke pipeline writes delta and rolling memory artifacts", async (t) => {
   assert.ok(Array.isArray(delta.data.characterEmotionalStates), "delta must include characterEmotionalStates");
   assert.ok(Array.isArray(memory.data.emotionalStates), "memory must include emotionalStates");
   assert.ok(Array.isArray(memory.data.nextChapterOpeningHandoff.characterStates), "handoff must include characterStates");
+
+  // Smoke prose must stay validator-clean for the new warning-only
+  // detectors, otherwise the warning saturation skews calibration. The
+  // final-audit artifact carries validator issues merged via
+  // mergeAuditWithValidator (title = validator issue code, source =
+  // "validator"). Assert no `WITHHELD_ACTION_VARIETY` issues survive.
+  const validatorIssues: Array<{ title: string; source?: string }> = finalAudit.data?.issues ?? [];
+  const withheldHits = validatorIssues.filter(
+    (i) => i.source === "validator" && i.title === "WITHHELD_ACTION_VARIETY",
+  );
+  assert.equal(
+    withheldHits.length,
+    0,
+    "Smoke prose must not trip WITHHELD_ACTION_VARIETY in the produced final-audit artifact",
+  );
 
   const run2 = runChapterCli(["--smoke", "--chapter", "2"], rootDir);
   assert.equal(run2.status, 0, run2.stderr || run2.stdout);

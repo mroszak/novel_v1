@@ -50,6 +50,7 @@ import {
   detectNamedCharacterCapExceeded,
   detectRepetition,
   detectSentenceShapeRepetition,
+  detectWithheldActionVariety,
   detectWithholdingTic,
   stripDialogueForNarration,
 } from "../src/validators/prose-quality.js";
@@ -1364,6 +1365,112 @@ test("detectWithholdingTic warns on any narration instance and reports paragraph
   }
 });
 
+// --- WITHHELD_ACTION_VARIETY ---
+
+test("detectWithheldActionVariety stays silent below the chapter-level min-count", () => {
+  // Five hits across both aux families: 3 base-form + 2 past-participle.
+  // Each in its own narration paragraph so dialogue stripping is not a factor.
+  const prose = [
+    "He did not look.",
+    "She did not turn.",
+    "He did not nod.",
+    "She had not drunk.",
+    "He had not written.",
+  ].join("\n\n");
+
+  assert.equal(
+    detectWithheldActionVariety(prose).length,
+    0,
+    "Five hits is below WITHHELD_ACTION_MIN_COUNT (6) and must stay silent",
+  );
+});
+
+test("detectWithheldActionVariety fires one warning per hit once threshold clears", () => {
+  const prose = [
+    "He did not look.",
+    "She did not turn.",
+    "He did not nod.",
+    "She had not drunk.",
+    "He had not written.",
+    "She had not finished.",
+  ].join("\n\n");
+
+  const issues = detectWithheldActionVariety(prose);
+  assert.equal(issues.length, 6, "Six hits at threshold should produce six warnings");
+  for (const issue of issues) {
+    assert.equal(issue.severity, "warning");
+    assert.equal(issue.code, "WITHHELD_ACTION_VARIETY");
+    assert.match(issue.evidence[1] ?? "", /^paragraph \d+$/);
+  }
+});
+
+test("detectWithheldActionVariety exempts restraint beats inside dialogue", () => {
+  const prose = [
+    "He took the rail.",
+    '"He did not look. He did not turn. He did not nod. She had not drunk. He had not written. She had not finished," she said.',
+    "The room held still.",
+  ].join("\n\n");
+
+  assert.equal(
+    detectWithheldActionVariety(prose).length,
+    0,
+    "All six instances are inside double-quoted dialogue and must be stripped before counting",
+  );
+});
+
+test("detectWithheldActionVariety ignores verbs outside the curated seed lists", () => {
+  // 'realize' and 'understand' are intentionally absent from
+  // WITHHELD_ACTION_VERBS_BASE. Eight narration instances must produce no
+  // issues — the detector is curated, not exhaustive.
+  const prose = Array.from({ length: 8 }, (_, i) => (
+    i % 2 === 0 ? "He did not realize." : "She did not understand."
+  )).join("\n\n");
+
+  assert.equal(
+    detectWithheldActionVariety(prose).length,
+    0,
+    "Non-seed verbs must not trip the detector regardless of count",
+  );
+});
+
+test("detectWithheldActionVariety partitions aux/inflection correctly", () => {
+  // Base-form arm: did/does/do + base. Past-participle arm: had/has/have + past.
+  // A correctly partitioned detector must catch both shapes when paired with
+  // their matching aux. The previous single-base-list draft would have
+  // silently missed the three past-participle cases below.
+  const prose = [
+    "He did not look.",
+    "She does not turn.",
+    "They do not nod.",
+    "She had not drunk.",
+    "He has not written.",
+    "They have not finished.",
+  ].join("\n\n");
+
+  assert.equal(
+    detectWithheldActionVariety(prose).length,
+    6,
+    "Both aux families must match their matching inflection",
+  );
+});
+
+test("detectWithheldActionVariety rejects aux/inflection mismatches", () => {
+  // `had not look` (past aux + base verb) and `did not looked` (base aux +
+  // past participle) are both ungrammatical English. The two-regex shape
+  // must NOT match either. If a future regex shape collapsed the aux pair
+  // into a single alternation, these strings would create false positives.
+  const wrong = [
+    ...Array.from({ length: 8 }, () => "He had not look."),
+    ...Array.from({ length: 8 }, () => "She did not looked."),
+  ].join("\n\n");
+
+  assert.equal(
+    detectWithheldActionVariety(wrong).length,
+    0,
+    "Aux/inflection mismatches must not match either regex",
+  );
+});
+
 test("detectExplanatoryBecauseCluster fires on 2+ pronoun/role-subject becauses in one paragraph", () => {
   const cluster = `He took the column because admirals took columns, and the reporter laughed because reporters always laughed at that joke.`;
   const issues = detectExplanatoryBecauseCluster(cluster);
@@ -1442,9 +1549,9 @@ test("stripDialogueForNarration preserves possessives and contractions", () => {
   assert.doesNotMatch(stripped, /I came down/, "Straight double-quote dialogue must be stripped");
 });
 
-test("smoke-prose stays clean of all three new prose-quality detectors", () => {
+test("smoke-prose stays clean of all four warning-only prose-quality detectors", () => {
   // Representative paragraphs lifted from the smoke-helpers filler pool. We
-  // assert that none of the three new warning-only detectors fire, so smoke
+  // assert that none of the four warning-only detectors fire, so smoke
   // mode keeps a deterministic, validator-clean signal for calibration.
   const smokeProse = [
     "Erik Halvorsen entered the chapter already carrying the pressure forward. The room held its breath while he counted the exits without turning, mapping the geometry of the space through peripheral awareness alone.",
@@ -1460,6 +1567,11 @@ test("smoke-prose stays clean of all three new prose-quality detectors", () => {
   );
   assert.equal(inverted.length, 0, "Smoke prose must not trip INVERTED_NP_CONTRAST");
   assert.equal(detectWithholdingTic(smokeProse).length, 0, "Smoke prose must not trip WITHHOLDING_TIC");
+  assert.equal(
+    detectWithheldActionVariety(smokeProse).length,
+    0,
+    "Smoke prose must not trip WITHHELD_ACTION_VARIETY",
+  );
   assert.equal(
     detectExplanatoryBecauseCluster(smokeProse).length,
     0,
@@ -2994,6 +3106,23 @@ test("buildSpecPacketView strips heavy packet fields and keeps recent planning c
   assert.ok(
     viewTokens < fullTokens * 0.45,
     `Spec packet view (${viewTokens}) must be less than 45% of full packet (${fullTokens})`,
+  );
+});
+
+test("buildSpecGenerationRequest instructions require purpose to declare a single dominant job", () => {
+  const request = buildSpecGenerationRequest({
+    storyCore: makeBudgetTestStoryCore(),
+    genreContract: makeBudgetTestGenreContract(),
+    packet: makePlanningStressPacket(),
+  });
+
+  assert.ok(
+    request.instructions.includes("dominant job"),
+    "Spec generator instructions must surface the dominant-job framing for `purpose`",
+  );
+  assert.ok(
+    request.instructions.includes("One job, not a list"),
+    "Spec generator instructions must enforce a singular purpose, not a list",
   );
 });
 

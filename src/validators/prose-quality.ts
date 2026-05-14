@@ -80,6 +80,31 @@ const WITHHOLDING_PHRASES: readonly string[] = [
   "did not let himself",
 ];
 
+// Withheld-action / restraint-beat verbs. Pattern: "did/does/do + not + <base verb>"
+// or "had/has/have + not + <past participle>" in narration produces a
+// one-sentence suspense beat. A few per chapter are good craft; a saturated
+// chapter reads as a single trick. Warning-only chapter-level min-count
+// gated. Paired curated seed lists — extend in lockstep (same verb in both
+// lists, base form in _BASE, past-participle form in _PAST) as new variants
+// appear; do not lower the min-count.
+const WITHHELD_ACTION_VERBS_BASE: readonly string[] = [
+  "look", "turn", "nod", "drink", "write", "name", "finish",
+  "raise", "think", "correct", "move", "reach", "cross",
+  "stop", "answer", "smile", "speak", "press", "pause",
+  "notice", "see", "hear", "breathe", "blink", "wait",
+  "let", "say", "ask", "open", "close",
+];
+
+const WITHHELD_ACTION_VERBS_PAST: readonly string[] = [
+  "looked", "turned", "nodded", "drunk", "written", "named", "finished",
+  "raised", "thought", "corrected", "moved", "reached", "crossed",
+  "stopped", "answered", "smiled", "spoken", "pressed", "paused",
+  "noticed", "seen", "heard", "breathed", "blinked", "waited",
+  "let", "said", "asked", "opened", "closed",
+];
+
+const WITHHELD_ACTION_MIN_COUNT = 6;
+
 // Narration-`because`-cluster heuristic. Subjects we treat as obvious
 // human/social-role markers signaling psychologizing rather than physical
 // causality. `it` is intentionally absent: too many physical antecedents in
@@ -249,6 +274,7 @@ export function detectRepetition(
   issues.push(...detectLexicalRepetition(prose, context));
   issues.push(...detectSentenceShapeRepetition(prose));
   issues.push(...detectWithholdingTic(prose));
+  issues.push(...detectWithheldActionVariety(prose));
   issues.push(...detectExplanatoryBecauseCluster(prose));
 
   return issues;
@@ -420,6 +446,48 @@ export function detectWithholdingTic(prose: string): ValidatorIssue[] {
       }
     }
   });
+  return issues;
+}
+
+/**
+ * Withheld-action-variety detector. Flags repeated narration instances of
+ * the suspense-by-restraint beat — `did/does/do + not + <base verb>` or
+ * `had/has/have + not + <past participle>` — for a curated paired seed
+ * list of perception/action verbs. A few instances per chapter are good
+ * craft; a saturated chapter reads as a single trick. Warning-only;
+ * chapter-level min-count gated (combined across both aux families);
+ * one warning per hit once threshold clears. Extend
+ * `WITHHELD_ACTION_VERBS_BASE` and `WITHHELD_ACTION_VERBS_PAST` in
+ * lockstep as new variants appear.
+ */
+export function detectWithheldActionVariety(prose: string): ValidatorIssue[] {
+  const issues: ValidatorIssue[] = [];
+  const paragraphs = prose.split(/\n\n+/);
+  const baseAlt = WITHHELD_ACTION_VERBS_BASE.join("|");
+  const pastAlt = WITHHELD_ACTION_VERBS_PAST.join("|");
+  const baseRE = new RegExp(`\\b(?:did|does|do)\\s+not\\s+(?:${baseAlt})\\b`, "gi");
+  const pastRE = new RegExp(`\\b(?:had|has|have)\\s+not\\s+(?:${pastAlt})\\b`, "gi");
+  const hits: Array<{ phrase: string; paragraph: number }> = [];
+  paragraphs.forEach((rawPara, idx) => {
+    const stripped = stripDialogueForNarration(rawPara);
+    for (const match of stripped.match(baseRE) ?? []) {
+      hits.push({ phrase: match.toLowerCase(), paragraph: idx + 1 });
+    }
+    for (const match of stripped.match(pastRE) ?? []) {
+      hits.push({ phrase: match.toLowerCase(), paragraph: idx + 1 });
+    }
+  });
+  if (hits.length >= WITHHELD_ACTION_MIN_COUNT) {
+    for (const hit of hits) {
+      issues.push({
+        severity: "warning",
+        code: "WITHHELD_ACTION_VARIETY",
+        message:
+          "Repeated 'did/had not + verb' restraint beats. Vary how restraint appears: active choice, misreading, interruption, or practical behavior in place of the weaker repetitions.",
+        evidence: [hit.phrase, `paragraph ${hit.paragraph}`],
+      });
+    }
+  }
   return issues;
 }
 

@@ -410,6 +410,7 @@ export function buildSpecGenerationRequest(params: {
     instructions: [
       "You are the planning model for a chapter-by-chapter novel engine.",
       "Create a machine-usable chapter spec for one chapter only.",
+      "`purpose` must be a single sentence stating this chapter's dominant job — what must change in the reader's experience (knowledge, suspicion, allegiance, pressure, belief) by the chapter's end. One job, not a list. Every scene, mandatory beat, named figure, and stylistic flourish in this chapter should serve this job; anything that does not should be carried lightly or cut. The judge will check the chapter against this declared purpose.",
       "Honor reveal control, mandatory beats, active cast, target word band, ending hook, and continuity notes.",
       "`secondaryCameoBeats` are soft cameo obligations: weave them in passing through the named POVs if natural; their absence is not a blocker and they must not be elevated into mandatory beats or scene-driving plot.",
       "When `namedCharacterCap` is set, the chapter must keep distinct named blueprint characters at or below the cap. Use unnamed walk-ons (`the waiter`, `the senator's aide`, `a girl in service black`) for any human detail beyond the cap; they do not count.",
