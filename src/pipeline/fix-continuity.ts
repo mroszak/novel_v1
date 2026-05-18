@@ -4,37 +4,112 @@ import type {
   ArtifactEnvelope,
   BlueprintCompilationArtifacts,
   ChapterPacket,
-  ContinuityFixResult,
   FinalAuditReport,
+  RevisionDiff,
+  RevisionPlan,
   RollingMemory,
   SelectedChapter,
+  TrackedIssue,
 } from "../types/index.js";
-import { compactJson, tailExcerpt, writeJson } from "../utils/index.js";
-import { chapterArtifactPath, countWords, createArtifact } from "./stage-utils.js";
-import { stripHeavyPacketFields } from "./generate-draft.js";
+import { tailExcerpt, writeJson } from "../utils/index.js";
+import { parseAnthropicJson } from "../utils/parse-anthropic-json.js";
+import { applyRevisionPatches } from "./apply-revision-patches.js";
+import { validateRevisionPlan } from "./revision-plan-schema.js";
+import { BlockedPipelineError, chapterArtifactPath, createArtifact } from "./stage-utils.js";
+import { buildTrackedIssues } from "./track-issues.js";
 
-function buildSmokeFix(
-  selected: SelectedChapter,
-  audit: FinalAuditReport,
-  attemptNumber: number,
-): ContinuityFixResult {
+function buildSmokePlan(trackedIssues: TrackedIssue[]): RevisionPlan {
   return {
-    prose: `${selected.prose}\n\n[Smoke fix attempt ${attemptNumber} applied.]`,
-    appliedFixes: audit.issues.map((issue) => issue.title),
+    patches: [],
+    scopedExtension: null,
+    issueOutcomes: trackedIssues.map((issue) => ({
+      id: issue.id,
+      status: "skipped",
+      reason: "smoke",
+    })),
+    notes: ["smoke"],
+    requiresStructuralRewrite: false,
+    structuralRewriteReason: null,
   };
 }
 
-function buildAuditChecklist(audit: FinalAuditReport): string {
-  const errorIssues = audit.issues.filter((issue) => issue.severity === "error");
-  if (errorIssues.length === 0) {
-    return "(no error-severity issues; warnings appear in <audit_report> for context but are not mandatory fixes for this pass)";
-  }
-  return errorIssues
-    .map((issue, index) => `${index + 1}. [${issue.severity}] ${issue.title}: ${issue.fixInstruction}`)
+function formatTrackedIssues(issues: TrackedIssue[]): string {
+  if (issues.length === 0) return "(no tracked issues)";
+  return issues
+    .map((issue) => `[${issue.id}] ${issue.origin}: ${issue.title} — ${issue.fixHint ?? "no hint"}`)
     .join("\n");
 }
 
-export async function fixContinuity(params: {
+function buildPovContext(packet: ChapterPacket, issues: TrackedIssue[]): string | null {
+  const issueText = issues.map((issue) => `${issue.title} ${issue.fixHint ?? ""}`).join("\n").toLowerCase();
+  const lines = packet.activeCast
+    .filter((character) => issueText.includes(character.name.toLowerCase()))
+    .map((character) => {
+      const voiceCard = packet.rollingMemory?.activeCharacterVoiceCards.find(
+        (card) => card.character.toLowerCase() === character.name.toLowerCase(),
+      );
+      const traits = voiceCard?.activeTraits ?? character.voiceNotes;
+      return `${character.name} (${character.role}): notices=${character.noticingEngine ?? "unspecified"}; traits=[${traits.join("; ")}]; knowledgeBoundary=${character.knowledgeBoundary}`;
+    });
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
+function shouldIncludePreviousAnchor(issues: TrackedIssue[]): boolean {
+  const issueText = issues.map((issue) => `${issue.title} ${issue.fixHint ?? ""}`).join("\n").toLowerCase();
+  return ["continuity", "timeline", "callback"].some((needle) => issueText.includes(needle));
+}
+
+export function buildContinuityFixRequest(params: {
+  packet: ChapterPacket;
+  selected: SelectedChapter;
+  trackedIssues: TrackedIssue[];
+}): { system: string; prompt: string } {
+  const povContext = buildPovContext(params.packet, params.trackedIssues);
+  const previousAnchor = shouldIncludePreviousAnchor(params.trackedIssues)
+    && params.packet.compactContext.previousChapterFull
+    ? tailExcerpt(params.packet.compactContext.previousChapterFull, 200)
+    : null;
+
+  return {
+    system: [
+      "You are Opus planning surgical continuity patches for a novel chapter.",
+      "Return strict JSON only with keys patches, scopedExtension, issueOutcomes, notes, requiresStructuralRewrite, structuralRewriteReason.",
+      "Use this shape: {\"patches\":[{\"errorRef\":\"tracked id\",\"originalText\":\"exact current prose\",\"replacementText\":\"replacement prose\",\"justification\":\"one sentence\"}],\"scopedExtension\":null,\"issueOutcomes\":[{\"id\":\"tracked id\",\"status\":\"patched|skipped|unaddressed\",\"reason\":\"short reason\"}],\"notes\":[],\"requiresStructuralRewrite\":false,\"structuralRewriteReason\":null}.",
+      "Every patch must reference a known tracked issue id. originalText must match the chapter exactly and should include enough local context to match once.",
+      "Address mandatory issues with patches unless the prose is already correct; advisory issues may be skipped with a reason.",
+      "If one patch covers multiple issue ids, set each covered issueOutcomes entry to patched and cite the applied patch's exact errorRef in square brackets, e.g. [audit-error-model#1].",
+      "Do not rewrite the chapter. Do not emit diff markup. requiresStructuralRewrite must be false for continuity-fix.",
+    ].join("\n"),
+    prompt: [
+      "<tracked_issues>",
+      formatTrackedIssues(params.trackedIssues),
+      "</tracked_issues>",
+      "<chapter_prose>",
+      params.selected.prose,
+      "</chapter_prose>",
+      ...(povContext ? ["<pov_context>", povContext, "</pov_context>"] : []),
+      ...(previousAnchor ? ["<previous_chapter_anchor>", previousAnchor, "</previous_chapter_anchor>"] : []),
+    ].join("\n"),
+  };
+}
+
+function parsePlanOrBlock(rawText: string): RevisionPlan {
+  try {
+    return validateRevisionPlan(parseAnthropicJson<RevisionPlan>(rawText));
+  } catch (error) {
+    throw new BlockedPipelineError(
+      "BLOCKED_PROVIDER_FAILURE",
+      "continuity-fix",
+      "Continuity-fix planner did not return a valid RevisionPlan.",
+      {
+        rawPlannerText: rawText,
+        parseError: error instanceof Error ? error.message : String(error),
+      },
+    );
+  }
+}
+
+export async function planContinuityFix(params: {
   packetArtifact: ArtifactEnvelope<ChapterPacket>;
   selectedArtifact: ArtifactEnvelope<SelectedChapter>;
   memoryArtifact: ArtifactEnvelope<RollingMemory>;
@@ -42,79 +117,60 @@ export async function fixContinuity(params: {
   blueprintArtifacts: BlueprintCompilationArtifacts;
   attemptNumber: number;
   smoke: boolean;
-}): Promise<ArtifactEnvelope<ContinuityFixResult>> {
+}): Promise<ArtifactEnvelope<RevisionDiff>> {
   const {
     packetArtifact,
     selectedArtifact,
-    memoryArtifact,
     auditArtifact,
-    blueprintArtifacts,
     attemptNumber,
     smoke,
   } = params;
 
-  let fixResult: ContinuityFixResult;
-  let usage: ArtifactEnvelope<ContinuityFixResult>["usage"];
+  const trackedIssues = buildTrackedIssues({ audit: auditArtifact.data });
+  let plan: RevisionPlan;
+  let usage: ArtifactEnvelope<RevisionDiff>["usage"];
 
   if (smoke) {
-    fixResult = buildSmokeFix(selectedArtifact.data, auditArtifact.data, attemptNumber);
+    plan = buildSmokePlan(trackedIssues);
     usage = undefined;
   } else {
+    const request = buildContinuityFixRequest({
+      packet: packetArtifact.data,
+      selected: selectedArtifact.data,
+      trackedIssues,
+    });
     const result = await generateAnthropicText({
       stage: config.stageProfiles.continuityFix,
-      system: [
-        "You are Opus performing a surgical continuity fix on a novel chapter.",
-        "Address ONLY the error-severity issues in <audit_checklist>. Warning-severity items in <audit_report> are advisory; do not regenerate prose to address them in this pass.",
-        "Make the smallest possible delta. Sentences not implicated by an error must remain byte-identical. Do NOT reword, polish, or paraphrase clean prose.",
-        "If a previous fix attempt has already cleaned the chapter and only added length-band issues remain, you may add a short scene-extension paragraph rather than rewriting earlier prose.",
-        "If a line causes a knowledge-boundary or factual-audit error, cut or relocate it instead of preserving it for style.",
-        "If an issue says a POV character knows too much, remove the forbidden inference rather than paraphrasing it in the same POV.",
-        "If an issue says route naming or geography is inconsistent, pick one clear label and use it consistently everywhere.",
-        "Voice notes and motif phrases in the chapter packet are BEHAVIOR DESCRIPTIONS, not lines to write into prose. Never quote them verbatim; never use any four-word span from the packet as prose. Render the same behavior with varied surface wording.",
-        "Output only the fixed chapter prose. No commentary, no diff markup.",
-      ].join("\n"),
-      prompt: [
-        "<audit_checklist>",
-        buildAuditChecklist(auditArtifact.data),
-        "</audit_checklist>",
-        "<genre_contract>",
-        compactJson(blueprintArtifacts.genreContract.data),
-        "</genre_contract>",
-        "<chapter_packet>",
-        compactJson(stripHeavyPacketFields(packetArtifact.data)),
-        "</chapter_packet>",
-        "<rolling_memory>",
-        compactJson(memoryArtifact.data),
-        "</rolling_memory>",
-        "<audit_report>",
-        compactJson(auditArtifact.data),
-        "</audit_report>",
-        ...(packetArtifact.data.compactContext.previousChapterFull
-          ? [
-            "<previous_chapter_tail>",
-            tailExcerpt(packetArtifact.data.compactContext.previousChapterFull, 500),
-            "</previous_chapter_tail>",
-          ]
-          : []),
-        "<chapter_prose>",
-        selectedArtifact.data.prose,
-        "</chapter_prose>",
-      ].join("\n"),
+      system: request.system,
+      prompt: request.prompt,
     });
 
-    fixResult = {
-      prose: result.value,
-      appliedFixes: auditArtifact.data.issues.map((issue) => issue.title),
-    };
+    plan = parsePlanOrBlock(result.value);
     usage = result.usage;
   }
 
-  const artifact = createArtifact<ContinuityFixResult>({
+  if (plan.requiresStructuralRewrite) {
+    throw new BlockedPipelineError(
+      "BLOCKED_PROVIDER_FAILURE",
+      "continuity-fix",
+      plan.structuralRewriteReason ?? "Continuity-fix planner requested a structural rewrite.",
+      { structuralRewriteReason: plan.structuralRewriteReason },
+    );
+  }
+
+  const diff = applyRevisionPatches({
+    prose: selectedArtifact.data.prose,
+    plan,
+    trackedIssues,
+    maxPatches: config.qualitySettings.revisionRouting.maxPatchesPerPlan,
+  });
+
+  const artifact = createArtifact<RevisionDiff>({
     artifactType: "continuity-fix",
     blueprintHash: packetArtifact.blueprintHash,
     blueprintVersion: packetArtifact.blueprintVersion,
     chapterNumber: packetArtifact.chapterNumber,
-    data: fixResult,
+    data: diff,
     usage,
   });
   await writeJson(
@@ -125,17 +181,4 @@ export async function fixContinuity(params: {
   return artifact;
 }
 
-export function applyFixResult(
-  selectedArtifact: ArtifactEnvelope<SelectedChapter>,
-  fixArtifact: ArtifactEnvelope<ContinuityFixResult>,
-): ArtifactEnvelope<SelectedChapter> {
-  return {
-    ...selectedArtifact,
-    createdAt: new Date().toISOString(),
-    data: {
-      ...selectedArtifact.data,
-      prose: fixArtifact.data.prose,
-      wordCount: countWords(fixArtifact.data.prose),
-    },
-  };
-}
+export const fixContinuity = planContinuityFix;

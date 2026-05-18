@@ -77,8 +77,9 @@ test("smoke rerun and estimate paths reuse checkpoints", async (t) => {
 
   const stageNames: string[] = costEstimate.data.stages.map((s: any) => s.stage);
   assert.ok(stageNames.includes("spec-critique"), "must include spec-critique");
+  assert.ok(stageNames.includes("revision-patch"), "must include revision patch stage");
   assert.ok(stageNames.includes("literary-judge-revision"), "must include revision judge stage");
-  assert.ok(stageNames.includes("final-audit-localized-1"), "must include localized re-audit stage");
+  assert.ok(stageNames.includes("continuity-fix-1"), "must include continuity patch stage");
 });
 
 test("cost estimate with --skip-spec-critique suppresses critique for non-high-risk chapters", async (t) => {

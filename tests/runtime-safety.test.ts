@@ -14,15 +14,13 @@ import {
   shouldRunOpusCritique,
 } from "../src/pipeline/generate-spec.js";
 import {
-  buildLocalizedAuditPatchResult,
-} from "../src/pipeline/localized-audit-patch.js";
-import {
   calculateOverallScore,
   derivePassesThreshold,
   normalizeReviewScale,
 } from "../src/pipeline/judge-draft.js";
 import { buildSpecPacketView } from "../src/pipeline/prompt-packet-views.js";
 import { buildFinalAuditPrompt } from "../src/pipeline/final-audit.js";
+import { resolveRevisionPatchEscalation, shouldStructurallyRewrite } from "../src/pipeline/revise-draft.js";
 import {
   annotateRevertedAuditSummary,
   downgradeAllErrorsToWarnings,
@@ -1953,100 +1951,69 @@ test("compactJson produces valid minified output", () => {
   assert.deepEqual(JSON.parse(result), data);
 });
 
-test("buildLocalizedAuditPatchResult fixes temporal mismatch but leaves REPETITION for the LLM continuity fix", () => {
-  const prose = [
-    "The signal rode a frequency they had cleaned off the guest-facing channels hours ago.",
-    "The Dock Two intake was already crowded, and the Dock Two intake stayed in view while the crowd kept walking.",
-  ].join("\n\n");
-  const audit: FinalAuditReport = {
-    status: "issues_found",
-    summary: "Blocking issue found.",
-    factualConfidence: 0.95,
-    requiresFix: true,
-    issues: [
-      {
-        severity: "error",
-        title: "Temporal inconsistency in radio-suppression line",
-        description: "The phrase 'hours ago' overstates elapsed time.",
-        fixInstruction: "Change 'hours ago' to a time frame consistent with the current sequence (for example 'earlier tonight' or similar).",
-      },
-      {
-        severity: "warning",
-        title: "REPETITION",
-        description: "Phrase \"the dock two intake\" appears twice.",
-        fixInstruction: "Resolve the issue using this evidence: the dock two intake",
-      },
-    ],
-  };
+test("shouldStructurallyRewrite routes broken chapters to structural rewrite", () => {
+  const review = makeReview({
+    scoreBreakdown: {
+      ...makeReview().scoreBreakdown,
+      voiceConsistency: 55,
+      beatCoverage: 60,
+      tension: 60,
+      forwardMotion: 60,
+      proseQuality: 60,
+    },
+  });
+  const route = shouldStructurallyRewrite(review);
+  assert.equal(route.rewrite, true);
+});
 
-  const patch = buildLocalizedAuditPatchResult(prose, audit);
-  assert.ok(patch, "Localized patch should be produced for the temporal issue");
-  assert.equal(patch.requiresDeltaRefresh, false, "Cosmetic localized patch should skip delta/memory refresh");
-  assert.ok(patch.appliedFixes.includes("Temporal inconsistency in radio-suppression line"));
-  assert.ok(!patch.prose.includes("hours ago"), "Temporal phrase should be localized to the chapter timeline");
-  assert.ok(patch.prose.includes("earlier tonight"));
-  assert.ok(
-    !patch.appliedFixes.includes("REPETITION"),
-    "REPETITION must NOT be patched locally — the deterministic replacement was unsafe and regressed prose; the LLM continuity fix handles repetition",
-  );
-  assert.ok(
-    patch.prose.includes("the Dock Two intake stayed in view"),
-    "Repeated phrase should be left untouched for the LLM continuity fix",
+test("shouldStructurallyRewrite keeps lightly weak chapters on patch path", () => {
+  const review = makeReview({
+    overallScore: 92.15,
+    scoreBreakdown: {
+      ...makeReview().scoreBreakdown,
+      voiceConsistency: 78,
+      specificity: 78,
+      openingPower: 85,
+      endingHookStrength: 86,
+    },
+  });
+  const route = shouldStructurallyRewrite(review);
+  assert.equal(route.rewrite, false);
+});
+
+test("resolveRevisionPatchEscalation requires a reason for model self-escalation", () => {
+  assert.throws(
+    () => resolveRevisionPatchEscalation({
+      patches: [],
+      scopedExtension: null,
+      issueOutcomes: [],
+      notes: [],
+      requiresStructuralRewrite: true,
+      structuralRewriteReason: null,
+    }),
+    (error) => error instanceof BlockedPipelineError
+      && error.code === "BLOCKED_PROVIDER_FAILURE"
+      && error.stage === "revision-patch",
   );
 });
 
-test("buildLocalizedAuditPatchResult returns null when no issues are patchable", () => {
-  const prose = "The panel hummed under her hand while the signal broke and returned.";
-  const audit: FinalAuditReport = {
-    status: "issues_found",
-    summary: "Blocking issue found.",
-    factualConfidence: 0.9,
-    requiresFix: true,
-    issues: [
-      {
-        severity: "error",
-        title: "Wall-borne signal needs one grounding cue",
-        description: "The mechanism is under-explained and risks reading uncanny.",
-        fixInstruction: "Add a brief grounding detail that the panel backs onto comms/service infrastructure.",
-      },
-    ],
+test("resolveRevisionPatchEscalation still routes patch-budget overflow", () => {
+  const plan = {
+    patches: Array.from({ length: config.qualitySettings.revisionRouting.maxPatchesPerPlan + 1 }, (_, index) => ({
+      errorRef: `issue#${index}`,
+      originalText: `old ${index}`,
+      replacementText: `new ${index}`,
+      justification: "Patch budget test.",
+    })),
+    scopedExtension: null,
+    issueOutcomes: [],
+    notes: [],
+    requiresStructuralRewrite: false,
+    structuralRewriteReason: null,
   };
-
-  assert.equal(
-    buildLocalizedAuditPatchResult(prose, audit),
-    null,
-    "Completely unsupported issues must return null",
-  );
-});
-
-test("buildLocalizedAuditPatchResult patches what it can and leaves unsupported issues for full fix", () => {
-  const prose = "The signal rode a frequency they had cleaned off hours ago. The mechanism needs grounding.";
-  const audit: FinalAuditReport = {
-    status: "issues_found",
-    summary: "Two blocking issues.",
-    factualConfidence: 0.9,
-    requiresFix: true,
-    issues: [
-      {
-        severity: "error",
-        title: "Temporal inconsistency",
-        description: "The phrase 'hours ago' overstates elapsed time.",
-        fixInstruction: "Change 'hours ago' to 'earlier tonight'.",
-      },
-      {
-        severity: "error",
-        title: "Wall-borne signal needs grounding",
-        description: "The mechanism is under-explained.",
-        fixInstruction: "Add a grounding detail.",
-      },
-    ],
-  };
-
-  const patch = buildLocalizedAuditPatchResult(prose, audit);
-  assert.ok(patch, "Partial patch should be returned when at least one issue is fixable");
-  assert.ok(!patch.prose.includes("hours ago"), "Patchable temporal issue should be fixed");
-  assert.ok(patch.appliedFixes.length === 1, "Only the patchable issue should appear in appliedFixes");
-  assert.ok(patch.prose.includes("The mechanism needs grounding"), "Unsupported issue's prose should be untouched");
+  const route = resolveRevisionPatchEscalation(plan);
+  assert.equal(route.rewrite, true);
+  assert.match(route.reason ?? "", /patch budget/);
 });
 
 // --- Knowledge-boundary convergence ---

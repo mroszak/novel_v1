@@ -11,6 +11,9 @@ TypeScript CLI for blueprint-first, chapter-by-chapter commercial-fiction genera
 - `src/pipeline/run-chapter.ts` is the main orchestrator.
 - `src/pipeline/generate-spec.ts` owns the spec loop: spec generation, self-red-team, default-on/required Opus critique, and approved-spec revision.
 - `src/pipeline/judge-draft.ts` owns the 15-dimension literary rubric, anti-committee principles, the bestseller question, pass-threshold logic, and blocking-review signal handling.
+- `src/pipeline/revise-draft.ts` routes revision: patch-list planning by default (`revisionPatch`) and whole-chapter structural rewrite only when `shouldStructurallyRewrite`, patch-budget overflow, or model self-escalation requires it.
+- `src/pipeline/fix-continuity.ts` owns continuity-fix patch planning. It emits `RevisionPlan` JSON and persists `RevisionDiff` at `chapter-N-fix-attempt-K.json`; no whole-chapter rewrite fallback.
+- `src/pipeline/apply-revision-patches.ts` is the shared deterministic apply/accountability helper for revision-patch and continuity-fix.
 - `src/pipeline/voice-grit-pass.ts` owns the post-selection voice-grit pass per `docs/voice-grit-spec.md`.
 - `src/pipeline/opening-ending-tournament.ts` owns the 1-candidate-per-zone opening + ending compare. No title generation, no rejudge stage.
 - `src/pipeline/final-audit.ts` merges deterministic validator results with the model audit. The auditor flags any visible violation of the declared reader job as an error.
@@ -24,7 +27,7 @@ TypeScript CLI for blueprint-first, chapter-by-chapter commercial-fiction genera
 - `src/pipeline/stage-utils.ts` owns artifact paths, envelopes, and blocked-status plumbing.
 - `src/validators/index.ts` is the deterministic validator entrypoint.
 - `src/validators/continuity-manifest.ts` checks object-state contradictions, sealed-section regressions, timeline reversals, premature reveals, and motif evolution skips.
-- Default provider split: OpenAI `gpt-5.5` for planning, judging, selection, memory, audit, author-brief, voice-grit-rejudge, and tournament-selection stages; Anthropic `claude-opus-4-7` for critique, drafting, revision, continuity fixes, voice-grit-plan, and tournament candidate generation.
+- Default provider split: OpenAI `gpt-5.5` for planning, judging, selection, memory, audit, author-brief, voice-grit-rejudge, and tournament-selection stages; Anthropic `claude-opus-4-7` for critique, drafting, revision/`revisionPatch`, continuity fixes, voice-grit-plan, and tournament candidate generation.
 - `.cursor/rules/*.mdc` and this file are persistent agent context. Keep them aligned with runtime behavior when model defaults, stage contracts, testing patterns, or project ownership rules change.
 
 ## Safe Workflow
@@ -59,6 +62,7 @@ Skip-revision artifact contract (CRITICAL):
 
 - When the draft clears `qualitySettings.skipRevisionThreshold` AND has no blocking review signals, revision is skipped.
 - The skip path MUST still write `chapter-N-selection.json`, `chapter-N-selected.json`, and `chapter-N-review.json` before voice-grit runs. `--rerun-from judge`, `--rerun-from memory`, and `--audit-only` depend on these.
+- When revision runs, `reviseDraft()` returns `{ artifact, usageStage }`; `artifact.data` remains `ChapterDraft`. Patch path also writes `chapter-N-revision-diff.json`; structural rewrite does not.
 
 Voice-grit + tournament invariants:
 
@@ -79,7 +83,8 @@ Voice-grit + tournament invariants:
 - `buildSpecGenerationRequest` requires `purpose` to be a single-sentence dominant job ("one job, not a list"). The `DOMINANT JOB DISCIPLINE` judge block reads this field directly from the approved-spec JSON; do not thread a separate `purpose` parameter through `buildJudgeInstructions` or `judgeDraft`.
 - In `src/pipeline/run-chapter.ts`, `skipRevisionThreshold` may short-circuit revision only when the first draft passes threshold and has no blocking review signals. The skip path must still write `selection`, `selected`, and `review`.
 - In `src/pipeline/run-chapter.ts`, final audit blocking should follow the audit contract consistently, `POST_FIX_WORD_COUNT` remains advisory-only, and `qualitySettings.maxFixAttempts` (default 2) caps the continuity fix loop.
-- Validator-only blocking (every error-severity audit issue has `source: "validator"`) must NOT trigger the wholesale `fixContinuity` rewrite. Downgrade those errors to warnings via `downgradeValidatorOnlyErrors`, persist the audit, and break the loop. Deterministic validators are useful as smoke detectors, but they are too false-positive-prone to overrule a literary-judge-approved chapter.
+- `TrackedIssue` ids are engine-minted (`${origin}#${index}`) and every planner input issue must appear in `RevisionDiff.issueCoverage` as patched, skipped, covered by another patch, or unaddressed. Advisory warnings ride along only when a planner is already invoked by mandatory findings.
+- Validator-only blocking (every error-severity audit issue has `source: "validator"`) must NOT trigger the continuity patch planner. Downgrade those errors to warnings via `downgradeValidatorOnlyErrors`, persist the audit, and break the loop. Deterministic validators are useful as smoke detectors, but they are too false-positive-prone to overrule a literary-judge-approved chapter.
 - `mergeAuditWithValidator` MUST tag every audit issue with `source: "model" | "validator"` so the gate above can tell them apart.
 - Publish-candidate immutability: the prose entering the final audit (post pairwise-selection, post voice-grit, post tournament) is the publish candidate. It is persisted as `chapter-N-publish-candidate.json`. After any fix-loop pass, the publish-candidate ratchet runs BEFORE the post-fix threshold gate. The pipeline reverts when EITHER the post-fix re-judge score regressed beyond `qualitySettings.publishCandidateRegressionTolerance` (default 1pt) OR the post-fix dropped below `qualitySettings.judgePassThreshold` while the candidate had cleared it. On revert: prose, review, delta, memory, and audit are restored to the candidate, any blocking audit errors on the candidate are downgraded to warnings via `downgradeAllErrorsToWarnings` (severity flips, `source` is preserved so operators still see model vs validator provenance), the audit summary is annotated by `annotateRevertedAuditSummary` so `requiresFix: false` reads as intentional, and the chapter publishes. The post-fix `BLOCKED_QUALITY` gate only fires when the candidate also failed threshold (no good prose to revert toward). Later stages may improve or repair, never quietly degrade — including by nudging a publishable candidate just under threshold.
 - Voice-grit must NOT touch reserved zones; the tournament owns opening + ending; polish-pass and reader-simulation are NOT part of v2.

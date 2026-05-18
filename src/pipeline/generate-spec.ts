@@ -17,6 +17,7 @@ import { buildSpecPacketView } from "./prompt-packet-views.js";
 import { createSmokeSelfRedTeam, createSmokeSpec } from "./smoke-helpers.js";
 import { BlockedPipelineError, chapterArtifactPath, createArtifact } from "./stage-utils.js";
 import { compactJson, normalizeLookupKey, writeJson } from "../utils/index.js";
+import { parseAnthropicJson } from "../utils/parse-anthropic-json.js";
 
 export const chapterSpecSchema = {
   type: "object",
@@ -165,25 +166,6 @@ const selfRedTeamSchema = {
   ],
   additionalProperties: false,
 } as const;
-
-function parseAnthropicJson<T>(raw: string): T {
-  const trimmed = raw
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {
-    const match = trimmed.match(/\{[\s\S]*\}/);
-    if (!match) {
-      throw new Error("Anthropic spec critique did not return valid JSON.");
-    }
-    return JSON.parse(match[0]) as T;
-  }
-}
 
 const BEAT_COVERAGE_STOPWORDS = new Set([
   "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is",

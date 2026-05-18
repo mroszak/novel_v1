@@ -26,15 +26,15 @@ per chapter:
   → IF score >= skipRevisionThreshold AND no blocking signals:
        write selection.json + selected.json + review.json
      ELSE:
-       revise → judge → pairwise-select → write the same artifacts
+       revision-patch OR structural revise → judge → pairwise-select → write the same artifacts
   → voice-grit pass        (advisory, fail-soft; reserved zones blocked)
   → opening + ending tournament (1 candidate per zone, advisory, fail-soft)
-  → delta → memory → final audit → (up to 2 fix attempts if needed) → publish
+  → delta → memory → final audit → (up to 2 patch fix attempts if needed) → publish
   → continuity-state-update (deterministic post-publish merge)
   → voice-calibration       (deterministic post-publish extraction)
 ```
 
-All post-selection passes (voice-grit, tournament) are advisory and fail-soft. If either throws or discards, downstream consumes `selected` unchanged. The skip-revision path still writes `selection.json`, `selected.json`, and `review.json` so `--rerun-from judge`, `--rerun-from memory`, `--audit-only` still work end-to-end.
+All post-selection passes (voice-grit, tournament) are advisory and fail-soft. If either throws or discards, downstream consumes `selected` unchanged. The skip-revision path still writes `selection.json`, `selected.json`, and `review.json` so `--rerun-from judge`, `--rerun-from memory`, `--audit-only` still work end-to-end. Revision uses patch planning by default and writes `revision-diff.json`; structural rewrite is a fallback for broad failures. Continuity-fix attempts are patch-only and write `RevisionDiff` payloads; when a fix runs, CLI output includes patched/skipped/unaddressed coverage counts.
 
 ## Quick start
 
@@ -132,7 +132,7 @@ Character cards also accept an optional `Surname Alias: true` flag so the valida
 | author-brief (one-time per blueprint) | GPT-5.5 medium | ~$0.05 amortized |
 | continuity-state-update / continuity-manifest / market-promise / locations compiles | deterministic | $0.00 |
 
-With one revision pass: ~$7.35. With revision + up to 2 fix attempts: ~$10–13. Twelve chapters: $70–160. Wall-time: ~10–20 min/chapter typical.
+With one patch revision pass: lower than the old full rewrite path; structural revision remains the expensive fallback. With revision + up to 2 patch fix attempts: typically below the old rewrite-heavy estimate. Twelve chapters: $70–160 depending on reruns and structural fallbacks. Wall-time: ~10–20 min/chapter typical.
 
 Real numbers come from `--estimate-cost` and from actual provider invoices after the first live runs.
 
@@ -140,6 +140,8 @@ Real numbers come from `--estimate-cost` and from actual provider invoices after
 
 - `src/index.ts` — CLI entrypoint
 - `src/pipeline/run-chapter.ts` — main orchestrator
+- `src/pipeline/revise-draft.ts` — patch revision router with structural rewrite fallback
+- `src/pipeline/fix-continuity.ts` / `apply-revision-patches.ts` — patch-only continuity fixes and shared patch accountability
 - `src/pipeline/voice-grit-pass.ts` — voice-grit pass (canonical contract: `docs/voice-grit-spec.md`)
 - `src/pipeline/opening-ending-tournament.ts` — 1-candidate-per-zone opening + ending compare
 - `src/pipeline/judge-draft.ts` — literary judge with anti-committee principles + bestseller question
@@ -151,4 +153,5 @@ Real numbers come from `--estimate-cost` and from actual provider invoices after
 - `src/types/index.ts` — contract layer
 - `BLUEPRINT_TEMPLATE.md` — author-facing template
 - `docs/voice-grit-spec.md` — canonical voice-grit contract
+- `docs/revision-patch-spec.md` — shared revision/continuity patch contract
 - `AGENTS.md` — agent context (read before substantive runtime edits)

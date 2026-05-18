@@ -134,6 +134,13 @@ export const config = {
      * later passes may improve or repair, but they cannot quietly degrade.
      */
     publishCandidateRegressionTolerance: 1,
+    revisionRouting: {
+      voiceConsistencyFloorForPatch: 70,
+      dimensionFailingFloor: 70,
+      maxFailingDimensionsForPatch: 3,
+      structuralHookFloor: 70,
+      maxPatchesPerPlan: 15,
+    },
   },
   paths: {
     blueprint: path.resolve(rootDir, "STORY_BLUEPRINT.md"),
@@ -243,6 +250,15 @@ export const config = {
       contextWindowTokens: 110000,
       thinkingBudgetTokens: 8000,
     } satisfies AnthropicStageProfile,
+    revisionPatch: {
+      stageName: "revision-patch",
+      provider: "anthropic",
+      model: anthropicPrimaryModel,
+      inputTokenBudget: 24000,
+      maxOutputTokens: 4000,
+      contextWindowTokens: 50000,
+      thinkingBudgetTokens: 3500,
+    } satisfies AnthropicStageProfile,
     pairwiseSelection: {
       stageName: "pairwise-selection",
       provider: "openai",
@@ -288,7 +304,7 @@ export const config = {
       provider: "anthropic",
       model: anthropicPrimaryModel,
       inputTokenBudget: 72000,
-      maxOutputTokens: 16000,
+      maxOutputTokens: 3000,
       contextWindowTokens: 110000,
       thinkingBudgetTokens: 3500,
     } satisfies AnthropicStageProfile,

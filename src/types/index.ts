@@ -314,6 +314,67 @@ export interface VoiceGritDiff {
   finalProse: string;
 }
 
+export type IssueOrigin =
+  | "judge-blocking"
+  | "judge-weakness"
+  | "judge-revision-action"
+  | "judge-issue-error"
+  | "judge-issue-warning"
+  | "audit-error-model"
+  | "audit-error-validator"
+  | "audit-warning-model"
+  | "audit-warning-validator";
+
+export interface TrackedIssue {
+  id: string;
+  origin: IssueOrigin;
+  title: string;
+  fixHint: string | null;
+  mandatory: boolean;
+}
+
+export interface RevisionPatch {
+  errorRef: string;
+  originalText: string;
+  replacementText: string;
+  justification: string;
+}
+
+export interface RevisionPlan {
+  patches: RevisionPatch[];
+  scopedExtension?: string | null;
+  issueOutcomes: Array<{
+    id: string;
+    status: "patched" | "skipped" | "unaddressed";
+    reason: string;
+  }>;
+  notes: string[];
+  requiresStructuralRewrite: boolean;
+  structuralRewriteReason: string | null;
+}
+
+export interface RevisionDiff {
+  status: "applied" | "no-patches" | "skipped";
+  reason: string;
+  appliedPatches: RevisionPatch[];
+  skippedPatches: Array<RevisionPatch & { skipReason: string }>;
+  issueCoverage: Array<{
+    id: string;
+    origin: IssueOrigin;
+    title: string;
+    status:
+      | "patched"
+      | "skip-validation"
+      | "skip-planner"
+      | "unaddressed"
+      | "covered-by-other";
+    reason: string | null;
+  }>;
+  notes: string[];
+  preProse: string;
+  finalProse: string;
+}
+
 export interface ParsedStoryBlueprint {
   schemaVersion: string;
   blueprintHash: string;
@@ -758,11 +819,6 @@ export interface PublishCandidateSnapshot {
   capturedAt: string;
 }
 
-export interface ContinuityFixResult {
-  prose: string;
-  appliedFixes: string[];
-}
-
 export interface VoiceFingerprint {
   sentenceLength: {
     mean: number;
@@ -845,12 +901,6 @@ export interface TournamentMerged {
   postReviewScore: number | null;
   preProse: string;
   finalProse: string;
-}
-
-export interface LocalizedAuditPatchResult {
-  prose: string;
-  appliedFixes: string[];
-  requiresDeltaRefresh: boolean;
 }
 
 export interface TokenPreflight {
@@ -966,6 +1016,15 @@ export interface RunChapterResult {
   statusArtifactPath: string | null;
   costEstimateArtifactPath: string | null;
   costSummaryArtifactPath: string | null;
+  revisionCoverageSummary: {
+    artifactPath: string;
+    totalIssues: number;
+    patched: number;
+    skipValidation: number;
+    skipPlanner: number;
+    coveredByOther: number;
+    unaddressed: number;
+  } | null;
   reusedArtifacts: string[];
 }
 

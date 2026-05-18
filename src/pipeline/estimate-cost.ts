@@ -14,12 +14,14 @@ import type {
   StageTokenEstimate,
 } from "../types/index.js";
 import { buildChapterDeltaRequest } from "./extract-chapter-delta.js";
+import { buildContinuityFixRequest } from "./fix-continuity.js";
 import {
   buildSelfRedTeamRequest,
   buildSpecCritiqueRequest,
   buildSpecGenerationRequest,
   buildSpecRevisionRequest,
 } from "./generate-spec.js";
+import { buildRevisionPatchRequest } from "./revise-draft.js";
 import {
   createSmokeAudit,
   createSmokeDelta,
@@ -33,6 +35,7 @@ import {
 } from "./smoke-helpers.js";
 import { buildFinalAuditPrompt } from "./final-audit.js";
 import { stripHeavyPacketFields } from "./generate-draft.js";
+import { buildTrackedIssues } from "./track-issues.js";
 import { stripMemoryPacketFields } from "./update-memory.js";
 
 function pushWithNote(stages: StageTokenEstimate[], est: StageTokenEstimate, note?: string): void {
@@ -104,7 +107,6 @@ export async function estimateChapterCost(params: {
 
   // --- Token pools ---
 
-  const packetTokens = estimateTextTokens(JSON.stringify(params.packet));
   const strippedPacketTokens = estimateTextTokens(
     JSON.stringify(stripHeavyPacketFields(params.packet)),
   );
@@ -126,7 +128,6 @@ export async function estimateChapterCost(params: {
     ? estimateTextTokens(params.packet.compactContext.previousChapterFull)
     : 0;
   const prevTailJudgeTokens = estimateWordTokens(800);
-  const prevTailFixTokens = estimateWordTokens(500);
 
   const styleRulesTokens = estimateTextTokens(
     storyCore.styleRules.join("\n") + "\n" + storyCore.antiPatterns.join("\n"),
@@ -142,7 +143,16 @@ export async function estimateChapterCost(params: {
   const reviewTokens = estimateTextTokens(JSON.stringify(smokeReview));
   const deltaTokens = estimateTextTokens(JSON.stringify(smokeDeltaData));
   const validatorTokens = estimateTextTokens(JSON.stringify(smokeValidators));
-  const auditTokens = estimateTextTokens(JSON.stringify(smokeAudit));
+  const revisionPatchInputTokens = estimateAnthropicStageRequest({
+    stage: config.stageProfiles.revisionPatch,
+    request: buildRevisionPatchRequest({
+      packet: params.packet,
+      spec: smokeSpec,
+      draft: smokeDraft,
+      review: smokeReview,
+      trackedIssues: buildTrackedIssues({ review: smokeReview }),
+    }),
+  });
 
   // Critique inclusion: required (high risk — skip ignored) or preferred (profile flag).
   // needsOpusEscalation is unknowable at estimate time — see escalation note below.
@@ -168,8 +178,14 @@ export async function estimateChapterCost(params: {
     validatorReport: smokeValidators,
     selectedProse: smokeSelected.prose,
   }));
-  const fixLoopFixInput = genreContractTokens + packetTokens + memoryTokens
-    + auditTokens + prevTailFixTokens + draftTokens;
+  const fixLoopFixInput = estimateAnthropicStageRequest({
+    stage: config.stageProfiles.continuityFix,
+    request: buildContinuityFixRequest({
+      packet: params.packet,
+      selected: smokeSelected,
+      trackedIssues: buildTrackedIssues({ audit: smokeAudit }),
+    }),
+  });
 
   // --- Build stage list ---
 
@@ -343,7 +359,25 @@ export async function estimateChapterCost(params: {
     estimatedInputTokens: draftFamilyInput + draftTokens + styleRulesTokens
       + storyPromiseTokens + reviewTokens,
   });
-  pushWithNote(stages, revisionEst, skipNote);
+  pushWithNote(
+    stages,
+    revisionEst,
+    skipNote
+      ? `${skipNote} Structural fallback only when revisionRouting thresholds or planner self-escalation require it.`
+      : "Structural fallback only when revisionRouting thresholds or planner self-escalation require it.",
+  );
+
+  const revisionPatchEst = estimateStageCost({
+    stage: config.stageProfiles.revisionPatch,
+    estimatedInputTokens: revisionPatchInputTokens,
+  });
+  pushWithNote(
+    stages,
+    revisionPatchEst,
+    skipNote
+      ? `${skipNote} Default revision path; emits a RevisionDiff sidecar.`
+      : "Default revision path; emits a RevisionDiff sidecar.",
+  );
 
   const revisionJudgeEst: StageTokenEstimate = {
     ...estimateStageCost({
@@ -429,17 +463,6 @@ export async function estimateChapterCost(params: {
 
   const maxFixes = profile.maxFixAttempts;
   for (let i = 1; i <= maxFixes; i++) {
-    const localizedFixNote = `Conditional: runs before continuity fix attempt ${i} when blocking audit issues can be patched locally without refreshing delta or memory.`;
-    const localizedAuditEst: StageTokenEstimate = {
-      ...estimateStageCost({
-        stage: config.stageProfiles.finalAudit,
-        estimatedInputTokens: fixLoopAuditInput,
-      }),
-      stage: `${config.stageProfiles.finalAudit.stageName}-localized-${i}`,
-      notes: [localizedFixNote],
-    };
-    stages.push(localizedAuditEst);
-
     const fixNote = `Conditional: only runs if audit finds blocking issues${i > 1 ? ` after attempt ${i - 1}` : ""}.`;
 
     const fixEst: StageTokenEstimate = {
@@ -482,16 +505,6 @@ export async function estimateChapterCost(params: {
     };
     stages.push(auditFixEst);
   }
-
-  const finalLocalizedAuditEst: StageTokenEstimate = {
-    ...estimateStageCost({
-      stage: config.stageProfiles.finalAudit,
-      estimatedInputTokens: fixLoopAuditInput,
-    }),
-    stage: `${config.stageProfiles.finalAudit.stageName}-localized-${maxFixes + 1}`,
-    notes: ["Conditional: runs once more after the last continuity-fix attempt when the remaining audit issue can be patched locally."],
-  };
-  stages.push(finalLocalizedAuditEst);
 
   // Post-fix literary judge (runs once after the fix loop if any fixes were applied)
   const postFixJudgeEst: StageTokenEstimate = {

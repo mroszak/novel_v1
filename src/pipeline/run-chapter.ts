@@ -7,11 +7,11 @@ import { compileBlueprintRuntime } from "./compile-blueprint.js";
 import { estimateChapterCost } from "./estimate-cost.js";
 import { extractChapterDelta } from "./extract-chapter-delta.js";
 import { runFinalAudit } from "./final-audit.js";
-import { fixContinuity, applyFixResult } from "./fix-continuity.js";
+import { applyRevisionDiffToSelected } from "./apply-revision-patches.js";
+import { fixContinuity } from "./fix-continuity.js";
 import { generateDraft } from "./generate-draft.js";
 import { runSpecLoop } from "./generate-spec.js";
 import { hasBlockingReviewSignals, judgeDraft } from "./judge-draft.js";
-import { applyLocalizedAuditPatch, applyLocalizedAuditPatchResult } from "./localized-audit-patch.js";
 import { runOpeningEndingTournament } from "./opening-ending-tournament.js";
 import { reviseDraft } from "./revise-draft.js";
 import {
@@ -40,6 +40,7 @@ import type {
   DraftReview,
   PairwiseSelection,
   PublishCandidateSnapshot,
+  RevisionDiff,
   RollingMemory,
   RunChapterOptions,
   RunChapterResult,
@@ -93,6 +94,25 @@ function collectUsage(
   if (artifact.usage) {
     usages.push({ stage, usage: artifact.usage });
   }
+}
+
+function summarizeRevisionCoverage(diff: RevisionDiff, artifactPath: string): RunChapterResult["revisionCoverageSummary"] {
+  const counts = {
+    totalIssues: diff.issueCoverage.length,
+    patched: 0,
+    skipValidation: 0,
+    skipPlanner: 0,
+    coveredByOther: 0,
+    unaddressed: 0,
+  };
+  for (const entry of diff.issueCoverage) {
+    if (entry.status === "patched") counts.patched += 1;
+    if (entry.status === "skip-validation") counts.skipValidation += 1;
+    if (entry.status === "skip-planner") counts.skipPlanner += 1;
+    if (entry.status === "covered-by-other") counts.coveredByOther += 1;
+    if (entry.status === "unaddressed") counts.unaddressed += 1;
+  }
+  return { artifactPath, ...counts };
 }
 
 export function hasBlockingAuditIssues(audit: {
@@ -282,6 +302,7 @@ function emptyResult(status: RunChapterResult["status"], blueprintHash: string):
     statusArtifactPath: null,
     costEstimateArtifactPath: null,
     costSummaryArtifactPath: null,
+    revisionCoverageSummary: null,
     reusedArtifacts: [],
   };
 }
@@ -487,7 +508,11 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         await writeJson(chapterArtifactPath(options.chapterNumber, "review"), selectedReviewArtifact);
       } else {
         console.error(`[ch${options.chapterNumber}] Revising chapter...`);
-        const revisedDraftArtifact = await reviseDraft({
+        const {
+          artifact: revisedDraftArtifact,
+          usageStage: revisionUsageStage,
+          additionalUsages: revisionAdditionalUsages = [],
+        } = await reviseDraft({
           packetArtifact,
           approvedSpecArtifact,
           draftArtifact,
@@ -517,7 +542,13 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
 
         selectedArtifact = selection.selectedArtifact;
         selectedReviewArtifact = selection.selectedReviewArtifact;
-        collectUsage(usages, config.stageProfiles.revision.stageName, revisedDraftArtifact);
+        for (const additional of revisionAdditionalUsages) {
+          usages.push({
+            stage: config.stageProfiles[additional.usageStage].stageName,
+            usage: additional.usage,
+          });
+        }
+        collectUsage(usages, config.stageProfiles[revisionUsageStage].stageName, revisedDraftArtifact);
         collectUsage(usages, `${config.stageProfiles.literaryJudge.stageName}-revision`, revisedReviewArtifact);
         collectUsage(usages, config.stageProfiles.pairwiseSelection.stageName, selection.selectionArtifact);
       }
@@ -685,66 +716,21 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
 
     const maxFixAttempts = config.qualitySettings.maxFixAttempts;
     let fixAttempt = 0;
-    let localizedAuditPatchApplied = false;
-    let localizedAuditPatchAttempt = 0;
-    let localizedPatchStale = false;
     while (hasBlockingAuditIssues(auditRun.auditArtifact.data) && fixAttempt < maxFixAttempts) {
-      if (!localizedPatchStale) {
-        const localizedPatchArtifact = await applyLocalizedAuditPatch({
-          selectedArtifact: currentSelectedArtifact,
-          auditArtifact: auditRun.auditArtifact,
-          attemptNumber: localizedAuditPatchAttempt + 1,
-        });
-        if (localizedPatchArtifact) {
-          localizedAuditPatchAttempt += 1;
-          localizedAuditPatchApplied = true;
-          console.error(
-            `[ch${options.chapterNumber}] Localized audit patch attempt `
-            + `${localizedAuditPatchAttempt}/${maxFixAttempts}...`,
-          );
-          currentSelectedArtifact = applyLocalizedAuditPatchResult(
-            currentSelectedArtifact,
-            localizedPatchArtifact,
-          );
-          await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
-
-          auditRun = await runFinalAudit({
-            packetArtifact,
-            selectedArtifact: currentSelectedArtifact,
-            selectedReviewArtifact,
-            deltaArtifact: currentDeltaArtifact,
-            memoryArtifact: currentMemoryArtifact,
-            previousMemory,
-            blueprintArtifacts: compilation.artifacts,
-            smoke: options.smoke,
-          });
-          collectUsage(
-            usages,
-            `${config.stageProfiles.finalAudit.stageName}-localized-${localizedAuditPatchAttempt}`,
-            auditRun.auditArtifact,
-          );
-          if (!hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
-            break;
-          }
-        }
-        localizedPatchStale = true;
-      }
-
       // Validator-only blocking is a known false-positive surface. Refuse to
-      // wholesale-rewrite a literary-judge-approved chapter for it; downgrade
-      // the noise to warnings, persist the cleaned audit, and exit the loop.
+      // let model patches overrule a literary-judge-approved chapter for it;
+      // downgrade the noise to warnings, persist the cleaned audit, and exit.
       if (isValidatorOnlyBlocking(auditRun.auditArtifact.data)) {
         const downgraded = downgradeValidatorOnlyErrors(auditRun.auditArtifact.data);
         auditRun.auditArtifact = { ...auditRun.auditArtifact, data: downgraded };
         await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
         console.error(
-          `[ch${options.chapterNumber}] Skipping wholesale continuity fix: only deterministic-validator errors remain. Downgraded to warnings.`,
+          `[ch${options.chapterNumber}] Skipping continuity patch planner: only deterministic-validator errors remain. Downgraded to warnings.`,
         );
         break;
       }
 
       fixAttempt += 1;
-      localizedPatchStale = false;
       console.error(`[ch${options.chapterNumber}] Continuity fix attempt ${fixAttempt}/${maxFixAttempts}...`);
       const fixArtifact = await fixContinuity({
         packetArtifact,
@@ -756,8 +742,12 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         smoke: options.smoke,
       });
       collectUsage(usages, `${config.stageProfiles.continuityFix.stageName}-${fixAttempt}`, fixArtifact);
+      result.revisionCoverageSummary = summarizeRevisionCoverage(
+        fixArtifact.data,
+        chapterArtifactPath(options.chapterNumber, `fix-attempt-${fixAttempt}`),
+      );
 
-      currentSelectedArtifact = applyFixResult(currentSelectedArtifact, fixArtifact);
+      currentSelectedArtifact = applyRevisionDiffToSelected(currentSelectedArtifact, fixArtifact);
       await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
 
       currentDeltaArtifact = await extractChapterDelta({
@@ -793,43 +783,7 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
       collectUsage(usages, `${config.stageProfiles.finalAudit.stageName}-fix-${fixAttempt}`, auditRun.auditArtifact);
     }
 
-    if (hasBlockingAuditIssues(auditRun.auditArtifact.data)) {
-      const finalLocalizedPatchArtifact = await applyLocalizedAuditPatch({
-        selectedArtifact: currentSelectedArtifact,
-        auditArtifact: auditRun.auditArtifact,
-        attemptNumber: localizedAuditPatchAttempt + 1,
-      });
-      if (finalLocalizedPatchArtifact) {
-        localizedAuditPatchAttempt += 1;
-        localizedAuditPatchApplied = true;
-        console.error(
-          `[ch${options.chapterNumber}] Localized audit patch attempt `
-          + `${localizedAuditPatchAttempt}/${maxFixAttempts + 1}...`,
-        );
-        currentSelectedArtifact = applyLocalizedAuditPatchResult(
-          currentSelectedArtifact,
-          finalLocalizedPatchArtifact,
-        );
-        await writeJson(chapterArtifactPath(options.chapterNumber, "selected"), currentSelectedArtifact);
-        auditRun = await runFinalAudit({
-          packetArtifact,
-          selectedArtifact: currentSelectedArtifact,
-          selectedReviewArtifact,
-          deltaArtifact: currentDeltaArtifact,
-          memoryArtifact: currentMemoryArtifact,
-          previousMemory,
-          blueprintArtifacts: compilation.artifacts,
-          smoke: options.smoke,
-        });
-        collectUsage(
-          usages,
-          `${config.stageProfiles.finalAudit.stageName}-localized-${localizedAuditPatchAttempt}`,
-          auditRun.auditArtifact,
-        );
-      }
-    }
-
-    if ((fixAttempt > 0 || localizedAuditPatchApplied)
+    if (fixAttempt > 0
       && currentSelectedArtifact.data.wordCount < packetArtifact.data.targetWordBand.min) {
       auditRun.auditArtifact = {
         ...auditRun.auditArtifact,
@@ -874,17 +828,15 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         message: "Final audit still reports blocking errors after exhausting the surgical fix loop.",
         details: {
           attempts: maxFixAttempts,
-          localizedAuditPatchAttempts: localizedAuditPatchAttempt,
           issues: auditRun.auditArtifact.data.issues,
         },
       });
       return result;
     }
 
-    if (fixAttempt > 0 || localizedAuditPatchApplied) {
+    if (fixAttempt > 0) {
       console.error(
-        `[ch${options.chapterNumber}] Re-judging after ${fixAttempt} fix(es)`
-        + `${localizedAuditPatchApplied ? " and localized audit patching" : ""}...`,
+        `[ch${options.chapterNumber}] Re-judging after ${fixAttempt} fix(es)...`,
       );
       selectedReviewArtifact = await judgeDraft({
         candidateId: currentSelectedArtifact.data.winner,
@@ -956,17 +908,14 @@ export async function runChapter(options: RunChapterOptions): Promise<RunChapter
         await writeJson(chapterArtifactPath(options.chapterNumber, "final-audit"), auditRun.auditArtifact);
       } else if (!selectedReviewArtifact.data.passesThreshold) {
         // No revert path available (candidate also under threshold) — block.
-        const localizedOnly = localizedAuditPatchApplied && fixAttempt === 0;
         result.status = "BLOCKED_QUALITY";
         result.statusArtifactPath = await writeStatusArtifact({
           chapterNumber: options.chapterNumber,
           blueprintHash: compilation.parsed.blueprintHash,
           blueprintVersion: compilation.parsed.metadata.blueprintVersion,
           status: "BLOCKED_QUALITY",
-          stage: localizedOnly ? "localized-audit-patch" : "continuity-fix",
-          message: localizedOnly
-            ? "Localized audit patch preserved continuity but nudged the selected chapter below the literary quality threshold."
-            : "Continuity fixes pushed the selected chapter below the literary quality threshold.",
+          stage: "continuity-fix",
+          message: "Continuity fixes pushed the selected chapter below the literary quality threshold.",
           details: {
             overallScore: selectedReviewArtifact.data.overallScore,
             blockingIssues: selectedReviewArtifact.data.blockingIssues,

@@ -180,6 +180,16 @@ async function main(): Promise<void> {
     if (result.costSummaryArtifactPath) {
       console.log(`Cost summary: ${result.costSummaryArtifactPath}`);
     }
+    if (result.revisionCoverageSummary) {
+      const summary = result.revisionCoverageSummary;
+      console.log(
+        `Revision coverage: ${summary.patched}/${summary.totalIssues} patched, `
+        + `${summary.coveredByOther} covered-by-other, `
+        + `${summary.skipValidation + summary.skipPlanner} skipped, `
+        + `${summary.unaddressed} unaddressed`,
+      );
+      console.log(`Revision coverage artifact: ${summary.artifactPath}`);
+    }
     if (result.statusArtifactPath) {
       console.log(`Status artifact: ${result.statusArtifactPath}`);
     }
