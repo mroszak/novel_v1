@@ -22,5 +22,5 @@ alwaysApply: false
   - deterministic validator edge cases, especially duplicate-paragraph and knowledge-leak boundary matching
   - `mustNotKnowYet` convergence rules in `build-rolling-memory.ts`
   - smoke-helper calibration whenever validator changes are supposed to keep smoke output clean
-  - Phase 1 zone ownership (polish vs tournament), polish confidence-threshold gating, voice fingerprint extraction, and the reader-sim → next-chapter advisory hand-off
+  - voice-grit reserved-zone ownership, opening/ending tournament splices, and voice fingerprint extraction
   - voice-target loading/extraction fail-soft behavior (chapter 1 with no prior chapters, with `STYLE_SAMPLE.md` present, and after `STYLE_SAMPLE.md` is removed)

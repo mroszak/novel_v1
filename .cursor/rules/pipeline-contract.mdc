@@ -8,7 +8,7 @@ alwaysApply: false
 
 When changing stages, reruns, flags, or artifacts, review all affected contract files together:
 
-- `src/config.ts` for stage profiles, `qualitySettings`, defaults, and paths
+- `src/config.ts` for `stageProfiles`, model defaults, `qualitySettings`, and paths
 - `src/types/index.ts` for options, artifact data, statuses, and telemetry
 - `src/index.ts` for CLI flags and help text
 - `src/blueprint/parse-blueprint.ts` for the Market Promise + Continuity Manifest + Locations sections

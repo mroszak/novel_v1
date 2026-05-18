@@ -33,6 +33,7 @@ TypeScript CLI for blueprint-first, chapter-by-chapter commercial-fiction genera
 2. Prefer `npm run smoke` or isolated-root CLI tests over live provider calls.
 3. Use live OpenAI/Anthropic runs only when the change cannot be validated locally.
 4. Do not require real API keys in tests.
+5. If code and maintenance docs/rules disagree, trust the code, then update the stale context in the same task.
 
 ## Pipeline Contract
 

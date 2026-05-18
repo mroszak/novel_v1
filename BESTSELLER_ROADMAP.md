@@ -18,7 +18,7 @@
 > - **Quality profiles** (`max` / `standard` / `rerun`) removed entirely. One canonical pipeline, one `qualitySettings` block in `src/config.ts`.
 > - **Title-candidate tournament** removed. The chapter title comes from the spec.
 > - **Tournament rejudge stage** collapsed. The 1-candidate compare is itself the quality gate.
-> - **Literary retry loop** + **post-fix literary rescue** removed. Continuity-fix loop capped at 1 attempt.
+> - **Literary retry loop** + **post-fix literary rescue** removed. Continuity-fix loop is capped by `qualitySettings.maxFixAttempts` (default 2).
 > - **`--quality` CLI flag** and **`Default Quality Profile` blueprint metadata** removed.
 >
 > What's deferred:

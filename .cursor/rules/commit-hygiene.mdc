@@ -21,7 +21,7 @@ Scan the changeset. If any change touches:
 
 - a CLI flag, env var, command, model default, stage name, artifact contract, or operator-visible behavior
 - a project structure invariant or persistent ownership rule
-- a new pipeline stage, profile, or quality threshold
+- a new pipeline stage, model-routing change, or quality threshold
 - the build sequence, acceptance criteria, or status of any item in `BESTSELLER_ROADMAP.md`
 
 then for each maintenance doc that mentions the affected surface, identify stale references and propose specific edits. Confirm once with the user, then commit everything together in the same commit (or a paired commit when the doc-sync edits would obscure the substantive change).
@@ -29,7 +29,7 @@ then for each maintenance doc that mentions the affected surface, identify stale
 ## Out of scope
 
 - Not a hook or a gate; advisory only.
-- Not a doc generator; only updates existing references the change clearly requires.
+- Not a doc generator; update existing references the change clearly requires, and remove stale references instead of preserving old context.
 - Not for cosmetic rewrites.
 - Pre-existing modifications the user did not author this session are still treated as user WIP and never auto-staged without explicit confirmation.
 
