@@ -1,257 +1,198 @@
-# Chapter One
-
+# CHAPTER ONE
 ## The Aurelia
 
-The pod was already inside its cradle when Erik Halvorsen registered the change in pitch — that small iron sigh a guided capsule makes when its load transfers from cable to dock — and he understood, without looking at the depth strip, that he had finished arriving. The exterior floodlights threw blue-black water against the curved glass, and through it he watched the Aurelia gather itself into geometry: a lit dome at four hundred and twelve feet, brass fittings catching pale cones of lamp, a helical staircase visible for a moment through the shaped roof and then gone behind the angle of his approach.
+The elevator-pod made the last hundred feet of its descent along the guide cable in a tremor so small it could only be felt in the wrists, and Erik Halvorsen, who had specified the bearing that produced it, set his right hand on the brass rail because he had promised himself he would not. Through the curved port the Atlantic was the color of old ink, lit only by the Aurelia's own lamps below — a circle of dome glass that brightened as the pod approached, so that for a long second the dark sea seemed the dimmer thing. The young attendant in white service jacket counted off the levels as they slid past, the way a guide on a tour bus identified arrondissements. "Promenade," he said. "Garden Suites. Mezzanine. The Coral Suite, sir." The phrase was offered with the same warm pride as the rest. The upper deck went by in a long line of lit windows under brass lamps, and one round acrylic ceiling — up there, alone above everything — was the color of the sea, which was to say nothing at all.
 
-Higher up, on the descent, the pod had passed the crown level. He had glanced, the way an architect glances, at the upper acrylic. The Coral Suite's windows were dark. He registered them and looked away.
+The arrival lock received the pod at twelve degrees of trim and held. There came the long pressurized exhalation that Erik knew was rated at four and a half seconds and that passengers always heard as relief, then the deeper hum as the seals took their seats. He set his palm flat against the inside breast of his tuxedo through fine wool and confirmed the small folded rectangle he had carried in the inside pocket of every coat he had owned since February. The attendant said, "This way, sir," and the inner door began its travel.
 
-The receiving lock breathed open with the polite mechanical hush he had specified eighteen months earlier — pressure-equalized, oil-warm, throat-clearing — and he stepped over the threshold into the Grand Atrium and into music. Strings. A swell of conversation under glass. A wall of black water beyond the dome the lamps had decided to make beautiful. Tuxedo wool and perfume and brass and the fine peppering of flashbulbs at the staircase. Three stories of it, lifted in a curve over his head and held there by the calculations he had signed.
+Warmth came through first — carpet warmth, the body heat of two hundred people standing under floodlights they did not have to share with the sun — and then music, the orchestra tuning down toward something cleaner than tuning. The Grand Atrium was as he had drawn it, and was not as he had drawn it. Three stories of curved glass and steel ribbing rose above the helical staircase like the inside of a nautilus. The lamps were warmer than the renderings had promised. The carpet had been chosen by someone with better taste than he had. A woman from one of the wire services found his elbow before he had taken four steps. "Is it true," she said, "that the co-author of the building has finally come down to see it?"
 
-For the length of one breath he allowed himself the shape of pride.
+He took the breath he always took before he answered questions of that shape. "Mr. Vauclair is the host," he said. "I came to look at the lamps."
 
-Then someone said his name. A man in a hired tuxedo with a flashbulb already aimed — *Mr. Halvorsen, sir, just one* — and the bulb popped and there was the small involuntary clench of the public face. A second voice reached him through the first, smoother, more practiced. *The architect. Co-author of the impossible.* He produced what he had been producing all spring: the half-smile, the tilt of the head, the technical modesty.
+She laughed, and wrote nothing, because she was not the writer she had been introduced as. A porter took his coat at the elbow before Erik thought to refuse. He heard himself ask for it back. The porter, well-trained, returned it without ceremony, and Erik draped it over his own arm. He could feel through the wool, with the side of his thumb, the folded paper he had not been able to throw away. Above him, the dome lifted the music and held it. The room was beautiful.
 
-"My partners did the impossible," he said. "I drew lines."
-
-The man laughed and wrote something down.
-
-Inside the breast of his coat, against his ribs, a folded weight pressed where it always pressed. Old paper, soft at the creases from being moved coat to coat for eight months. He shifted the way a man shifts to settle a wallet. The paper settled. He could feel each fold of it through his shirt the way other men could feel a pulse.
-
-A woman in green silk turned and lifted her glass to him from twenty feet away as if they had once known each other. He could not place her; he placed her dress against the curve of the dome instead, and the seam of light along the inner glass behaved correctly under load. The atrium was breathing the way he had asked it to breathe.
-
-He had told himself, in the elevator, that he would not look at the building before he looked at the people in it. He had managed three seconds.
-
-Vauclair was at the far rail, tall and white-haired, holding the room without yet speaking to it; Erik did not cross to him. The journalist with the flashbulb opened his mouth again and Erik moved, gently, toward the staircase. Three stairs up he stopped — he had not meant to stop — and put his hand on the brass.
-
-It was warm. A hundred and ninety guests had already touched it.
-
-He took his hand away. He had come down in the pod knowing he should not have come down. He stood inside his own building with the old paper against his side and the orchestra finishing a phrase, and the building did not, quite, feel like his.
+He had not expected to be ambushed by it.
 
 * * *
 
-She walked the south service corridor with the clipboard against her hip and the door codes already counted off in her head. Pencil — sharpened. Stopwatch — clipped. Floor plan — folded to the dining-room half. The kitchen smelled of clarified butter and fear; one of the new line cooks was crying very quietly into a sauce. She did not stop. She did not stop because stopping would have made it a thing.
+The trays were running long.
 
-"Service door three," she said to a captain. "Two minutes."
+Adriana Vauclair had set the toast at eight-fourteen, because the orchestra would arrive at a clean unison G a measure before, and her clipboard — pencil, not pen, because pen blotted when wet — told her in her own hand that two stations were behind their times. Daniel Park had stopped halfway up the service-route gangway to refasten the top button of his new jacket. He was very proud of the jacket. He had told her three times, at three different staff meetings, that the service route was the faster route to the Atrium than the VIP corridor and that he preferred the angle of the corner. He had not told her about the button. She made a small mark beside his station number and moved on.
 
-"Two minutes, Miss V."
+She crossed behind the orchestra at the dim place between two columns where the room could not see her, and on the far side of the columns she found her father.
 
-She moved.
+He was bent at the waist beside a bus girl, holding her elbow as if to keep her from kneeling on glass, while a young busboy swept the wreck of two flutes of champagne into a hotel napkin. The girl could not have been twenty. She was crying without sound, which was the worst kind of crying for the floor of a hotel, and her tray was on its side at her hip.
 
-At the pantry edge she found Daniel Park in his new white jacket, the cuff already showing the first faint shadow of someone's red wine, and he looked up at her with the open delight of a young man who had worked very hard to look composed. He was twenty-three and the jacket had been let out twice. His shoes were too shiny. He stood the way the bus captains had told him to stand.
+"It is mine," Roland Vauclair was saying, in the warm Old World cadence he used when he wanted a person to believe him. "I walked into your shoulder. I am clumsy in my own building, and only my daughter will tell me. Look at me, please. Yes. There. Now: the linen room is two doors that way. Madame Velasco will give you another apron and she will not ask. You will tell her I sent you. You will tell her I said — you remember this exactly — *that one is mine to apologize for.* Go, now. *Allez.*"
 
-"They're dragging," he said.
+The girl went, holding the apron in front of herself as if it were a child. The busboy stood up with the napkin folded into a knot and looked at Vauclair the way one looked at a passing arrangement of weather.
 
-"They're allegro."
+"Thank you, sir," the busboy said.
 
-"They're allegro on a leash."
+"Thank yourself," Vauclair said. He straightened, and the room found him before he found the room, in the way the room always did. He saw Adriana over the busboy's shoulder, and winked, slightly, the way he had winked at her in 1957 when she had stolen olives off a banquet tray and he had pretended she had not.
 
-"Then drag the trays faster."
+She nodded. Toast in eleven minutes.
 
-He grinned. He had been grinning at her for six weeks about the orchestra. He preferred them quicker, the way he preferred the service-route gangway on the lower level: faster, less crowded, less polite. She had begun, against her better operational instincts, to enjoy his preferences.
+He came to her at the column, three steps, taking his cuffs the way other men took medicine. "Halvorsen is here," he said in French, low, and then in English, because she was already nodding: "Good. I want him beside me at the dais."
 
-"Service route to the south stations," she said, "and stay on it. The VIP corridor will be a knot at eight."
+"He will hate that."
 
-"Yes, Miss V."
+"He came down. He chose to come down. Let him receive what he chose."
 
-"And Daniel."
+She made a notation that was not a notation. Outside the column, the orchestra reached the cleaner air on the far side of its tuning. Her father looked past her at no one in particular and said, in a voice meant to sound conversational, "It is a good thing, *ma fille,* that old papers burn so quickly. One forgets, otherwise."
 
-"Yes."
+She turned her head a degree. "Papers."
 
-"The cuff."
+"Old ones." He smiled. "All that dispute, gone in a minute. One must not be sentimental about correspondence. Sentiment is for music."
 
-He looked down. The wine ghost. He flushed.
-
-"Through the kitchen, change it, two minutes."
-
-"Yes, Miss V."
-
-He went. She wrote the time on the clipboard. The pencil left a clean dark stroke across the printed grid, and for a moment she did not want to do anything else with her hands.
-
-Through the staff door she saw her father, on the atrium floor, three steps from the rail. He had his hand on the elbow of one of the bus girls. The girl had a half-empty tray of flutes pulled tight against her chest, and her face, even from here, had gone the particular color of public collapse.
-
-Adriana stopped where the door framed them. She did not push it open.
-
-Her father said something soft she could not hear. The girl shook her head once and tried to smile and did not manage. He took the tray out of her hands the way a doctor takes a thermometer — without ceremony, without quite taking it from her, merely sharing the weight — and set it on the rail. He did not look at the room. The room did not yet know it was happening. He bent his head and said a second thing, longer this time, and the girl laughed. It was a real laugh. He patted her sleeve. He did not put the tray back into her hands; he beckoned a captain and the tray went to the captain. The girl walked away under her own power, and her shoulders, by the third step, had remembered what shoulders do.
-
-Adriana watched her father straighten. He had not seen her. He had not done it for her. He had not done it for the room. For one beat she stood with the clipboard against her hip and remembered, with an old and unhelpful warmth, why she had stayed.
-
-Then he turned toward the staircase and saw Erik on the lower landing, and his face changed — not unkindly, not even visibly, but she had been watching that face for thirty-four years and the change was there. He came around the rail and toward her. The room let him through.
-
-"Adriana, *ma fille*," he said, and his voice was the room voice, the table voice, but his eyes were on Erik. "Place him near the dais."
-
-"For the toast."
-
-"For the toast. Where they will see him. The magazines have been told he is a co-author. We will not contradict them tonight."
-
-"The magazines have been told a great many things."
-
-"And we will contradict none of them, tonight. Where is he sitting at dinner?"
-
-"Twelve. With the senator."
-
-"Twelve. Good. Let him keep what steadies him." He smiled in the practiced way and his eyes drifted, briefly, past her shoulder to the kitchen door. "Mine went to ash months ago."
-
-She wrote *12 — H.* on the clipboard. The pencil pressed a fraction harder than the grid required, and she lifted it before the paper noticed. Whatever the line had meant — barb at Erik, old bruise privately squeezed — it was not for opening night, and she had a toast in nine minutes and a kitchen door that had not stopped sighing since six.
-
-"The orchestra is dragging," she said.
-
-"They are allegro."
-
-"They are dragging."
-
-He kissed her on the temple, courtly, public, the way he had been kissing her in front of investors since 1967, and went to the dais. She wrote *allegro on a leash* in the margin of her grid because Daniel had made her laugh and she did not want to stop laughing yet, and then she struck the line out because the clipboard was the night's record and it was not for jokes.
-
-The kitchen door sighed shut behind her.
+He went past her without waiting, and the room received him as it always received him, and Adriana stood for a moment with her pencil over the clipboard and did not write down what she had heard.
 
 * * *
 
-Felix Crane worked the room the way he always worked a room — at the elbow, with the second drink, half a step behind the man whose face the magazine wanted on the cover — and he had decided by his third pass that the Aurelia was either the finest hotel he had ever been required to file fourteen hundred polite words about or a slow magnificent excuse for a building, and that he would not know which until somebody at the bar said something they should not.
+Felix Crane stood at the long edge of the Grand Atrium bar with a gin he had not asked for and watched the opening night of the Aurelia arrange itself into a magazine spread.
 
-The bar was crowded. The bar was crowded in a particular way: a Florida senator beside a retired admiral he had clearly fished with; investors with their second wives, the second wives looking out at the water as if the water might owe them something; a NOAA woman in an evening suit cut to permit a wristwatch she kept consulting; two house photographers who were not yet drinking; a man in mess dress at a respectful distance from the senator; and at the curve of the rail the Marchettis, dressed exactly correctly for 1958. Above them the dome. Beyond the dome the Atlantic — black, lamp-lit at the verges, full of silver flicker. Somebody had paid an enormous amount of money to convince a school of small fish to live near the building, and the school was earning its keep.
+The retired admiral had taken the column nearest the staircase, because admirals took columns. The Marchettis — old Hugo, older still in posture than in fact, his wife Vivienne at his elbow with the small silver flash at her throat shaped like nothing so much as a child's drawing of a lifeboat — stood at the rail of the half-mezzanine and looked up at the dome the way couples in their forty-third year look up at anything together, which was to say with a kind of practiced gratitude. A man Crane did not place wore a ribbon Crane did not recognize. Three of the four men he had been hired to make sound interesting were in the room, and two of them were the senator's people, and the senator himself was at a low table near the staircase asking a waiter what the depth was for the second time in five minutes.
 
-He had a steno notebook in his right pocket and a Norelco recorder, switched off, in his left. The cassette in it was a fresh sixty: thirty a side. The toast would run six minutes, perhaps seven if Vauclair indulged himself, which he would. Crane would not waste tape on the bar. He would not waste tape on the senator's first compliment to a waiter, even though the senator had now thanked the same waiter for the same drink twice and asked, twice, whether they were really four hundred feet down. He would save tape for what Vauclair was paid in advances and magazine covers to say.
+The waiter — Park, his nametag said, a name Crane had heard Miss V. use earlier with a small affectionate exasperation — answered without inflection: four hundred and twelve feet, sir. The senator nodded as if for the first time, and then, because he was the kind of man Crane had not been prepared to like, put his hand briefly over the waiter's hand on the tray and said, "Thank you, son. I am terrible with numbers tonight." The waiter went away pleased.
 
-"Four hundred and twelve, sir," the waiter said the second time, kindly.
+Crane shifted his weight, and the recorder shifted with him: a flat, hard rectangle of weight in the inside breast pocket of his jacket, loaded with the cassette he had loaded that morning at his hotel in Hatteras, the spare in his trouser pocket digging a small bruise into his thigh. He had no intention of switching it on tonight. *Continental* wanted a profile of a man who built impossible things; the impossible thing was, in fact, beautiful, and the man was, in fact, charming, and the notebook in his other pocket and the memory of a writer who had three covers in five years would be more than enough for fifteen thousand words by Tuesday. He kept his hand off the recorder by an effort that surprised him.
 
-The senator nodded as if he had been told. He was a large man, slow at the corners, kinder than his bearing — second term, a face built for portraits in oil. He patted the waiter's sleeve and turned back to Hugo Marchetti, who was making room for him at the rail without making a show of it.
+Down the bar, the Aldridges stood very close to each other in the way young married couples stood at the parties of older ones. The young woman set her glass back on the bar at the first sip. A waiter, mistaking the gesture, brought her another, and she shook her head with a brief polite smile that did not reach her husband, who was watching the dome and counting ribbing.
 
-"They feed the fish," the senator said.
+Crane's gaze caught and slid. The man from one of the trade papers had cornered another, near the staircase, who was visibly trying not to be cornered.
 
-"They feed the fish," Hugo agreed.
+"— and yet you resigned from the project in February," the trade-paper man was saying.
 
-"Forty-three years," Vivienne said, as if completing a sentence somebody had begun in 1936, and her hand went to her throat, and on the dark silk a small silver thing on a chain caught the dome light — a lifeboat, no larger than a thumbnail — and rose and fell as she laughed at something Hugo had not yet said.
+"Creative differences," Halvorsen said. His voice was Norwegian under the American. "It is what one always says."
 
-Crane filed it. He filed everything.
+"And yet you came down."
 
-He filed the young couple by the staircase, too. The husband was looking up into the dome and not down at his wife; the wife had taken a flute from the tray of flutes a captain was distributing for the toast and then, with a small, deliberate motion, set it back. She did not say anything. She did not catch the captain's eye. She lifted her empty hand and tucked it under her husband's elbow, and her husband — a quiet, watchful man, the kind teachers turn into — covered her hand with his without looking down. Crane's pen did not move; the steno notebook stayed shut.
+"Mr. Vauclair invited me. I came to look at the lamps."
 
-He drifted toward the architects' corner.
+The reporter laughed the way Crane had seen sharks laugh. "We are calling you the co-author, Mr. Halvorsen."
 
-Halvorsen was speaking with two men he did not introduce. A woman from *Architectural Forum* was smiling the smile of a woman who had been waiting eleven minutes for her question.
+"You are calling me that," Halvorsen said.
 
-"Mr. Halvorsen," she said pleasantly, "the credits in the program list you as *consulting architect*."
+Vauclair arrived then, as Vauclair arrived everywhere, and the reporter stepped back half a foot. "My architect," Vauclair said, taking Halvorsen's elbow with the affection of long quarrel. "My collaborator. We disagreed, monsieur, only as collaborators disagree. If two men agree about a building, one of them is not paying attention."
 
-"That is correct."
+The man laughed and wrote it down.
 
-"You left the project before commissioning."
-
-"I left the project."
-
-"Why?"
-
-"Other commitments."
-
-"At Vauclair Group."
-
-"Elsewhere."
-
-Crane had stopped. He had not meant to stop. He took a sip from a glass he did not remember accepting and looked at Halvorsen the way one looks at a man who has just paid the cover price for the magazine he is trying to be in. Halvorsen's face did not move; the answer had cost him something behind it. The woman from *Forum* had her pencil out and had not yet written.
-
-"My partners finished it beautifully," Halvorsen said. "You will want to speak with them."
-
-"Will they be at the toast?"
-
-"Vauclair will be at the toast."
-
-He moved. He moved well; he had been deflecting for years. The woman from *Forum* let him go.
-
-Crane wrote nothing. He turned a quarter-turn and behind him the small communications alcove at the head of the bar opened — the brass-handled door, the one labeled in the program as *House Communications* — and a stripe of fluorescent light, harder than the chandeliers, fell across the carpet. Inside, briefly: the back of a Navy mess-dress jacket, the cuff of a hand on a hardline, the rasp of a radio finding its frequency, a clipped phrase Crane could not parse — *acknowledged, exercise traffic, copy* — and then the man in mess dress turned, saw the door open, and closed it behind him without haste. Halloran. Crane had been introduced to him at six. *Steady hand* had been the phrase in the press packet, and the press packet, in this case, was correct.
-
-The carpet went back to brass and chandelier color.
-
-Crane finished his drink. The recorder pressed coolly against his ribs through the tuxedo wool, switched off, full of empty tape. He had his lede. He did not have his story.
+Crane did not write it down. He had the line. He had the look the architect had given the host before the host had taken his arm. He thought, against his preference, that the line was less interesting than the look. The orchestra cleared its throat in the long way that meant a toast was three minutes off. He left the gin on the bar.
 
 * * *
 
-Tomás Reyes preferred the engineering control room to any other room in the Aurelia, including, when he was honest with himself, his own bunk. It smelled correctly. Ozone from the relay cabinet on the long wall. Warm oil from the ballast trim pumps, which had the considerate habit of breathing audibly when they were happy. A faint mineral sweetness from the condensation along the chilled-water lines. Thirty years of his nose had been trained on rooms like this one, and this one was, by his standards, behaving.
+The dais was where the room was looking, and so Erik went the other way.
 
-The atmospheric panel read green. The pressure board read green. The power bus — busbar A and busbar B and the emergency tie — read green. He moved through the readings the way he moved through prayers, without saying them aloud, ticking each one off against the printed log on the desk. The pencil he used was a stub. He liked the stub.
+He took the corridor that bent south past the kitchens, where the orchestra became a sound of cooking, and at the threshold of a service wardroom he paused because Reyes was on shift.
 
-Below him, through the inner port, in the docking bay — wet cradles, the underside of the staging deck, the steady ripple of bay water under work lamps — the three submersibles sat the way he had left them at six. *Daphne* in cradle one, *Triton* in cradle two, *Nereid* in cradle three. Hatches dogged. Charge indicators steady. He could read them upside down through the glass.
+Tomás Reyes stood at a high desk with a clipboard of his own and a pencil he was tapping, twice, against a gauge that had not given him the reading he wanted. The wardroom smelled of pencil graphite, machine oil, and the faint sweet rubber of valve seats. In the cabinet behind him a framed silver service stripe from a destroyer Erik could not have named hung in correct light. On the open log on the desk, lines of small neat printing in Reyes's hand: *Pressure A1 nominal. Pressure A2 nominal. SW observation — preventive maintenance, 20:00, T.R. Pump cycle C nominal.* Numbers Erik did not read because reading them was not his job tonight.
 
-The wall phone clicked once and rang.
+Reyes looked up.
 
-"Engineering. Reyes."
+"Comandante."
+
+The word landed in a room where one other man was working, and Erik took it the way he always took it, which was without comment.
 
 "Tomás."
 
-"Miss V."
+"You are not at your toast."
 
-"Opening status."
+"Neither are you."
 
-"Green." He let the word sit. "Atmosphere green. Power green. Ballast green. Bay green. Pumps green."
+Reyes tapped the gauge again. It moved a needle's width. He frowned at the needle's width and made a small mark on the log.
 
-"Anything in the log."
+"Anything?"
 
-He looked at the log. The night's printed grid; his afternoon's pencil; the clean printed lines of a building that, on this page, was performing exactly as the page asked.
+"Nothing," Reyes said. "She is breathing."
 
-"Preventive maintenance," he said. "Southwest service. Pump rack two. On schedule."
+Erik watched for the small additional check Reyes always made when he had said *nothing* and meant *nothing yet*. The check came. A glance at the pressure trend strip, a thumb laid for a second on the side of a pump housing for its temperature. The hand came away.
 
-"On schedule."
+"Lamps?" Reyes asked.
 
-"Yes."
+"Warmer than the renderings."
 
-"Thank you, Tomás."
+"I told you."
 
-"Miss V."
+Erik nodded once. He did not move from the threshold. There was an old shape of conversation between them that did not require either of them to enter the room.
 
-The phone clicked. He set the stub down and let his eye go once down the page in the order he had been doing it for three years. He stood. He walked the long wall. He put the back of his hand against the relay cabinet — warm, not hot — and against the chilled-water riser — cold, not wet. He walked back to the desk. He looked at the docking bay through the inner port and counted three submersibles. He counted them again because he had been counting them since 1976 and had not yet stopped.
+"Go," Reyes said. "He wants you on the dais."
 
-The wall clock said 19:42.
+"I know."
 
-Above him, somewhere above him, the orchestra would be finishing whatever it was finishing. Vauclair, by now, would be standing. Reyes had been to the rehearsal of the toast. He had liked the toast. The toast was a good toast.
+"Go anyway."
 
-He sat down. He drew a careful tick beside each line in the log in the order they came, signed his initials at the foot of the page, and laid the pencil-stub crosswise above the page, pointing at nothing, the way he had been laying pencils for thirty years.
+Erik went, but he did not go to the dais. He took the long curve past the small library, past the closed doors of the science party's wardroom, and came out into the Southwest Observation Gallery, which on opening night had been left lit by the floodlights outside and the soft brass sconces within because the architect had insisted, in a meeting eight months ago that he no longer thought about, that no guest should have to view the Atlantic through their own reflection.
+
+The gallery was almost empty. Two couples at the far end, a man with his hands behind his back near the central frame, and the silt-blue light of the floodlights playing across the curved acrylic in slow vertical strips. Erik went to the frame nearest the southwest corner because he had drawn that frame, and because the frame was the part of the room he understood.
+
+The acrylic curved away from him at the radius he had argued for, six months of memos long. He set his palm flat against it, for the cold and because palms knew what eyes missed, and the cold came through fine wool the way deep water came through any fabric eventually. He took his hand back. The acrylic was clean. The frame was clean. The brass retaining screws — four of them at his eye line on the inboard side — had been polished to a degree he disapproved of and approved of in the same breath.
+
+He found the line before he was looking for it.
+
+A pale curve, the width of a hair, running along the acrylic just inside the frame at the level of his shoulder. He had to lean slightly to see it; the floodlights caught it only at one angle. It did not catch his fingernail when he passed his nail across — of course it did not, he thought, four-centimeter acrylic did not produce a feature you could catch a nail on after one season at depth — and he watched the line travel along the inside of the frame and stop, the way he wanted it to stop, well short of the third brass retaining screw from the corner. Above the third screw, a small machining nick the polisher had failed to chase out. Below it, nothing.
+
+He looked at the nick and the screw and the line for a count he did not need to do consciously, because what he was doing was setting them in his memory the way a man set a benchmark on a foundation. *Cosmetic.* The word was already there, ready, and he said it to himself without quite saying it. Acrylic took a hairline at depth the way young hands took a wedding ring; it was a thing one watched.
+
+The orchestra reached its tuning G through the corridor behind him. Erik took his hand off the frame. He kept the position of the third screw, and the nick above it, and the place where the pale line stopped short of both, in the part of his memory that did not require him to think about it.
+
+He went back toward the Atrium to stand beside the building's myth.
 
 * * *
 
-He had told himself he would not cross the Southwest Observation Gallery before the toast.
+The dais was a low platform of brass and walnut set under the curve of the helical staircase, and Vauclair was already on it, in the easy posture of a man who had been giving toasts since before Erik had been admitted to the bar. Adriana stood at the floor of the platform with her clipboard against her hip the way she held a clipboard when there was nothing left to write. The orchestra had stopped pretending it was tuning. The room had stopped pretending it was conversation. Vauclair raised one hand and they stilled, the way a sea stilled in the lee of a hull.
 
-He crossed it anyway. The gallery drew him the way a load path draws a man trained to see them — the long curve of acrylic between the dome and the dropoff, lamps on the exterior throwing a green glow up through twenty feet of water along the seabed shelf, and beyond that the open black where the floor of the Atlantic stepped down past where any lamp could carry. Guests stood at the inner rail with their faces lit a color faces should not be. A woman pressed her gloved hand against the glass and laughed at a fish that had ignored her hand. A boy in a too-large dinner jacket stood with his nose against the acrylic, breathing on it in deliberate flowers of fog and watching them shrink.
+"My friends," he said.
 
-Erik walked the inner rail with his hands behind his back. The acrylic was cold. The acrylic was always going to be cold. Forty-millimeter face, laminated in three plies, seated against the inner ring in a polysulfide bed; he had drawn the detail himself in 1976 and he knew, walking past it, exactly where the seal stopped and where the load began. He did not look at the seal. He looked at the fish.
+He said it in the voice that had charmed the second tranche of investors out of an unsigned letter and into a building. Erik came up beside the dais because there was no other side of the dais to come up on, and Vauclair's hand found his shoulder briefly and let it go.
 
-Then, because he was him, he looked at the seal.
+"Tonight," Vauclair said, "we stand beneath the Atlantic, warm and dry, drinking champagne. *Pace, pace, mio Dio* — Verdi was wrong. One does not need to ask for it. One builds it."
 
-There was a hairline at the inner face of the acrylic about six feet shy of the southwest seam. Pale, perhaps forty centimeters long, faintly silvered along its length the way a scratch silvers under raking light. He bent. He did not lean. The boy with his nose against the glass did not notice him.
+The room laughed at the half of the quotation it caught. He let it laugh.
 
-A scratch. A polish mark, possibly — a passing of a buffing wheel against the inner face during installation, where some boy with a too-large jacket of a different kind had been told to put a final shine on the gallery the day the magazines came down. He had seen it before in his own buildings. He had once, in 1971, written a note about a similar pale line on the inside of a bank atrium. The line had been a polishing artifact and the note had cost him a friendship.
+"I will not bore you with names. I will bore you with one. Erik Halvorsen, whom you have been calling the building's co-author, and who, in the matter of the lamps and the dome and the helical staircase and the impossible curve of the gallery in the southwest, deserves a worse word than co-author. *Architect,* messieurs et mesdames. *Architecte.* The man who would not let me put a steel rib where he had drawn glass."
 
-He did not, tonight, want to be a man who wrote that note.
+The room turned its face toward Erik the way a field of sunflowers turned. Erik did not move, and did not answer, and behind him, in the inside pocket of the tuxedo he had not let the porter take, the folded paper kept against his ribs the small flat shape it had kept for eight months. He counted to four. He nodded once.
 
-He straightened. The boy in the too-large jacket had blown another flower of fog onto the glass and was watching it fade. Erik walked on.
+"To the Aurelia," Vauclair said.
 
-In the Grand Atrium the captains had finished distributing flutes, and Vauclair stood on the dais with his glass at his hip, white-haired, courtly, precisely himself. The orchestra eased its phrase down to nothing. The room turned.
+"To the Aurelia," said the room.
 
-"My friends," Vauclair said.
+He had the glass at his lips — champagne cold enough to feel as a small clean line down the inside of the chest — when the lights dipped.
 
-He always began that way. He always made it work.
+It was not much. The dome lamps fell perhaps an eighth, the brass sconces by less, and somewhere in the architecture above the orchestra a relay clicked once with the particular dry small sound of an old contact closing on its second seat. The orchestra's first violin missed half a beat and recovered. A woman near the staircase said *oh* the way one said *oh* at a magic trick. A waiter — not Park, Erik registered without meaning to, a different waiter, older — lifted his tray a fraction to keep its glasses from chiming.
 
-"My friends, when I was a young man, in a country no longer mine, I went one evening to the opera, and I learned a thing I have been trying since to design into rooms. The thing was this: that a roof is not the limit of a house. A roof is what permits the house to stop pretending to be the sky." He smiled. The room, which had been preparing not to be moved, was moved. "We are tonight under a roof of glass. Above the roof is the sea. We have not stopped pretending. We have, perhaps, found a building honest enough to admit it."
+The lights came back to where they had been. The relay closed. The orchestra arrived, on the second measure, at the cleaner air it had been aiming for.
 
-He named the staff. He named, by name, three of the men who had welded the dome ring. He named the comptroller's wife. He looked, briefly, at the staircase, and Erik felt the look and did not return it.
+Vauclair, glass still raised, did not turn his head. "The Atlantic," he said, smiling, "is jealous of our wattage."
 
-"To the people who built her," Vauclair said, "and to the people who tonight will, in their kindness, let us pretend she is finished. The Aurelia."
+The room laughed, gratefully, and drank.
 
-"The Aurelia," the room said.
+Adriana's pencil moved on the clipboard. Erik watched her hand and not her face. He set his glass back on the tray of the older waiter and stepped down off the corner of the dais and did not look at Vauclair, and the room let him go because the room was looking at Vauclair.
 
-Glasses lifted.
+He went the long way back. Past the small library. Past the closed doors of the science party's wardroom. The corridor was quieter than it had been six minutes earlier; the orchestra was a softer sound through the walls. He came out into the Southwest Observation Gallery, and the gallery was empty now — the couples had drifted toward the toast, the man with his hands behind his back had gone — and the floodlights outside were doing what they had been doing, which was lighting suspended silt in slow vertical strips against the dark.
 
-The lights dipped.
+Erik went to the frame nearest the southwest corner.
 
-It was a small thing — half a beat, the length of a clearing throat, the chandeliers stepping down through one notch of brass dimmer and back — and the orchestra, which had begun the post-toast figure, missed a bar. The first violin, sixteen years old and trained all spring not to make a face, recovered with the flush of a girl who had been told all spring not to make a face. A few guests laughed too quickly at nothing in particular. A man near Erik said *generator*, in the tone of a man who had once owned a yacht.
+He looked for the brass screws first, because the screws were what he had set in his memory, and he found the third one without trouble and the machining nick above it without trouble.
 
-The emergency red did not engage. The chandeliers steadied. The orchestra found its line.
+The pale line went past them both.
 
-Vauclair, on the dais, said something in his room voice that made the room laugh, and the toast became a thing that had ended, and the captains moved.
+He stood for a count he did not finish. The line reached the nick. The line reached the third screw. The line had gone past the third screw by what he estimated, without putting a tape to it, to be about the width of a fingernail. He did not put a tape to it. He did not pass his nail across it. He did not lean closer than a man might lean to examine his own reflection in a polished surface.
 
-Erik did not move. He stood with his glass at his hip and the old paper warm against his side, and he looked past the dais, and past the inner rail of the southwest gallery, and out through the great glass into the blue-black water where the exterior lamps had been throwing their orderly cones at the small school of silver fish all night.
+A guest came into the gallery behind him — the soft step on carpet, the soft small sigh of someone arriving at a view — and he turned his shoulder a quarter to block the line of sight without appearing to. He smiled at her, briefly, the way one smiled at strangers in a room one owned. She smiled back and went to the far end of the gallery.
 
-The fish were still there. The fish were not the thing.
+Erik turned again to the frame.
 
-The thing was the water itself. Under the lamps, in a slow lateral inexplicable shear, the water was moving sideways across the floodlight beam in a way the water had not been moving five seconds before. Not a current. Not a school. A shift in the silt or the plankton or whatever it was the lamps caught — a long soft pale curtain drifting laterally where it should have hung still, as if somewhere out beyond the lamp throw something very large had passed and the ocean had not yet decided what to do about it.
+The line had not moved while he had been looking away. He understood that it had not moved while he had been looking away. What had moved was inside him, and what he was doing now, with his palm flat against the cold acrylic again because palms knew what eyes did not, was waiting for it to stop moving.
 
-Erik stood with his glass at his hip and watched it, for one full breath, without understanding what he was looking at.
+Beyond the acrylic, in the silt-blue throw of the floodlights, the suspended particles in the water were not falling. They had been falling, the way silt fell in calm water at depth, in the slow vertical drift he had watched a hundred times in commissioning. They were going sideways. Not fast. Not in any direction the architecture would have predicted. Across the housings of the two near floodlights, the silt slid from his left to his right in a slow lateral drift, and the beams themselves seemed to slide with it against the fixed brass of the housings — an optical thing, he told himself, of suspended matter passing across a fixed light.
 
-The orchestra, behind him, had recovered.
+He kept his palm on the acrylic.
+
+Behind him, through the corridor, the orchestra resumed the program where the toast had broken it. He did not speak in English. He did not speak in Norwegian either, though the word for *wrong* in Norwegian was already in his mouth and he had to choose, with effort, not to spend it.
+
+The pale line was past the third brass screw.
+
+The silt was going sideways.
+
+The room behind him was applauding something he could not see.

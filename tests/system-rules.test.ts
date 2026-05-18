@@ -412,6 +412,22 @@ test("buildDraftSystemPrompt includes the CHAPTER-1 LESSONS section", () => {
     prompt.includes("CHAPTER-1 LESSONS — DEFAULTS"),
     "Drafter prompt must include the CHAPTER-1 LESSONS defaults header",
   );
+  assert.ok(
+    prompt.includes("CLARITY FLOOR:"),
+    "Drafter H3 must carry the CLARITY FLOOR plain-sentence requirement at danger reveals",
+  );
+  assert.ok(
+    prompt.includes("at least one short plain sentence stating the change"),
+    "Drafter H3 must require at least one plain restatable sentence alongside any lyrical compression",
+  );
+  assert.ok(
+    prompt.includes("answer 'why didn't they just tell someone?' from material already on the page"),
+    "Drafter D2 must carry the expert-inaction-justified requirement using the falsifiable reader-question test",
+  );
+  assert.ok(
+    prompt.includes("Tragic hesitation is earned; plot-convenient silence is a craft failure."),
+    "Drafter D2 must include the tragic-vs-plot-convenient framing",
+  );
 });
 
 test("buildJudgeInstructions includes scene-turn, named-without-future-use, and density-governor blocks", () => {
@@ -490,6 +506,60 @@ test("buildJudgeInstructions includes scene-turn, named-without-future-use, and 
   assert.ok(
     instructions.includes("revisionAction asking for unnecessary names to be compressed"),
     "Inventory-to-consequence clause must request a revisionAction, not only a weakness entry",
+  );
+});
+
+test("buildJudgeInstructions includes CLARITY FLOOR and EXPERT INACTION JUSTIFICATION blocks", () => {
+  const instructions = buildJudgeInstructions(80, null);
+
+  assert.ok(
+    instructions.includes("CLARITY FLOOR AT DANGER REVEALS (feeds proseQuality)."),
+    "Judge instructions must include the CLARITY FLOOR AT DANGER REVEALS header",
+  );
+  assert.ok(
+    instructions.includes("at least one short plain sentence that restates the change"),
+    "Clarity Floor block must require at least one plain restatable sentence",
+  );
+  assert.ok(
+    instructions.includes("The plain sentence does not replace the lyricism; it anchors it."),
+    "Clarity Floor block must keep the 'plain sentence anchors the lyricism' framing so it does not strip-mine the prose",
+  );
+  assert.ok(
+    instructions.includes("ONLY through compressed metaphor"),
+    "Clarity Floor block must only fire when the change is delivered exclusively through metaphor",
+  );
+
+  assert.ok(
+    instructions.includes("EXPERT INACTION JUSTIFICATION (feeds characterTruth)."),
+    "Judge instructions must include the EXPERT INACTION JUSTIFICATION header",
+  );
+  assert.ok(
+    instructions.includes("the prose must make the reason for inaction legible"),
+    "Expert Inaction block must require a legible reason for the expert's silence",
+  );
+  assert.ok(
+    instructions.includes("Distinguish tragic hesitation from plot-convenient stupidity"),
+    "Expert Inaction block must include the tragic-vs-plot-convenient framing",
+  );
+  assert.ok(
+    instructions.includes("Bias toward not flagging when at least one concrete reason is legible"),
+    "Expert Inaction block must bias against false positives when at least one reason is on the page",
+  );
+
+  const weaknessOnlyClause = "This is a weakness signal only; never add it to `blockingIssues`.";
+  const clarityFloorIndex = instructions.indexOf("CLARITY FLOOR AT DANGER REVEALS (feeds proseQuality).");
+  const expertInactionIndex = instructions.indexOf("EXPERT INACTION JUSTIFICATION (feeds characterTruth).");
+  const overComposedIndex = instructions.indexOf("OVER-COMPOSED CLUSTER CHECK (feeds proseQuality).");
+  assert.ok(clarityFloorIndex >= 0 && expertInactionIndex >= 0 && overComposedIndex >= 0, "header indices must resolve");
+  const clarityFloorClauseIndex = instructions.indexOf(weaknessOnlyClause, clarityFloorIndex);
+  const expertInactionClauseIndex = instructions.indexOf(weaknessOnlyClause, expertInactionIndex);
+  assert.ok(
+    clarityFloorClauseIndex > clarityFloorIndex && clarityFloorClauseIndex < expertInactionIndex,
+    "Clarity Floor block must end with the weakness-only-never-blocking clause before the next header",
+  );
+  assert.ok(
+    expertInactionClauseIndex > expertInactionIndex && expertInactionClauseIndex < overComposedIndex,
+    "Expert Inaction block must end with the weakness-only-never-blocking clause before the next header",
   );
 });
 
