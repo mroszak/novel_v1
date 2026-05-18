@@ -1,0 +1,446 @@
+{
+  "schemaVersion": "engine.v2",
+  "artifactType": "final-audit",
+  "createdAt": "2026-05-18T01:10:14.288Z",
+  "blueprintHash": "9be24156dc1dde67ac73d9b14c3fd41229e61753648b26530ce99432301c9872",
+  "blueprintVersion": "1.0.0",
+  "chapterNumber": 2,
+  "usage": {
+    "provider": "openai",
+    "model": "gpt-5.5",
+    "inputTokens": 33101,
+    "outputTokens": 9199,
+    "reasoningTokens": 8434,
+    "totalTokens": 42300,
+    "responseId": "resp_03a3fec85958a1b5006a0a662d1f30819596a9dea217502cd1",
+    "estimatedCostUsd": 0.441475
+  },
+  "data": {
+    "status": "issues_found",
+    "summary": "Core reveal discipline is strong: the Soviet first shot, Charlotte damage, Beckwith’s defensive torpedo, debris projection, Reyes maintenance plant, and hotel knowledge lag are all present. Publication should pause for several concrete continuity/contract fixes, especially word band, clock/range mechanics, current direction, and the final POV access leak. Deterministic validators also reported blocking issues.",
+    "factualConfidence": 0.88,
+    "requiresFix": true,
+    "issues": [
+      {
+        "severity": "error",
+        "title": "Chapter is one word below required word band",
+        "description": "Deterministic validator reports 3699 words against the required 3700–4700 band.",
+        "fixInstruction": "After the other edits, rerun word count and ensure the chapter is at least 3700 words and no more than 4700.",
+        "source": "model"
+      },
+      {
+        "severity": "error",
+        "title": "Zulu timestamps conflict with the fixed T+1:30 engagement anchor",
+        "description": "The prose dates Beckwith’s report at 14 SEP 79, 2318Z and logs the Soviet launch at 2348Z. The continuity anchor fixes the opening dinner at 19:00 local and the submarine clash/debris event at T+1:30, so these Zulu times place the clash too early or even before dinner depending on EST/EDT interpretation.",
+        "fixInstruction": "Retimestamp the Navy log sequence to align with T+1:30 relative to the opening dinner, including date rollover if needed. If using September Hatteras daylight time, the engagement should fall around 0030Z on 15 SEP; if using the bible’s strict EST, around 0130Z.",
+        "source": "model"
+      },
+      {
+        "severity": "error",
+        "title": "Charlotte’s stated distance from Aurelia conflicts with final range readback",
+        "description": "The opening places Charlotte three nautical miles from Aurelia, but the ending has Cole identify Aurelia at bearing 258, range 1400. Standard sonar/chart range here reads as yards, making Aurelia far closer than three nautical miles. This also affects whether debris can plausibly reach the hotel next chapter.",
+        "fixInstruction": "Either change the opening distance to roughly match the 1400-yard chart geometry while remaining outside the 500-yard standoff, or revise all bearing/range calls and drift timing to support a true three-nautical-mile separation.",
+        "source": "model"
+      },
+      {
+        "severity": "error",
+        "title": "Current set direction contradicts the debris drift direction",
+        "description": "Ennis says the set is 110 true, which in nautical usage means flow toward east-southeast, but the chapter repeatedly plots drift southwest toward bearings 258–263 and Aurelia.",
+        "fixInstruction": "Change the set to a southwest/west-southwest bearing consistent with the plotted debris path, or phrase it as current “from 110 true” if the intended flow is toward the southwest.",
+        "source": "model"
+      },
+      {
+        "severity": "error",
+        "title": "Final scene breaks Beckwith’s close-third visual access to Cole",
+        "description": "Beckwith is hearing Cole over a handset, but the narration gives present visual details of Cole’s collar and face under red lamps. Unless Beckwith can physically see sonar, this violates the chapter’s single-POV discipline.",
+        "fixInstruction": "Establish line of sight to Cole before those details, or convert them into Beckwith’s earlier memory/inference, or remove the visual description.",
+        "source": "model"
+      },
+      {
+        "severity": "info",
+        "title": "Several deterministic knowledge/entity flags appear to be false positives",
+        "description": "Aurelia, Triton, Daphne, and Nereid have prior chapter/packet support; Cole’s chart readback is required by the ending hook; Ennis does not actually know the later cover-up order in prose.",
+        "fixInstruction": "Update validator state/whitelisting rather than changing compliant prose, unless the build requires adding explicit metadata support markers.",
+        "source": "model"
+      },
+      {
+        "severity": "error",
+        "title": "WORD_BAND",
+        "description": "Chapter word count 3699 falls outside target band 3700-4700.",
+        "fixInstruction": "Resolve the issue using this evidence: 3699",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "KNOWLEDGE_BOUNDARY",
+        "description": "Petty Officer Cole may have crossed a stated knowledge boundary.",
+        "fixInstruction": "Resolve the issue using this evidence: Knows only what sonar tells him; uses the plain word for what he hears even when the bridge would prefer he not. | Knows through sonar that Sierra Three launched, Charlotte's weapon ran normally, Sierra Three broke up, and hard returns are drifting; by reading the chart he learns the square in that bearing/range is Aurelia, a commercial undersea installation beginning operations this date.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "ENTITY_CONSISTENCY",
+        "description": "Entity Aurelia appears without blueprint support or an introduction marker.",
+        "fixInstruction": "Resolve the deterministic validator failure without changing correct chapter facts.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "ENTITY_CONSISTENCY",
+        "description": "Entity Triton appears without blueprint support or an introduction marker.",
+        "fixInstruction": "Resolve the deterministic validator failure without changing correct chapter facts.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "ENTITY_CONSISTENCY",
+        "description": "Entity Daphne appears without blueprint support or an introduction marker.",
+        "fixInstruction": "Resolve the deterministic validator failure without changing correct chapter facts.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "ENTITY_CONSISTENCY",
+        "description": "Entity Nereid appears without blueprint support or an introduction marker.",
+        "fixInstruction": "Resolve the deterministic validator failure without changing correct chapter facts.",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"bridge sonar cole's voice\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: bridge sonar cole's voice",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"bearing two six one\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: bearing two six one",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"hard return bearing two\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: hard return bearing two",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "REPETITION",
+        "description": "Phrase \"bearing two five eight\" repeated 4 times.",
+        "fixInstruction": "Resolve the issue using this evidence: bearing two five eight",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "REPETITION",
+        "description": "Phrase \"two five eight range\" repeated 4 times.",
+        "fixInstruction": "Resolve the issue using this evidence: two five eight range",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"two six two range\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: two six two range",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"drift southwest bearing two\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: drift southwest bearing two",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "REPETITION",
+        "description": "Phrase \"southwest bearing two six\" repeated 3 times.",
+        "fixInstruction": "Resolve the issue using this evidence: southwest bearing two six",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"hundred\" appears 13 times (3.5 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: hundred | 13 | 3.5",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"quiet\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: quiet | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"pencil\" appears 11 times (2.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: pencil | 11 | 2.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"hand\" appears 9 times (2.4 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: hand | 9 | 2.4",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"small\" appears 13 times (3.5 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: small | 13 | 3.5",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"came\" appears 14 times (3.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: came | 14 | 3.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"boat\" appears 17 times (4.5 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: boat | 17 | 4.5",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"soft\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: soft | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"deck\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: deck | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"took\" appears 17 times (4.5 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: took | 17 | 4.5",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"forward\" appears 15 times (4.0 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: forward | 15 | 4.0",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"room\" appears 9 times (2.4 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: room | 9 | 2.4",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"left\" appears 9 times (2.4 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: left | 9 | 2.4",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"went\" appears 11 times (2.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: went | 11 | 2.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"table\" appears 10 times (2.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: table | 10 | 2.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"read\" appears 10 times (2.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: read | 10 | 2.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"said\" appears 10 times (2.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: said | 10 | 2.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"plot\" appears 12 times (3.2 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: plot | 12 | 3.2",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"voice\" appears 9 times (2.4 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: voice | 9 | 2.4",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"bridge\" appears 28 times (7.4 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: bridge | 28 | 7.4",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"sonar\" appears 30 times (8.0 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: sonar | 30 | 8.0",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"contact\" appears 12 times (3.2 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: contact | 12 | 3.2",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"sierra\" appears 11 times (2.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: sierra | 11 | 2.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"bearing\" appears 26 times (6.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: bearing | 26 | 6.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"drift\" appears 11 times (2.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: drift | 11 | 2.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"chart\" appears 10 times (2.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: chart | 10 | 2.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"control\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: control | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"bulkhead\" appears 11 times (2.9 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: bulkhead | 11 | 2.9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"range\" appears 10 times (2.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: range | 10 | 2.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"acknowledged\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: acknowledged | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"time\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: time | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"return\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: return | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"circuit\" appears 12 times (3.2 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: circuit | 12 | 3.2",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"hard\" appears 14 times (3.7 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: hard | 14 | 3.7",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "LEXICAL_REPETITION",
+        "description": "Word \"held\" appears 8 times (2.1 per 1000 words).",
+        "fixInstruction": "Resolve the issue using this evidence: held | 8 | 2.1",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "SENTENCE_SHAPE_REPETITION",
+        "description": "Sentence-shape phrase \"the way\" appears 9 times.",
+        "fixInstruction": "Resolve the issue using this evidence: the way | 9",
+        "source": "validator"
+      },
+      {
+        "severity": "warning",
+        "title": "PARAGRAPH_DISTRIBUTION",
+        "description": "5+ consecutive single-sentence paragraphs.",
+        "fixInstruction": "Resolve the deterministic validator failure without changing correct chapter facts.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "KNOWLEDGE_LEAK_PROSE",
+        "description": "Lt. Cmdr. Ennis appears near forbidden knowledge \"Knows what Charlotte fired and at whom; knows what the Navy wishes the civilian record to say about it; chooses silence over dispute when his commander refuses an order.\" in prose.",
+        "fixInstruction": "Resolve the issue using this evidence: Lt. Cmdr. Ennis | Knows what Charlotte fired and at whom; knows what the Navy wishes the civilian record to say about it; chooses silence over dispute when his commander refuses an order.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "KNOWLEDGE_LEAK_PROSE",
+        "description": "Petty Officer Cole appears near forbidden knowledge \"Knows only what sonar tells him; uses the plain word for what he hears even when the bridge would prefer he not.\" in prose.",
+        "fixInstruction": "Resolve the issue using this evidence: Petty Officer Cole | Knows only what sonar tells him; uses the plain word for what he hears even when the bridge would prefer he not.",
+        "source": "validator"
+      },
+      {
+        "severity": "error",
+        "title": "KNOWLEDGE_LEAK_PROSE",
+        "description": "Soviet Captain appears near forbidden knowledge \"Charlotte hears him through radio fragments only; never makes contact with the Aurelia.\" in prose.",
+        "fixInstruction": "Resolve the issue using this evidence: Soviet Captain | Charlotte hears him through radio fragments only; never makes contact with the Aurelia.",
+        "source": "validator"
+      }
+    ]
+  }
+}

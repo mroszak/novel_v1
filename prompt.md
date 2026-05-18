@@ -34,6 +34,22 @@ Fall back to full rewrite only when a defined threshold says the chapter genuine
 - `docs/voice-grit-spec.md` — the canonical patch-contract spec. Mirror its structure when writing `docs/revision-patch-spec.md`.
 - AGENTS.md "Publish-candidate immutability" + "Validator-only blocking" rules — both still apply unchanged after the port.
 
+## Implementation order (suggested)
+
+The dependency graph is linear; follow this order to avoid wasted work:
+
+1. **Types first**: add `TrackedIssue`, `IssueOrigin`, `RevisionPatch`, `RevisionPlan`, `RevisionDiff` to `src/types/index.ts`. Delete `ContinuityFixResult` last (after callers migrated).
+2. **Shared utilities**: extract `parseAnthropicJson` to `src/utils/parse-anthropic-json.ts`; update `generate-spec.ts` to import from the new location (zero behavior change). Add `src/pipeline/revision-plan-schema.ts` with `validateRevisionPlan`.
+3. **Helpers**: implement `src/pipeline/track-issues.ts` (issue id minting + mandatory/advisory split) and `src/pipeline/apply-revision-patches.ts` (patch apply + scopedExtension + issueCoverage reconciliation). Both are pure functions, immediately unit-testable.
+4. **Planners**: implement `planContinuityFix` in `src/pipeline/fix-continuity.ts` (replaces the old wholesale-rewrite body; delete `ContinuityFixResult` and `applyFixResult` here; add the new `applyRevisionDiffToSelected` helper). Implement `planRevisionPatches` + `shouldStructurallyRewrite` + the `reviseDraft` router in `src/pipeline/revise-draft.ts` (keep the old whole-chapter body, renamed `runStructuralRewrite`, as the fallback).
+5. **Config**: update `continuityFix` profile, add `revisionPatch` profile, add `revisionRouting` to `qualitySettings` in `src/config.ts`.
+6. **Orchestrator**: update the single revision call site in `src/pipeline/run-chapter.ts` to destructure `{ artifact, usageStage }` and pass `usageStage` to `collectUsage`. Update the continuity-fix call site to expect the new `RevisionDiff` payload.
+7. **Cost estimate + cleanup**: update `src/pipeline/estimate-cost.ts`. Delete `src/pipeline/localized-audit-patch.ts` after migrating its test.
+8. **Tests**: add the new test files (parser, schema, apply-revision-patches, track-issues, validator-only-path, planner-failure-paths). Update existing tests that reference deleted shapes.
+9. **Docs**: write `docs/revision-patch-spec.md`. Update AGENTS.md and `.cursor/rules/*.mdc` to reflect new hot spots.
+
+Do not commit unless the user explicitly asks. The project's commit-hygiene rule (`.cursor/rules/commit-hygiene.mdc`) and git-identity rule (`.cursor/rules/git-identity.mdc`) require explicit user approval for every commit, and the auto-push policy means commits push immediately to GitHub — so committing-without-asking pushes-without-asking. **If** the user does ask for commits, each numbered step above is independently committable, and smaller commits give more recovery points. The only hard ordering constraint is: types before consumers, helpers before planners, planners before orchestrator. `npm run typecheck && npm test` between steps is recommended; mandatory before any user-requested commit.
+
 ## New shared patch shape
 
 ### Types (add to `src/types/index.ts`)
@@ -48,9 +64,7 @@ export type IssueOrigin =
   | "audit-error-model"
   | "audit-error-validator"
   | "audit-warning-model"
-  | "audit-warning-validator"
-  | "validator-warning"
-  | "validator-error";
+  | "audit-warning-validator";
 
 export interface TrackedIssue {
   // Stable identifier the patch planner uses in `errorRef`. Engine-assigned,
@@ -69,8 +83,9 @@ export interface TrackedIssue {
 
 export interface RevisionPatch {
   // The TrackedIssue.id this patch addresses. The planner must reference
-  // a known issue id from the input bundle (or "manual" for self-directed
-  // patches inside a structural rewrite path — rare; logged).
+  // a known issue id from the input bundle. Patches with no matching id
+  // are skipped at apply time with reason "unknown-error-ref"; the engine
+  // never accepts free-form ids.
   errorRef: string;
   // Exact existing prose. Must match exactly once in the working prose for
   // the patch to apply. Use 2-4 disambiguating context words when the
@@ -104,13 +119,15 @@ export interface RevisionPlan {
 }
 
 export interface RevisionDiff {
+  // Status reflects only what `applyRevisionPatches` itself can determine
+  // from the plan + patch outcomes. Downstream concerns (re-judge regression,
+  // validator failures, structural-rewrite escalation) are owned by the
+  // orchestrator and the publish-candidate ratchet — they do NOT mutate
+  // this diff after the helper returns.
   status:
-    | "applied"
-    | "no-patches"
-    | "skipped"
-    | "structural-rewrite"
-    | "validators-failed"
-    | "post-fix-regressed";
+    | "applied"     // at least one patch landed (with or without other skips)
+    | "no-patches"  // planner emitted zero patches and no scopedExtension
+    | "skipped";    // patches were emitted but every one was skipped at apply time
   reason: string;
   appliedPatches: RevisionPatch[];
   skippedPatches: Array<RevisionPatch & { skipReason: string }>;
@@ -132,24 +149,50 @@ export interface RevisionDiff {
 }
 ```
 
-Both `fix-continuity` and `revise-draft` use this same shared shape. Two stages, one mechanism.
+Both `fix-continuity` and `revise-draft` use this same shared shape. Two stages, one mechanism — but they **persist it differently**:
+
+| Stage | Primary artifact (returned by stage fn) | Sidecar artifact |
+|---|---|---|
+| `continuity-fix` patches | `chapter-N-fix-attempt-K.json` carries `ArtifactEnvelope<RevisionDiff>` (replaces the deleted `ContinuityFixResult`). Engine applies `RevisionDiff.finalProse` to the `SelectedChapter` via `applyRevisionDiffToSelected`. | None — the fix-attempt artifact is the diff. |
+| `revise-draft` patches | `chapter-N-revised-draft.json` carries `ArtifactEnvelope<ChapterDraft>` (unchanged shape — `{prose, wordCount}`). Downstream consumers (`judgeDraft`, `selectDraft`) read this exactly as today. | `chapter-N-revision-diff.json` (NEW) carries `ArtifactEnvelope<RevisionDiff>` for accountability + debugging. |
+| `revise-draft` structural rewrite (fallback) | `chapter-N-revised-draft.json` carries `ArtifactEnvelope<ChapterDraft>` (unchanged from today). | No diff sidecar (no patch list exists for a full rewrite). |
+
+The asymmetry is deliberate: the continuity-fix artifact already lives at `chapter-N-fix-attempt-K.json` and has no downstream consumer beyond `applyFixResult` (which this PR replaces with `applyRevisionDiffToSelected`), so switching its payload to `RevisionDiff` is contained. The revised-draft artifact is consumed by `judgeDraft` and `selectDraft`, which expect `ChapterDraft.prose`. Keeping that contract intact eliminates downstream churn; the `RevisionDiff` lives alongside as a sidecar.
 
 ## Per-issue accountability (closes Category 3 gap)
 
 Every issue passed to the planner has a stable id assigned BY the engine, not the model. The planner can `errorRef` an id. After the engine applies patches, it produces `issueCoverage` showing every input issue's outcome. Operators can grep the diff for `unaddressed` to find dropped issues.
 
-The engine assigns ids deterministically from origin + index. Helper `buildTrackedIssues(review, audit, validators)` lives in `src/pipeline/track-issues.ts` (NEW) and is the single source of truth for issue id mint format.
+The engine assigns ids deterministically from origin + index. Helper `buildTrackedIssues({ review?, audit? })` lives in `src/pipeline/track-issues.ts` (NEW) and is the single source of truth for issue id mint format. No separate `validators` argument: PR1 has no revision-time validator artifact (validators only run during final audit), and at continuity-fix time, validator-origin issues are already merged into `audit.issues` with `source: "validator"` via the existing `mergeAuditWithValidator` step. Each call site passes only the inputs available at its point in the pipeline:
+
+- Revision-pass planner: `buildTrackedIssues({ review })` — judge issues only.
+- Continuity-fix planner: `buildTrackedIssues({ audit })` — merged audit (model-source + validator-source) only.
 
 ## Advisory signal handling (closes Category 2 gap, partial)
 
-Today, warning-severity issues from judge, audit, and validators are documented but never fed to a fix stage. With patches being cheap, the planner gets them as **advisory** input alongside mandatory issues. Rule:
+Today, warning-severity issues from judge, audit, and validators are documented but never fed to a fix stage. With patches being cheap, the planner gets them as **advisory** input alongside mandatory issues — **when a planner is already running**. Rule:
 
-- **Mandatory issues** (judge blocking + weaknesses + revisionActions + error-severity issues; audit error-severity model-source) — the planner MUST address each with either a patch or an `issueOutcomes` entry justifying the skip.
-- **Advisory issues** (judge warning + audit warning + validator warning + validator-only-downgraded errors) — the planner MAY propose patches when the fix is obvious and cheap (e.g., a single phrase repeated 4× → swap 2 instances; a single over-composed cluster → trim its densest sentence). The planner MUST emit an `issueOutcomes` entry for each advisory id it sees, either patching it or declaring `skipped` with a reason.
+- **Mandatory issues** (judge blocking + weaknesses + revisionActions + error-severity judge issues; audit error-severity issues from EITHER source — see the validator-only path below for when validator-source errors do or don't reach the planner) — the planner MUST address each with either a patch or an `issueOutcomes` entry justifying the skip.
+- **Advisory issues** (judge warning + audit warning, including validator-source audit warnings — i.e., **original-severity warnings only**, never post-downgrade errors) — the planner MAY propose patches when the fix is obvious and cheap (e.g., a single phrase repeated 4× → swap 2 instances; a single over-composed cluster → trim its densest sentence). The planner MUST emit an `issueOutcomes` entry for each advisory id it sees, either patching it or declaring `skipped` with a reason.
 
 The "MUST emit an entry" rule is what gives Category 2 partial coverage without committing the engine to act on every false-positive. The planner has discretion; the diff has accountability.
 
-Validators that are "warning-only forever" per AGENTS.md (PARAGRAPH_DISTRIBUTION, NAMED_CHARACTER_CAP, INVERTED_NP_CONTRAST, WITHHOLDING_TIC, EXPLANATORY_BECAUSE_CLUSTER) flow into the advisory list. Knowledge-leak and entity-without-blueprint-support validators also flow in as advisory. Whether the planner acts on any of them is a per-instance literary judgment.
+### When advisory warnings actually reach a planner
+
+This PR does NOT change the trigger conditions for revision or continuity-fix. Advisory warnings flow into a planner ONLY when that planner is invoked for an independent (mandatory) reason:
+
+- **Revision pass** is invoked only when the literary judge returns `passesThreshold: false` OR fires blocking signals. A clean-scoring chapter with judge warnings but no blocking errors skips revision entirely; those warnings never reach the revision-pass planner. This is unchanged from today's `skipRevisionThreshold` behavior.
+- **Continuity-fix loop** is invoked only when the final audit reports at least one `error`-severity issue (`hasBlockingAuditIssues(audit)`). A warning-only audit never enters the fix loop; those warnings never reach the continuity-fix planner. This is unchanged from today's fix-loop trigger.
+
+Net effect: advisory warnings are "free riders" on planner invocations that mandatory issues triggered. A chapter whose only findings are warnings remains in the same publish path it has today (no fix loop, no revision pass), and the warnings remain documented in their source artifacts as advisory-only. The patch architecture closes Category 2 *partially* — for chapters where a planner runs anyway — not universally. Universal warning handling would require new trigger conditions, which is out of scope for PR1.
+
+Validators that are "warning-only forever" per AGENTS.md (PARAGRAPH_DISTRIBUTION, NAMED_CHARACTER_CAP, INVERTED_NP_CONTRAST, WITHHOLDING_TIC, EXPLANATORY_BECAUSE_CLUSTER) flow into the advisory list when continuity-fix runs. Knowledge-leak and entity-without-blueprint-support validators also flow in as advisory under the same condition. Whether the planner acts on any of them is a per-instance literary judgment.
+
+### Validator-only path (unchanged from today)
+
+When EVERY error-severity audit issue has `source: "validator"`, the existing `downgradeValidatorOnlyErrors` runs unchanged: errors flip to warnings, the cleaned audit is persisted, the fix loop breaks. **The patch planner is never called in this case.** This is the deliberate AGENTS.md rule that "deterministic validators are too false-positive-prone to overrule a literary-judge-approved chapter." The patch architecture inherits it byte-for-byte.
+
+The "downgraded errors arrive as advisory" language from earlier drafts of this prompt was wrong — downgraded errors don't reach the planner at all, because the loop has already exited. The advisory bucket is fed by **original-severity warnings** from judge / audit / validators, not by post-downgrade errors.
 
 ## Context hygiene — what each planner sees
 
@@ -157,9 +200,13 @@ The patch planners run on dramatically less context than the current full-rewrit
 
 ### Continuity-fix patch planner input
 
+The patch planner is **only** invoked in the mixed-source case (at least one model-source error present). The validator-only case (every error has `source: "validator"`) exits the fix loop via `downgradeValidatorOnlyErrors` BEFORE any planner call — see "Validator-only path" below.
+
+In the mixed-source case, the planner receives both model-source and validator-source errors, since validators are not downgraded when model errors are also present. Validator errors in this case are real audit findings, not downgraded noise.
+
 ```
 <tracked_issues>
-  ${TrackedIssues filtered to: audit-error-model + audit-error-validator + audit-warning-model + audit-warning-validator + validator-warning}
+  ${TrackedIssues filtered to: audit-error-model + audit-error-validator + audit-warning-model + audit-warning-validator}
   Format: each issue on one line as `[${id}] ${origin}: ${title} — ${fixHint or "no hint"}`
 </tracked_issues>
 
@@ -185,9 +232,11 @@ NOT included: genre contract, story promise, market positioning, full chapter pa
 
 ### Revision-pass patch planner input
 
+Validators do not run until the final audit phase (after selection, voice-grit, and tournament). The revision pass runs immediately after `judgeDraft`, so no validator artifact exists yet. The revision planner therefore receives ONLY judge-sourced issues. Validator warnings flow into continuity-fix later in the pipeline, where they do exist.
+
 ```
 <tracked_issues>
-  ${TrackedIssues filtered to: judge-blocking + judge-weakness + judge-revision-action + judge-issue-error + judge-issue-warning + validator-warning}
+  ${TrackedIssues filtered to: judge-blocking + judge-weakness + judge-revision-action + judge-issue-error + judge-issue-warning}
   Format: each issue on one line as above.
 </tracked_issues>
 
@@ -226,14 +275,16 @@ Unchanged from today's revision-pass context. Whole-chapter rewrites need the wi
 Audit errors are surgical by construction (specific marker + before/after state, or a specific quoted line + correction). Convert to patch-list **with no full-rewrite fallback**.
 
 1. Drop `maxOutputTokens` from 16,000 to **3,000**. Keep `thinkingBudgetTokens` at 3,500.
-2. Opus returns a `RevisionPlan` via structured output. `requiresStructuralRewrite` MUST be false; if the model sets it true, treat as a hard error and surface `BLOCKED_PROVIDER_FAILURE` with the model's reason as the message.
-3. Deterministic apply via `applyRevisionPatches` (new shared helper in `src/pipeline/apply-revision-patches.ts`).
-4. Re-judge + re-audit + publish-candidate ratchet unchanged.
+2. Opus is prompted to return a `RevisionPlan` as strict JSON. The Anthropic API in this repo only emits plain text (see `src/api/anthropic.ts`), so the engine handles structured output in two steps: (a) `parseAnthropicJson<RevisionPlan>` (the shared helper at `src/utils/parse-anthropic-json.ts` — see "Files to touch") converts the model text to an object, and (b) `validateRevisionPlan(raw)` (the hand-rolled runtime validator at `src/pipeline/revision-plan-schema.ts` — see "Files to touch") asserts every required field is present and well-typed. The two-step design is deliberate: the parser is generic and reusable; the validator is shape-aware and the only enforcement of the actual `RevisionPlan` contract at runtime. Add the JSON-only instruction to the system prompt the same way `buildSpecCritiqueRequest` does ("Return strict JSON only with keys patches, scopedExtension, issueOutcomes, notes, requiresStructuralRewrite, structuralRewriteReason"). On EITHER parse failure (parser throws) OR shape-validation failure (`validateRevisionPlan` throws), the engine does **not** persist a fix-attempt artifact (there's no valid `RevisionDiff` to serialize). Instead it writes a status artifact with `status: BLOCKED_PROVIDER_FAILURE` and stores the raw model text in the status `details` field (key: `rawPlannerText`) along with `details.parseError` (the thrown error message — either parser or validator). The chapter ends in the same blocked state as today's `max_tokens` truncation, only with a different failure mode tagged.
+3. `requiresStructuralRewrite` MUST be `false` in continuity-fix output; if the model sets it `true`, treat as a hard error and surface `BLOCKED_PROVIDER_FAILURE` with the model's reason as the message.
+4. Deterministic apply via `applyRevisionPatches` (new shared helper in `src/pipeline/apply-revision-patches.ts`).
+5. Re-judge + re-audit + publish-candidate ratchet unchanged.
 
 ### `revise-draft` (hybrid: patches by default, structural rewrite at threshold)
 
 1. Drop `maxOutputTokens` on the patch path from 24,000 to **4,000** (covers ~15 patches with comfortable headroom). Keep full-rewrite path at 24,000.
-2. Decision happens BEFORE the model is called, in `run-chapter.ts`:
+2. Same Anthropic JSON convention as continuity-fix: Opus is prompted to return strict JSON; engine parses via `parseAnthropicJson<RevisionPlan>` then runtime-validates via `validateRevisionPlan`; parse/shape failures surface `BLOCKED_PROVIDER_FAILURE` with the raw text and parse-error message stored in the status artifact's `details` (no revised-draft artifact, no diff sidecar — only a status artifact). Same failure-handling shape as continuity-fix.
+3. **Routing lives inside `reviseDraft()`**, not in `run-chapter.ts`. The router already has the `draftReviewArtifact` it needs; pushing the decision up to the orchestrator would duplicate the read and split single-responsibility. `run-chapter.ts` continues to call `reviseDraft(params)` once and gets `{ artifact, usageStage }` back regardless of path; the inner `artifact.data` is a `ChapterDraft` either way, so downstream consumers are unchanged. `reviseDraft()` internally consults `shouldStructurallyRewrite(review)` and dispatches. `shouldStructurallyRewrite` remains an exported pure function for direct unit testing:
 
 ```ts
 function shouldStructurallyRewrite(review: DraftReview): {
@@ -267,7 +318,7 @@ function shouldStructurallyRewrite(review: DraftReview): {
 }
 ```
 
-3. Default config (add to `src/config.ts`):
+4. Default config (add to `src/config.ts`):
 
 ```ts
 revisionRouting: {
@@ -279,9 +330,11 @@ revisionRouting: {
 },
 ```
 
-4. When `shouldStructurallyRewrite` returns `rewrite: true`, run the existing whole-chapter revision (24,000 token cap). When it returns false, run the patch path.
-5. Patch path also respects **model self-escalation**: if Opus's `RevisionPlan` comes back with `requiresStructuralRewrite: true` AND a non-null `structuralRewriteReason`, the engine retries through the structural-rewrite path (one retry max).
-6. Patch path also escalates when the plan would exceed `maxPatchesPerPlan` (15). The model emits an empty patch list with `requiresStructuralRewrite: true` and an auto-generated reason ("Issue count exceeds patch budget").
+5. When `shouldStructurallyRewrite` returns `rewrite: true`, `reviseDraft` runs the existing whole-chapter revision (24,000 token cap, `revision` stage profile). When it returns false, `reviseDraft` runs the patch path (4,000 token cap, `revisionPatch` stage profile).
+6. Patch path also respects **model self-escalation**: if Opus's `RevisionPlan` comes back with `requiresStructuralRewrite: true` AND a non-null `structuralRewriteReason`, `reviseDraft` retries internally through the structural-rewrite path (one retry max). The orchestrator sees the same `{ artifact, usageStage }` return shape either way; only `usageStage` differs to reflect which path actually ran.
+7. Patch path also escalates when the plan would exceed `maxPatchesPerPlan` (15). The model emits an empty patch list with `requiresStructuralRewrite: true` and an auto-generated reason ("Issue count exceeds patch budget").
+8. **Artifact contract**: `reviseDraft()` returns `{ artifact, usageStage }`; `artifact` is always `ArtifactEnvelope<ChapterDraft>` regardless of which path ran. On every path it writes `chapter-N-revised-draft.json` (the existing path, unchanged payload shape). On the patch path ONLY, it ALSO writes `chapter-N-revision-diff.json` carrying the `RevisionDiff` as a sidecar. Downstream `judgeDraft` and `selectDraft` continue to consume `artifact.data` as a `ChapterDraft` exactly as today — no signature or call-site changes required for them.
+9. **Usage accounting**: `StageUsage` and `ArtifactEnvelope` do not carry a stage name today, so the orchestrator can't infer which profile ran from the returned artifact alone. The smallest-blast-radius fix is a local return wrapper: `reviseDraft()` returns `{ artifact: ArtifactEnvelope<ChapterDraft>; usageStage: "revision" | "revisionPatch" }` instead of `ArtifactEnvelope<ChapterDraft>` directly. The single caller in `run-chapter.ts` destructures both fields and passes `usageStage` into `collectUsage`. No shared types touched, no `StageUsage` / `ArtifactEnvelope` / `telemetry` plumbing changes. Without this fix the operator-visible cost report mislabels every patch-path run as a structural rewrite.
 
 ### `generate-draft` (initial write — unchanged)
 
@@ -291,115 +344,62 @@ The initial draft has no prior prose to patch. Full write is correct. Leave alon
 
 Already patch-based. Untouched.
 
-### `tournament` (already zone-spliced — unchanged in mechanism; gated by score)
+### `tournament` (unchanged in PR1)
 
-Already targeted. Mechanism untouched. Conditional skip added below (see "Pipeline parallelization and skip-gating").
-
-## Pipeline parallelization and skip-gating
-
-Three orthogonal speedups in this PR. All are quality-neutral by construction: parallelization changes order without changing work, and the skip gates only fire on chapters the judge has already scored as clean in those specific dimensions.
-
-### Parallelize voice-grit-plan with tournament candidate generation
-
-Currently sequential:
-
-```
-voice-grit-plan (Opus)
-  → voice-grit-apply (deterministic)
-  → [tournament-opening-candidate (Opus), tournament-ending-candidate (Opus)] (parallel)
-  → tournament-splice + tournament-selection
-```
-
-After:
-
-```
-[voice-grit-plan (Opus), tournament-opening-candidate (Opus), tournament-ending-candidate (Opus)] (3-way parallel)
-  → voice-grit-apply (deterministic, runs first)
-  → tournament-splice + tournament-selection (runs second on the voice-grit-applied prose)
-```
-
-The AGENTS.md invariant "voice-grit applies before tournament splices" is preserved — only the **generation** phase parallelizes. The application phase still sequences voice-grit then tournament so the tournament owns its reserved zones.
-
-Implementation: in `src/pipeline/run-chapter.ts`, replace the sequential `voiceGritPlan → applyVoiceGrit → tournament` block with `Promise.all([voiceGritPlan, openingCandidate, endingCandidate])` followed by sequential apply + tournament-splice + tournament-selection. Tournament candidates are generated against the **selected** (post-judge) prose, not the voice-grit-applied prose, because at parallel-launch time voice-grit hasn't applied yet. This is a no-op change in practice: voice-grit only touches non-reserved zones, so the opening/ending candidate's source context is identical either way.
-
-Saves: ~1 Opus round-trip per chapter (10–20s). Zero quality impact.
-
-### Skip-voice-grit gate
-
-When the literary judge review reports BOTH:
-
-- `repetitionPenalty < qualitySettings.voiceGritSkipBelowRepetitionPenalty` (default **15**)
-- No `voice-tic` or `repeated-effect` signal in `weaknesses` / `revisionActions` / `issues` (case-insensitive substring scan for `"voice-tic"`, `"repeated-effect"`, `"repeated phrase"`, `"signature phrase"`, `"tic"`)
-
-…skip the voice-grit pass entirely. Persist `chapter-N-voice-grit-skipped.json` recording the skip reason and the trigger scores. The chapter proceeds straight to the opening/ending tournament (or the tournament's own skip gate, below).
-
-Add to `src/config.ts`:
-
-```ts
-voiceGritSkipBelowRepetitionPenalty: 15,
-```
-
-Saves: 1 Opus call (voice-grit-plan) + 1 OpenAI call (voice-grit-rejudge) = ~15–30s.
-
-Quality argument: voice-grit exists to fix repetition. When the judge says there's no repetition to fix, voice-grit has no work to do. The threshold of 15 is conservative — the judge fires `repetitionPenalty` aggressively at the slightest pattern, so anything below 15 is effectively clean.
-
-### Tournament skip gate
-
-When the literary judge review reports BOTH:
-
-- `openingPower ≥ qualitySettings.tournamentSkipMinZoneScore` (default **92**)
-- `endingHookStrength ≥ qualitySettings.tournamentSkipMinZoneScore` (default **92**)
-
-…skip the opening/ending tournament entirely. Persist `chapter-N-tournament-skipped.json` recording skip reasons + trigger scores.
-
-Add to `src/config.ts`:
-
-```ts
-tournamentSkipMinZoneScore: 92,
-```
-
-Saves: 2 Opus candidate calls + 2 OpenAI selection calls = ~30–60s.
-
-Quality argument: at 92+ on both zone hooks, the chapter's structural pivots are already excellent. The tournament's expected lift is statistically negligible (judge dimensions cap at 100; getting from 92 to 95 is a finer pass than from 85 to 92). The publish-candidate ratchet still protects downstream; bypassing the tournament removes a no-op stage, not a load-bearing one.
-
-### Stage interaction matrix
-
-| Voice-grit | Tournament | Publish-candidate source |
-|---|---|---|
-| Runs | Runs | Post-tournament prose (today's path) |
-| **Skipped** | Runs | Post-judge prose → tournament splices on it directly |
-| Runs | **Skipped** | Post-voice-grit prose |
-| **Skipped** | **Skipped** | Post-judge prose; selection becomes publish-candidate directly |
-
-The publish-candidate immutability rule and the publish-candidate ratchet behave identically across all four cases. Skips are logged; nothing is silently dropped.
+Already targeted. Mechanism and timing untouched in this PR. Conditional skip is deferred to **PR2** (see appendix at the end of this document).
 
 ## Shared apply helper
 
-Create `src/pipeline/apply-revision-patches.ts` exporting `applyRevisionPatches(params: { prose: string; patches: RevisionPatch[]; maxPatches: number; })`. Both `continuity-fix` and `revise-draft` use this same helper. Mirror `applyVoiceGritPatches`'s structure exactly:
+Create `src/pipeline/apply-revision-patches.ts` exporting `applyRevisionPatches(params: { prose: string; plan: RevisionPlan; trackedIssues: TrackedIssue[]; maxPatches: number; })`. Both `continuity-fix` and `revise-draft` use this same helper. The signature is wider than `applyVoiceGritPatches` because this helper does three jobs at once: patch application, scopedExtension application, and `issueCoverage` reconciliation. Mirror `applyVoiceGritPatches`'s structure where it overlaps.
+
+Patch application rules:
 
 - Validate `originalText` non-empty.
 - Validate `originalText` appears **exactly once** in current working prose; skip with reason `"zero-match"` or `"multi-match"` otherwise.
 - Apply via `String.prototype.replace` in plan order; each subsequent patch operates on the post-previous-patch state.
 - Reject patches whose `originalText` is the entire chapter (defense against the model trying to whole-rewrite via one giant patch). Skip reason: `"whole-prose-replacement"`.
 - Cap applied count at `maxPatches`; remainder skipped with reason `"patch-budget-exceeded"`.
-- Reject patches whose `errorRef` does not match any known TrackedIssue id; skip reason `"unknown-error-ref"`. (Manual ids are allowed but logged.)
+- Reject patches whose `errorRef` does not match any id in `trackedIssues`; skip reason `"unknown-error-ref"`.
+
+`scopedExtension` application rules (mirror the type comment: *"Only honored when ALL other mandatory errors are patched AND a length-band miss remains"*):
+
+- Only applied AFTER all patch application has completed.
+- Validate it is a string between 50 and 500 words; if outside that range, skip with reason `"scoped-extension-out-of-bounds"`.
+- Validate at least one entry in `trackedIssues` mentions length/word-band concerns (case-insensitive substring scan on `title` + `fixHint` for `"word count"`, `"word band"`, `"length"`, `"under band"`); if no such issue exists, skip with reason `"scoped-extension-not-justified"`.
+- **Validate every mandatory TrackedIssue (those with `mandatory: true`) OTHER than the length-band-related ones is resolved** — i.e., reconciles to `patched` or `covered-by-other` in the issueCoverage computed from patches applied so far. If any non-length-band mandatory issue would land in `skip-validation`, `skip-planner`, or `unaddressed`, skip the extension with reason `"scoped-extension-mandatory-issues-unresolved"` and list the unresolved ids in the diff's `notes`. This prevents the model from padding length while leaving real continuity errors broken.
+- When all validations pass: append `scopedExtension` to the post-patch prose with a single blank line separator. The appended text becomes part of `finalProse`.
+- When skipped at any step: the diff's `notes` records the reason. **Coverage override**: any TrackedIssue that matched the length-band detection scan has its `issueCoverage` status forcibly set to `unaddressed`, regardless of what status the reconciliation rules would otherwise assign (including `skip-planner` from a planner-emitted outcome). The override `reason` is the scopedExtension skip reason, prefixed with `"scoped-extension-skipped: "`. Rationale: when the planner declared the extension as the length-band fix mechanism and that mechanism didn't run, `unaddressed` is the correct operator-facing signal — `skip-planner` would falsely imply the planner intentionally dropped the issue.
+
+`issueCoverage` reconciliation rules (runs last, builds the `RevisionDiff.issueCoverage` array):
+
+- For every TrackedIssue id passed in: one entry appears in `issueCoverage`.
+- `patched`: at least one applied patch's `errorRef` matches the id.
+- `skip-validation`: a patch existed with this id, but it was skipped at apply time (zero-match, multi-match, whole-prose-replacement, patch-budget-exceeded, unknown-error-ref).
+- `skip-planner`: the planner emitted an `issueOutcomes` entry for this id with `status: "skipped"` and no corresponding patch; the engine respects this without retry. `reason` is copied from the planner's outcome entry.
+- `covered-by-other`: planner emitted an `issueOutcomes` entry with `status: "patched"` but the actual patch references a different id — the planner is declaring that one patch resolves multiple issues (e.g., a single sentence rewrite that addresses both a POV leak and a timestamp). `reason` is copied.
+- `unaddressed`: the planner emitted no `issueOutcomes` entry for this id AND no patch references it. This is the audit-trail entry that prevents silent issue drops.
+
+Output: `applyRevisionPatches` returns `RevisionDiff` (the full diff including `appliedPatches`, `skippedPatches`, `issueCoverage`, `preProse`, `finalProse`). Callers persist it (continuity-fix as the fix-attempt artifact; revise-draft as the revision-diff sidecar).
 
 ## Files to touch
 
 Direct edits:
 
 - `src/types/index.ts` — add `TrackedIssue`, `IssueOrigin`, `RevisionPatch`, `RevisionPlan`, `RevisionDiff`.
-- `src/pipeline/track-issues.ts` (NEW) — `buildTrackedIssues(review, audit, validators) → TrackedIssue[]` plus id-mint helpers.
+- `src/utils/parse-anthropic-json.ts` (NEW) — extract the existing `parseAnthropicJson<T>` helper currently private at `src/pipeline/generate-spec.ts:169` into a shared utility and export it. Update `generate-spec.ts` to import from the new location instead of defining its own. Both new patch planners (`fix-continuity.ts`, `revise-draft.ts`) will import from this shared module. No behavior change to the existing spec-critique parse path. **Important**: `parseAnthropicJson<T>` is a generic JSON parse and TypeScript's type assertion is erased at runtime — it does NOT validate that the parsed object actually conforms to `T`. Shape validation must happen separately (see next item).
+- `src/pipeline/revision-plan-schema.ts` (NEW) — defines `validateRevisionPlan(raw: unknown): RevisionPlan` that runtime-checks every required field: `patches` is an array of objects each with `{errorRef: string, originalText: string, replacementText: string, justification: string}`; `issueOutcomes` is an array of objects each with `{id: string, status: "patched" | "skipped" | "unaddressed", reason: string}`; `notes` is a `string[]`; `requiresStructuralRewrite` is a `boolean`; `structuralRewriteReason` is `string | null`; `scopedExtension` is `string | null | undefined`. Throws a descriptive error (used by the caller to build `details.parseError`) on the first missing/mistyped field. Used by `planContinuityFix` and `planRevisionPatches` immediately after `parseAnthropicJson<RevisionPlan>` succeeds. Lightweight hand-rolled validator — do not introduce zod / ajv / external dependencies; mirror the style of `validateBlueprint` in `src/blueprint/parse-blueprint.ts`.
+- `src/pipeline/track-issues.ts` (NEW) — `buildTrackedIssues({ review?, audit? }) → TrackedIssue[]` plus id-mint helpers. Single source of truth for issue id format. Each call site passes only what's available (revision pass passes `review`; continuity-fix passes `audit`).
 - `src/pipeline/apply-revision-patches.ts` (NEW) — shared deterministic apply helper + `issueCoverage` builder.
-- `src/pipeline/fix-continuity.ts` — replace whole-prose contract with plan-then-apply via shared helper. Export `planContinuityFix`. Drop the old wholesale-rewrite path entirely.
-- `src/pipeline/revise-draft.ts` — add `planRevisionPatches` (new) plus keep `reviseDraft` as the structural-rewrite fallback. Single `reviseDraft` export becomes a router that picks between the two modes based on `shouldStructurallyRewrite` + model self-escalation. Export `shouldStructurallyRewrite`.
-- `src/pipeline/run-chapter.ts` — call site for revision now consults `shouldStructurallyRewrite`. Continuity-fix call site shape unchanged but expects new artifact diff. Publish-candidate ratchet runs unchanged after either mode. **Also**: replace the sequential `voiceGritPlan → applyVoiceGrit → tournament` block with a 3-way `Promise.all` for voice-grit-plan + opening-candidate + ending-candidate generation, followed by sequential apply. Add the skip-voice-grit and skip-tournament score gates (read judge review scores; persist `chapter-N-voice-grit-skipped.json` / `chapter-N-tournament-skipped.json` artifacts with reason + trigger scores; bypass the respective stages).
-- `src/config.ts` — update `continuityFix` stage profile (`maxOutputTokens: 3000`). Add `revisionPatch` stage profile (`maxOutputTokens: 4000`, mirror `revision`'s other params). Add `revisionRouting` block to `qualitySettings`. Add `voiceGritSkipBelowRepetitionPenalty: 15` and `tournamentSkipMinZoneScore: 92` to `qualitySettings`.
+- `src/pipeline/fix-continuity.ts` — replace whole-prose contract with plan-then-apply via shared helper. Export `planContinuityFix`. Drop the old wholesale-rewrite path entirely. **Also**: delete the `ContinuityFixResult` interface from `src/types/index.ts` and delete the `applyFixResult` helper from `fix-continuity.ts`. They are superseded by `RevisionDiff` + the new `applyRevisionDiffToSelected` helper (in `src/pipeline/apply-revision-patches.ts`), which reads `RevisionDiff.finalProse` and rebuilds the `SelectedChapter` artifact the same way `applyFixResult` did. Update all import sites (`run-chapter.ts` is the only consumer today) to call the new helper. Persisted artifact at `chapter-N-fix-attempt-K.json` switches from `ArtifactEnvelope<ContinuityFixResult>` to `ArtifactEnvelope<RevisionDiff>` — same path, new payload shape.
+- `src/pipeline/revise-draft.ts` — add `planRevisionPatches` (new) plus keep the existing whole-chapter `reviseDraft` body, renamed internally as `runStructuralRewrite`, as the fallback. The single `reviseDraft` export becomes the router: it reads `draftReviewArtifact.data`, consults `shouldStructurallyRewrite(review)` + the planner's `requiresStructuralRewrite` self-escalation, dispatches to either `planRevisionPatches → applyRevisionPatches → ChapterDraft` (patch path) or `runStructuralRewrite → ChapterDraft` (fallback path). **Return type changes** from `ArtifactEnvelope<ChapterDraft>` to `{ artifact: ArtifactEnvelope<ChapterDraft>; usageStage: "revision" | "revisionPatch" }` so the caller can attribute usage correctly. The downstream `artifact.data` shape is still `ChapterDraft` — only the wrapper changes, so `judgeDraft` and `selectDraft` need no signature changes, only the single call site in `run-chapter.ts` updates to destructure. On the patch path, write `chapter-N-revised-draft.json` (`ChapterDraft`) AND `chapter-N-revision-diff.json` (`RevisionDiff` sidecar). On the structural-rewrite path, write `chapter-N-revised-draft.json` only. Export `shouldStructurallyRewrite` for unit testing; the orchestrator does NOT call it directly. Smoke path returns `usageStage: "revision"` (smoke calibration uses the structural-rewrite path's smoke prose).
+- `src/pipeline/run-chapter.ts` — revision call site updates to destructure the new return shape: `const { artifact: revisedDraftArtifact, usageStage: revisionUsageStage } = await reviseDraft(params);`. The hardcoded `collectUsage(usages, config.stageProfiles.revision.stageName, revisedDraftArtifact)` (today at ~line 520) changes to `collectUsage(usages, config.stageProfiles[revisionUsageStage].stageName, revisedDraftArtifact)`. Continuity-fix call site shape unchanged but expects the new `RevisionDiff` payload at `chapter-N-fix-attempt-K.json`. Publish-candidate ratchet runs unchanged after either mode.
+- `src/config.ts` — update `continuityFix` stage profile (`maxOutputTokens: 3000`). Add `revisionPatch` stage profile (`maxOutputTokens: 4000`, mirror `revision`'s other params). Add `revisionRouting` block to `qualitySettings`.
 - `src/pipeline/estimate-cost.ts` — update both stages' cost rows. Continuity-fix drops to plan-size. Revision shows two possible paths.
 - `src/pipeline/localized-audit-patch.ts` — delete after migrating its existing temporal-patch regression test to `tests/apply-revision-patches.test.ts`. The new shared helper covers temporal patches uniformly.
 
 Tests:
 
+- `tests/fixtures/chapter-2-regression/` — two fixture files (`chapter-2-publish-candidate.json` + `chapter-2-final-audit.json`) staged in the working tree at this path. These are the real artifacts from the failed chapter-2 run that motivated PR1, captured on May 17, 2026 at 18:06 / 18:10. **Pre-handoff prerequisite**: the user must `git add tests/fixtures/chapter-2-regression/ && git commit` before handing off, otherwise a fresh-clone agent won't have them. The agent does NOT generate or copy them — they are already-present files to commit then read. Do not modify the contents — the fixture's value is that it pins the exact failure case. Reference from the chapter-2-regression integration test (see acceptance criterion #2).
 - `tests/apply-revision-patches.test.ts` (NEW):
   - Clean apply of 5 patches against a synthetic chapter
   - Patch with zero matches → skipped `"zero-match"`
@@ -409,10 +409,13 @@ Tests:
   - `maxPatches` cap honored, overflow skipped with reason
   - Patches applied in plan order; later patches see post-earlier state
   - `issueCoverage` reports every input issue's outcome including `unaddressed`
+  - `scopedExtension` happy path: valid extension applied when length-band issue exists, all bounds met, and all other mandatory issues are resolved.
+  - `scopedExtension` skipped (out-of-bounds, not-justified, mandatory-issues-unresolved) → each reason produced, diff `notes` records it.
+  - **`scopedExtension` precedence override**: when the planner emits `issueOutcomes` with `status: "skipped"` for a length-band TrackedIssue AND `scopedExtension` is skipped, the issue's `issueCoverage` entry MUST be `unaddressed` with reason prefix `"scoped-extension-skipped: "`, not `skip-planner`. Pins the explicit override rule.
 - `tests/track-issues.test.ts` (NEW):
-  - Mandatory vs advisory split for every IssueOrigin
+  - Mandatory vs advisory split for every IssueOrigin (validator-only-downgrade is NOT a TrackedIssue origin — downgraded errors never reach the planner)
   - Stable ids across runs (deterministic minting)
-  - Validator-only error included as mandatory pre-downgrade; advisory post-downgrade (this happens upstream)
+  - `audit-error-validator` is a `mandatory` origin and only appears in the planner's input when at least one model-source error is also present (the mixed case)
 - `tests/system-rules.test.ts` — add:
   - `shouldStructurallyRewrite` returns `true` for catastrophic voiceConsistency, multi-dim failure, weak structural hooks
   - `shouldStructurallyRewrite` returns `false` for the chapter-2-style profile (92.15, 5 small issues)
@@ -422,16 +425,25 @@ Tests:
   - Continuity-fix planner prompt for a representative input is under 12,000 tokens (assert via `tokenCount` heuristic or character cap as a proxy).
   - Revision-patch planner prompt for a representative input is under 16,000 tokens.
   - Structural rewrite prompt is unchanged from today (sanity test).
-- `tests/skip-gates.test.ts` (NEW):
-  - Skip-voice-grit gate fires when `repetitionPenalty: 12` and no tic/effect signals → asserts voice-grit-skipped artifact persists with reason and `voice-grit-applied.json` does NOT exist.
-  - Skip-voice-grit gate does NOT fire when `repetitionPenalty: 22` (above threshold) → voice-grit runs normally.
-  - Skip-voice-grit gate does NOT fire when `repetitionPenalty: 12` but `weaknesses` contains "repeated phrase" → voice-grit runs normally.
-  - Skip-tournament gate fires when `openingPower: 94, endingHookStrength: 95` → tournament-skipped artifact persists; tournament-merged.json does NOT exist.
-  - Skip-tournament gate does NOT fire when `openingPower: 88, endingHookStrength: 95` → tournament runs normally.
-  - All four matrix cells (both run / voice-grit skipped / tournament skipped / both skipped) produce a valid publish-candidate.
-- `tests/pipeline-parallelization.test.ts` (NEW):
-  - Smoke fixture records stage start/end timestamps. Voice-grit-plan starts BEFORE voice-grit-apply finishes. Opening-candidate and ending-candidate start BEFORE voice-grit-apply finishes. Voice-grit-apply finishes BEFORE tournament-splice starts.
-  - All three generation calls share an overlapping wall-time window (deterministic in smoke mode where each "model call" is a no-op promise).
+- `tests/validator-only-path.test.ts` (NEW or extension of existing test):
+  - When all audit errors have `source: "validator"`, the patch planner is NOT called. `downgradeValidatorOnlyErrors` runs; loop breaks; chapter publishes.
+  - When errors are mixed (model + validator), the planner IS called and the input TrackedIssues include `audit-error-validator` entries as mandatory.
+- `tests/parse-anthropic-json.test.ts` (NEW) — pins parser behavior for the shared helper now used by spec critique + both patch planners:
+  - Fenced JSON (```json\n{...}\n```) parses correctly.
+  - Code-fence variant (```\n{...}\n```) parses correctly.
+  - JSON embedded in commentary text (`Here is the plan: {...} -- end`) parses via the fallback regex match.
+  - Malformed JSON (mismatched braces, trailing comma in invalid position) throws.
+- `tests/revision-plan-schema.test.ts` (NEW) — pins `validateRevisionPlan` runtime shape checks:
+  - Valid `RevisionPlan` passes through unchanged.
+  - Missing `patches` field throws with a descriptive error.
+  - `patches` present but contains an item without `originalText` throws with a descriptive error.
+  - `requiresStructuralRewrite` set to a non-boolean throws.
+  - `issueOutcomes[].status` set to an unknown enum value throws.
+  - `scopedExtension` absent OR explicitly `null` is accepted (it's optional).
+- `tests/planner-failure-paths.test.ts` (NEW) — pins the parse-or-shape failure → blocked-status contract for both planners:
+  - `planContinuityFix` receives malformed JSON from Opus → `BLOCKED_PROVIDER_FAILURE` raised, status artifact written with `details.rawPlannerText` + `details.parseError`, NO `chapter-N-fix-attempt-K.json` written.
+  - `planContinuityFix` receives valid JSON missing a required `RevisionPlan` field → same blocked-status contract, `details.parseError` reflects the `validateRevisionPlan` error message.
+  - `planRevisionPatches` same two cases → same blocked-status contract, NO `chapter-N-revised-draft.json` and NO `chapter-N-revision-diff.json` written.
 
 Docs:
 
@@ -444,21 +456,23 @@ Docs:
 ## Invariants that MUST be preserved
 
 - `qualitySettings.maxFixAttempts` (default 2) — unchanged.
-- The validator-only downgrade rule (`downgradeValidatorOnlyErrors`) — unchanged. Runs BEFORE the patch planner sees the issue list, so downgraded errors arrive as advisory.
 - The publish-candidate ratchet (`shouldRevertToPublishCandidate`) — unchanged. Runs after EVERY mode.
 - Reserved zones for voice-grit and tournament — unchanged. Revision patches MAY touch reserved zones; tournament still owns its zones downstream.
 - Audit contract (`FinalAuditReport` shape, severity rules, `source` tagging) — unchanged.
 - Skip-revision path — unchanged. When the first draft clears `skipRevisionThreshold` with no blocking signals, no patch/rewrite runs.
 - CLI exit code semantics (1 = unexpected runtime, 2 = blocked pipeline) — unchanged.
-- Smoke mode determinism — preserved. Smoke paths return deterministic empty `RevisionPlan` with `issueOutcomes` declaring every issue as `skipped: "smoke"`. Skip gates work the same way in smoke (smoke review fabricates scores that exercise both run-and-skip paths in tests).
-- Artifact paths (`chapter-N-fix-attempt-K.json`, `chapter-N-revised-draft.json`) — same paths, new payload shape.
-- Voice-grit before tournament — sequencing of APPLICATION (apply voice-grit before tournament splices) is unchanged. Only generation runs in parallel.
-- AGENTS.md "Voice-grit and tournament are advisory and fail-soft" — unchanged. Skip gates are an additional fail-soft path: throwing in either stage's generation still leaves `selected` unchanged downstream.
+- Smoke mode determinism — preserved. Smoke paths return deterministic empty `RevisionPlan` with `issueOutcomes` declaring every issue as `skipped: "smoke"`.
+- Artifact paths and payload contracts:
+  - `chapter-N-fix-attempt-K.json` — **same path, payload switches** from `ContinuityFixResult` → `RevisionDiff`.
+  - `chapter-N-revised-draft.json` — **same path, payload unchanged** (`ChapterDraft`). Downstream `judgeDraft` + `selectDraft` keep reading it exactly as today.
+  - `chapter-N-revision-diff.json` — **new sidecar**, payload `RevisionDiff`, written only on the revision patch path (not on structural rewrite). Not consumed by any downstream stage; pure accountability/debugging.
+- Voice-grit / tournament sequencing (apply voice-grit before tournament splices, both still run on every chapter in PR1) — unchanged.
+- The validator-only downgrade gate (`isValidatorOnlyBlocking` → `downgradeValidatorOnlyErrors` → loop break) — unchanged in both code path and trigger condition.
 
 ## Acceptance criteria
 
 1. `npm run typecheck && npm test` pass.
-2. The chapter 2 publish-candidate's five real errors can be expressed as a five-patch plan and applied without invoking a whole-chapter rewrite. Use the actual `chapter-2-publish-candidate.json` + `chapter-2-final-audit.json` as a fixture in a new integration-shaped unit test.
+2. The chapter 2 publish-candidate's five real errors can be expressed as a five-patch plan and applied without invoking a whole-chapter rewrite. The fixture files exist at `tests/fixtures/chapter-2-regression/chapter-2-publish-candidate.json` and `tests/fixtures/chapter-2-regression/chapter-2-final-audit.json`. **Pre-handoff prerequisite**: these files are currently in the working tree but untracked (`git status` shows `?? tests/fixtures/chapter-2-regression/`) — the user must `git add tests/fixtures/chapter-2-regression/ && git commit` before handing off, otherwise a fresh agent on a clean clone won't have them. Once committed, the agent reads them directly; do not synthesize fakes. The five errors they contain are: word band 1 word short, two Zulu timestamps, range-units swap (nm→yards), current-bearing reconciliation, and a Beckwith POV access leak across a handset. The integration-shaped unit test is **fixture-backed only — no live provider calls, no API keys required**: it reads the real audit fixture, constructs a deterministic five-patch `RevisionPlan` in the test file (representing what the planner ought to return given those five errors), feeds it directly into `applyRevisionPatches` along with the real publish-candidate prose, and asserts the resulting `RevisionDiff` has `status: "applied"`, five patches all in `appliedPatches`, zero `unaddressed` entries in `issueCoverage`, and `finalProse.length` greater than the pre-patch length (since the word-band fix adds at least one word). The test never calls Opus or OpenAI. The deterministic plan also serves as documentation of what a correct planner output looks like for this exact case. This matches the project guardrail "Prefer smoke or fixture-backed validation over live provider calls."
 3. A synthetic "broken chapter" (voiceConsistency 55, 4 dimensions below 70) routes to structural rewrite via `shouldStructurallyRewrite`.
 4. A synthetic "lightly weak chapter" (voiceConsistency 78, one dimension 78, rest above 85) routes to patch path.
 5. **Per-issue accountability**: `issueCoverage` in a produced `RevisionDiff` contains an entry for every TrackedIssue passed to the planner. No `unaddressed` entry can be silently dropped — running `--audit-only` after a fix run prints a coverage summary including unaddressed counts.
@@ -466,8 +480,9 @@ Docs:
 7. Estimated cost per continuity-fix attempt drops by at least 5×. Patch-path revision drops by at least 4×. Structural-rewrite revision unchanged.
 8. Publish-candidate ratchet still reverts on regression, regardless of mode.
 9. Smoke runs (`npm run smoke`) still produce a clean deterministic chapter with no real provider calls.
-10. **Wall-time**: a clean-scoring chapter run (clean enough to trip both skip gates) generates without the voice-grit pass or the tournament. Skip artifacts persist with reason and trigger scores.
-11. **Parallelization**: smoke-mode pipeline-parallelization test asserts voice-grit-plan, opening-candidate, and ending-candidate all start before voice-grit-apply runs.
+10. **Validator-only path**: regression test confirms that when every audit error has `source: "validator"`, the planner is not called and the chapter publishes via the downgrade gate (unchanged from today's behavior).
+11. **Revised-draft artifact contract**: on the patch path, the run produces BOTH `chapter-N-revised-draft.json` (`ChapterDraft`) AND `chapter-N-revision-diff.json` (`RevisionDiff` sidecar). On the structural-rewrite path, the run produces `chapter-N-revised-draft.json` ONLY. Test asserts both file presence and payload `artifactType` per path.
+12. **Usage attribution**: in the resulting cost-summary artifact, patch-path revision usage is attributed to `revisionPatch`; structural-rewrite revision usage is attributed to `revision`. No revision usage is silently logged under the wrong stage name.
 
 ## Out of scope
 
@@ -490,11 +505,57 @@ Docs:
 - **Per-issue accountability is the third win**. Every tracked issue has a deterministic id, every patch references one, every input id appears in `issueCoverage` after apply. Silent issue drops become impossible.
 - **Patches are auditable** as a human-readable changelog. A whole rewrite is a wall of prose with no diff.
 - **Truncation failure mode is eliminated** for surgical fixes. The chapter 2 `BLOCKED_PROVIDER_FAILURE` becomes structurally impossible.
-- **Parallelization is free quality**. Running voice-grit-plan alongside tournament-candidate generation does the same work in less wall time. No tradeoff.
-- **Skip gates are conservative**. They fire only on chapters the literary judge has already scored as clean in the relevant dimensions. A chapter that needs polish never trips a skip gate; only a chapter where polish would be no-op skips polish. The publish-candidate ratchet still runs, so skips don't lose the regression safety net for any downstream fix attempts.
 
 ## When to stop
 
-Stop after acceptance criteria are met. Do not extend the patch shape to spec generation, spec revision, or any other stage in this PR — those are JSON, cheap, and not subject to the "preserve good prose" concern. The goal here is one bounded, reviewable change: every prose-output stage that's fixing problems uses patches by default, falls back to full rewrite only when the chapter genuinely needs structural reshaping, surfaces advisory signals to the planner without enforcing action on them, accounts for every input issue in the diff, runs on a minimal context bundle, parallelizes independent generation stages, and skips polish stages that have no work to do.
+Stop after acceptance criteria are met. Do not extend the patch shape to spec generation, spec revision, or any other stage in this PR — those are JSON, cheap, and not subject to the "preserve good prose" concern. The goal here is one bounded, reviewable change: every prose-output stage that's fixing problems uses patches by default, falls back to full rewrite only when the chapter genuinely needs structural reshaping, surfaces advisory signals to the planner without enforcing action on them, accounts for every input issue in the diff, and runs on a minimal context bundle.
 
-Speedups deferred (out of scope here; require empirical quality measurement before adoption): lowering `selfRedTeam` and `chapterDelta` reasoning effort from `high` to `medium`; using Claude Sonnet for voice-grit-plan and tournament candidate generation. Both are tracked for a follow-up PR after this one ships.
+Speedups deferred to **PR2** (see appendix below): voice-grit skip gate, tournament skip gate. Cross-stage generation-phase parallelization is **out of scope entirely** (tournament reads full chapter prose; parallelizing with voice-grit generation would give the tournament stale body context). Lowering `selfRedTeam` / `chapterDelta` reasoning effort and switching narrow stages to Claude Sonnet are also deferred and require empirical quality measurement.
+
+---
+
+## Appendix: PR2 — skip-gate speedups (separate follow-up PR)
+
+These changes are explicitly **out of scope for PR1**. They are documented here for the next PR after the patch migration ships and stabilizes. They are conservative score-gated skips on chapters the literary judge has already scored as clean in the relevant dimensions.
+
+### Skip-voice-grit gate
+
+When the literary judge review reports BOTH:
+
+- `repetitionPenalty < qualitySettings.voiceGritSkipBelowRepetitionPenalty` (default **15**)
+- No voice-tic or repeated-effect signal in `weaknesses` / `revisionActions` / `issues` (case-insensitive substring scan for `"voice-tic"`, `"repeated-effect"`, `"repeated phrase"`, `"signature phrase"`, `"tic"`)
+
+…skip the voice-grit pass. Persist `chapter-N-voice-grit-skipped.json` with reason + trigger scores.
+
+Add `voiceGritSkipBelowRepetitionPenalty: 15` to `qualitySettings`. Saves ~15–30s.
+
+### Tournament skip gate
+
+When the literary judge review reports BOTH:
+
+- `openingPower ≥ qualitySettings.tournamentSkipMinZoneScore` (default **92**)
+- `endingHookStrength ≥ qualitySettings.tournamentSkipMinZoneScore` (default **92**)
+
+…skip the opening/ending tournament. Persist `chapter-N-tournament-skipped.json` with reason + trigger scores.
+
+Add `tournamentSkipMinZoneScore: 92` to `qualitySettings`. Saves ~30–60s.
+
+### Required type extension
+
+`PublishCandidateSnapshot.capturedAfter` currently has the literal type `"selection" | "voice-grit" | "tournament"`, and `run-chapter.ts` always writes `"tournament"`. PR2 must make `run-chapter.ts` write the value that reflects what actually ran:
+
+- Both stages ran → `"tournament"` (today's behavior)
+- Voice-grit skipped, tournament ran → `"tournament"`
+- Voice-grit ran, tournament skipped → `"voice-grit"`
+- Both skipped → `"selection"`
+
+No type change is needed — the existing union already covers these cases. Only the write-site logic in `run-chapter.ts` updates.
+
+### Tests for PR2
+
+- `tests/skip-gates.test.ts` (NEW): exercises the four cells of the run/skip matrix, asserts skip artifacts persist with reason + trigger scores, asserts `capturedAfter` reflects the actually-run stages.
+- The stage-interaction matrix from the deleted PR1 section moves here.
+
+### Why PR2 is separate
+
+The patch migration is large and load-bearing. Stacking the skip gates on top compounds review surface and failure modes. The skip gates are conservative (only fire on already-clean chapters) and quality-neutral, but their interaction with the publish-candidate ratchet and `capturedAfter` semantics deserves its own focused PR after PR1 has shipped and stabilized in production runs.
